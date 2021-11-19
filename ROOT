@@ -5,5 +5,8 @@ session IsarIris =
         Experimental Iris port
     "
     options [timeout = 200]
+    directories
+      "HeapLang"
     theories
+      "IsarIris"
         
