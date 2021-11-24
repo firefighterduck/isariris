@@ -2,7 +2,7 @@ chapter IsarIris
 
 session IsarIris = 
     description "
-        Experimental Iris port
+        Experimental partial port of Iris
     "
     options [timeout = 200]
     directories

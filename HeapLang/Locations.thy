@@ -7,6 +7,20 @@ text \<open> Based on https://gitlab.mpi-sws.org/iris/iris/-/blob/master/iris_he
 
 datatype loc = Loc (loc_car: int)
 
+instantiation loc :: ord
+begin
+definition less_eq_loc :: "loc \<Rightarrow> loc \<Rightarrow> bool" where
+  "less_eq_loc l1 l2 = ((loc_car l1) \<le> (loc_car l2))"
+definition less_loc :: "loc \<Rightarrow> loc \<Rightarrow> bool" where
+  "less_loc l1 l2 = ((loc_car l1) < (loc_car l2))"
+instance ..
+end
+                           
+instantiation loc :: linorder
+begin
+instance proof qed (auto simp: less_eq_loc_def less_loc_def loc.expand)
+end
+
 definition loc_add :: "loc \<Rightarrow> int \<Rightarrow> loc" (infixl "+\<^sub>\<iota>" 60) where
   "loc_add l off = Loc (loc_car l + off)"
 
@@ -16,6 +30,9 @@ lemma loc_add_assoc:  "l +\<^sub>\<iota> i +\<^sub>\<iota> j = l +\<^sub>\<iota>
 lemma loc_add_0: "l +\<^sub>\<iota> 0 = l"
   by (simp add: loc_add_def)
 
+lemma loc_ranges: "{(l+\<^sub>\<iota>i) |i. i\<in>{0..<n}} = {l..<(l+\<^sub>\<iota>n)}"
+by (auto simp: less_eq_loc_def less_loc_def loc_add_def, smt (z3) loc.exhaust_sel)
+  
 definition fresh_locs :: "loc list \<Rightarrow> loc" where
   "fresh_locs ls = Loc (fold (\<lambda>k r. max (1+loc_car k) r) ls 1)"
 
