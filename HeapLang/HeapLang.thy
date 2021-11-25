@@ -218,4 +218,18 @@ fun bin_op_eval_loc :: "bin_op \<Rightarrow> loc \<Rightarrow> base_lit \<Righta
   "bin_op_eval_loc OffsetOp l (LitInt off) = Some (LitLoc (l+\<^sub>\<iota>off))"
 | "bin_op_eval_loc _ _ _ = None"
 
+
+definition bin_op_eval :: "bin_op \<Rightarrow> val \<Rightarrow> val \<Rightarrow> val option" where
+  "bin_op_eval op v1 v2 = 
+  (if (op = EqOp) then
+      if (vals_compare_safe v1 v2) then
+        Some (LitV (LitBool (v1 = v2)))
+      else
+        None
+   else (case (v1, v2) of
+      (LitV (LitInt n1), LitV (LitInt n2)) \<Rightarrow> map_option LitV (bin_op_eval_int op n1 n2)
+      | (LitV (LitBool b1), LitV (LitBool b2)) \<Rightarrow> map_option LitV (bin_op_eval_bool op b1 b2)
+      | (LitV (LitLoc l1), LitV v2) \<Rightarrow> map_option LitV (bin_op_eval_loc op l1 v2)
+      | (_, _) \<Rightarrow> None)
+    )"
 end

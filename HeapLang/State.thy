@@ -136,7 +136,7 @@ inductive head_step :: "expr \<Rightarrow> state \<Rightarrow> observation list 
 | CaseLS: "(Case (Val(InjLV v)) e1 e2) \<sigma> [] \<Rightarrow>\<^sub>h (App e1 (Val v)) \<sigma> []"
 | CaseRS: "(Case (Val(InjRV v)) e1 e2) \<sigma> [] \<Rightarrow>\<^sub>h (App e2 (Val v)) \<sigma> []"
 | ForkS: "(Fork e) \<sigma> [] \<Rightarrow>\<^sub>h (Val(LitV LitUnit)) \<sigma> [e]"
-| AllocNS: "\<lbrakk>(0 < n); (\<forall> (i::int). (0 \<le> i) \<Longrightarrow> (i < n) \<Longrightarrow> heap \<sigma> (l +\<^sub>\<iota> i) = None)\<rbrakk> \<Longrightarrow>
+| AllocNS: "\<lbrakk>(0 < n); (\<forall> (i::int). (0 \<le> i) \<longrightarrow> (i < n) \<longrightarrow> heap \<sigma> (l +\<^sub>\<iota> i) = None)\<rbrakk> \<Longrightarrow>
   (AllocN (Val(LitV(LitInt n))) (Val v)) \<sigma> [] \<Rightarrow>\<^sub>h
   (Val(LitV(LitLoc l))) (state_init_heap l (nat n) v \<sigma>) []"
 | FreeS: "heap \<sigma> l = Some v \<Longrightarrow> 
@@ -204,21 +204,102 @@ next
   case (ResolveRCtx x1a x2a)
   then show ?case by cases auto
 qed auto
- 
+
 lemma fill_item_no_val_inj: "\<lbrakk>to_val e1 = None; to_val e2 = None; fill_item Ki1 e1 = fill_item Ki2 e2\<rbrakk>
    \<Longrightarrow> Ki1 = Ki2"
-proof (induction Ki2)
+proof (induction Ki2 arbitrary: Ki1)
+  case (AppLCtx x)
+  then show ?case by (cases Ki1) auto
+next
+  case (AppRCtx x)
+  then show ?case by (cases Ki1) auto
+next
+  case (UnOpCtx x)
+  then show ?case by (cases Ki1) auto
+next
+  case (BinOpLCtx x1a x2a)
+  then show ?case by (cases Ki1) auto
+next
+  case (BinOpRCtx x1a x2a)
+  then show ?case by (cases Ki1) auto
+next
+  case (IfCtx x1a x2a)
+  then show ?case by (cases Ki1) auto
+next
+  case (PairLCtx x)
+  then show ?case by (cases Ki1) auto
+next
+  case (PairRCtx x)
+  then show ?case by (cases Ki1) auto
+next
+  case FstCtx
+  then show ?case by (cases Ki1) auto
+next
+  case SndCtx
+  then show ?case by (cases Ki1) auto
+next
+  case InjLCtx
+  then show ?case by (cases Ki1) auto
+next
+  case InjRCtx
+  then show ?case by (cases Ki1) auto
+next
+  case (CaseCtx x1a x2a)
+  then show ?case by (cases Ki1) auto
+next
+  case (AllocNLCtx x)
+  then show ?case by (cases Ki1) auto
+next
+  case (AllocNRCtx x)
+  then show ?case by (cases Ki1) auto
+next
+  case FreeCtx
+  then show ?case by (cases Ki1) auto
+next
+  case LoadCtx
+  then show ?case by (cases Ki1) auto
+next
+  case (StoreLCtx x)
+  then show ?case by (cases Ki1) auto
+next
+  case (StoreRCtx x)
+  then show ?case by (cases Ki1) auto
+next
+  case (XchgLCtx x)
+  then show ?case by (cases Ki1) auto
+next
+  case (XchgRCtx x)
+  then show ?case by (cases Ki1) auto
+next
+  case (CmpXchgLCtx x1a x2a)
+  then show ?case by (cases Ki1) auto
+next
+  case (CmpXchgMCtx x1a x2a)
+  then show ?case by (cases Ki1) auto
+next
+  case (CmpXchgRCtx x1a x2a)
+  then show ?case by (cases Ki1) auto
+next
+  case (FaaLCtx x)
+  then show ?case by (cases Ki1) auto
+next
+  case (FaaRCtx x)
+  then show ?case by (cases Ki1) auto
+next
   case (ResolveLCtx Ki2 x2a x3a)
-  show ?case using ResolveLCtx proof (induction Ki1)
-    case (ResolveLCtx Ki1 x2a x3a)
-    then show ?case sorry (* I have no idea how/why this works in Coq. *)
-  qed auto
-qed (induction Ki1; auto)+
+  then show ?case by (cases Ki1) auto
+next
+  case (ResolveMCtx x1a x2a)
+  then show ?case by (cases Ki1) auto
+next
+  case (ResolveRCtx x1a x2a)
+  then show ?case by (cases Ki1) auto
+qed
 
-lemma alloc_fresh:  "(0 < n) \<Longrightarrow>
+lemma alloc_fresh:  "(0 < n) \<Longrightarrow> finite (dom (heap \<sigma>)) \<Longrightarrow>
   (AllocN ((Val(LitV(LitInt n)))) (Val v)) \<sigma> [] \<Rightarrow>\<^sub>h
-  (Val(LitV(LitLoc (fresh_locs (F (dom (heap \<sigma>))))))) (state_init_heap (fresh_locs (F (dom (heap \<sigma>)))) (nat n) v \<sigma>) []"
-by blast
+  (Val(LitV(LitLoc (fresh_locs (sorted_list_of_set (dom (heap \<sigma>))))))) (state_init_heap (fresh_locs (sorted_list_of_set (dom (heap \<sigma>)))) (nat n) v \<sigma>) []"
+  apply (rule AllocNS) using fresh_locs_fresh[of _ "(sorted_list_of_set (dom (heap \<sigma>)))"] by auto
 
 lemma head_step_to_val: "\<lbrakk>e1 \<sigma>1 \<kappa> \<Rightarrow>\<^sub>h e2 \<sigma>2 efs; e1 \<sigma>1' \<kappa>' \<Rightarrow>\<^sub>h e2' \<sigma>2' efs'; \<exists>x. Some x = (to_val e2)\<rbrakk>
   \<Longrightarrow> \<exists>x. Some x = (to_val e2')"
