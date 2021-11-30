@@ -5,7 +5,7 @@ imports
   Locations
 begin
 
-section \<open> HeapLang Definition\<close>
+section \<open> HeapLang Definition \<close>
 text \<open> The basic language definition \<close>
 text \<open> Based on https://gitlab.mpi-sws.org/iris/iris/-/blob/master/iris_heap_lang/lang.v\<close>
 

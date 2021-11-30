@@ -181,7 +181,7 @@ inductive_cases headE[elim]: "(Rec f x e) \<sigma> \<kappa> \<Rightarrow>\<^sub>
   "(CmpXchg l v1 v2) \<sigma> \<kappa> \<Rightarrow>\<^sub>h e2 \<sigma>2 \<kappa>2"
   "(FAA l i) \<sigma> \<kappa> \<Rightarrow>\<^sub>h e2 \<sigma>2 \<kappa>2"
   "NewProph \<sigma> \<kappa> \<Rightarrow>\<^sub>h e2 \<sigma>2 \<kappa>2"
-  "(Resolve e (Val v1) (Val w)) \<sigma> \<kappa> \<Rightarrow>\<^sub>h e2 \<sigma>2 \<kappa>2"
+  "(Resolve e v1 w) \<sigma> \<kappa> \<Rightarrow>\<^sub>h e2 \<sigma>2 \<kappa>2"
   
 lemma fill_item_val: "\<exists>x. Some x = (to_val (fill_item Ki e)) \<Longrightarrow> \<exists>x. Some x = (to_val e)"
 by (induct Ki) auto

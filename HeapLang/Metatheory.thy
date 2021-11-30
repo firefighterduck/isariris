@@ -106,7 +106,6 @@ lemma bin_op_eval_closed: "\<lbrakk>is_closed_val v1; is_closed_val v2; bin_op_e
   is_closed_val v'" unfolding bin_op_eval_def by (cases op; auto split: val.splits base_lit.splits) 
   (metis is_closed_val.simps(1) option.inject option.simps(3))
 
-
 definition map_forall :: "('a \<Rightarrow> 'b \<Rightarrow> bool) \<Rightarrow> ('a,'b) map \<Rightarrow> bool" where
   "map_forall P m = (\<forall>k v. (m k = Some v) \<longrightarrow> P k v)"  
 
@@ -127,7 +126,6 @@ proof -
     \<forall>i\<ge>0. i < n \<longrightarrow> heap \<sigma> (Loc (loc_car l + i)) = None \<Longrightarrow> 0 < n \<Longrightarrow> is_closed_val w \<Longrightarrow> heap_array l (replicate (nat n) w) k = Some (Some x2) \<Longrightarrow> is_closed_val x2"
     by blast
 qed
-
 
 lemma head_step_is_closed: "\<lbrakk> e1 \<sigma>1 obs \<Rightarrow>\<^sub>h e2 \<sigma>2 es; is_closed_expr {} e1; 
   map_forall (\<lambda>_ v. option_map_or is_closed_val True v) (heap \<sigma>1)\<rbrakk> \<Longrightarrow>
@@ -156,6 +154,9 @@ qed (auto simp: option_map_or_def map_forall_def subst'_def state_upd_heap_def s
 definition binder_delete :: "binder_t \<Rightarrow> (string,'a) map \<Rightarrow> (string,'a) map" where
   "binder_delete b m = (case b of Some b \<Rightarrow> m(b:=None) | None \<Rightarrow> m)"
 
+definition binder_insert :: "binder_t \<Rightarrow> 'a \<Rightarrow> (string, 'a) map \<Rightarrow> (string, 'a) map" where
+  "binder_insert b a m = (case b of Some b \<Rightarrow> m(b\<mapsto>a) | None \<Rightarrow> m)"
+
 fun subst_map :: "(string,val) map \<Rightarrow> expr \<Rightarrow> expr" where
   "subst_map _ (Val v) = Val v"
 | "subst_map vs (Var y) = (case vs y of Some v \<Rightarrow> Val v | _ \<Rightarrow> Var y)"
@@ -181,10 +182,56 @@ fun subst_map :: "(string,val) map \<Rightarrow> expr \<Rightarrow> expr" where
 | "subst_map vs NewProph = NewProph"
 | "subst_map vs (Resolve e0 e1 e2) = Resolve (subst_map vs e0) (subst_map vs e1) (subst_map vs e2)"
 
-lemma subst_map_empty: "subst_map Map.empty e = e"
+lemma subst_map_empty[simp]: "subst_map Map.empty e = e"
 by (induction e) (auto simp: binder_delete_def split: option.splits)
 
 lemma subst_map_insert: "subst_map (vs(x\<mapsto>v)) e = subst x v (subst_map (vs(x:=None)) e)"
 by (induction e arbitrary: vs) (auto simp: binder_delete_def fun_upd_twist split: option.splits)
 
+lemma subst_map_singleton: "subst_map [x\<mapsto>v] e = subst x v e"
+by (simp add: subst_map_insert binder_delete_def)
+
+lemma subst_map_binder_insert: 
+  "subst_map (binder_insert b v vs) e = subst' b v (subst_map (binder_delete b vs) e)"
+by (auto simp: binder_insert_def subst'_def binder_delete_def subst_map_insert split: option.splits)
+
+lemma binder_delete_empty: "binder_delete b Map.empty = Map.empty"
+by (cases b; simp add: binder_delete_def)
+
+lemma subst_map_binder_insert_empty: "subst_map (binder_insert b v Map.empty) e = subst' b v e"
+by (rule subst_map_binder_insert[where ?vs = Map.empty, simplified binder_delete_empty subst_map_empty])
+
+lemma subst_map_binder_insert_2: "subst_map (binder_insert b1 v1 (binder_insert b2 v2 vs)) e =
+  subst' b2 v2 (subst' b1 v1 (subst_map (binder_delete b2 (binder_delete b1 vs)) e))"
+proof (cases b1)
+  case None
+  then show ?thesis by (cases b2)
+    (auto simp: binder_delete_def binder_insert_def subst'_def subst_map_insert)
+next
+  case (Some a)
+  then show ?thesis proof (cases b2)
+    case None
+    then show ?thesis 
+      by (auto simp: binder_delete_def binder_insert_def subst'_def subst_map_insert split: option.splits)
+  next
+    case (Some b)
+    then show ?thesis apply (cases "a=b") 
+    apply (auto simp: binder_delete_def binder_insert_def subst'_def subst_map_insert split: option.splits)
+    apply (metis fun_upd_twist fun_upd_upd subst_map_insert subst_subst subst_subst_ne)
+    by (metis fun_upd_twist fun_upd_upd subst_map_insert subst_subst)
+  qed    
+qed 
+
+lemma subst_map_binder_insert_2_empty: 
+  "subst_map (binder_insert b1 v1 (binder_insert b2 v2 Map.empty)) e =  subst' b2 v2 (subst' b1 v1 e)"
+by (rule subst_map_binder_insert_2[where ?vs=Map.empty, simplified binder_delete_empty subst_map_empty])
+
+lemma subst_map_is_closed: "\<lbrakk>is_closed_expr X e; \<forall>x \<in> X. vs x = None\<rbrakk> \<Longrightarrow> subst_map vs e = e"
+proof (induction e arbitrary: X vs)
+  case (Rec x1 x2 e)
+  then show ?case by (cases x1; cases x2) (auto simp: binder_delete_def)
+qed auto
+
+lemma subst_map_is_closed_nil: "is_closed_expr {} e \<Longrightarrow> subst_map vs e = e"
+using subst_map_is_closed by blast
 end
