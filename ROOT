@@ -7,6 +7,7 @@ session IsarIris =
     options [timeout = 200]
     directories
       "HeapLang"
+      "IrisCore"
     theories
       "IsarIris"
         
