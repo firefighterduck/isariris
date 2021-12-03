@@ -7,14 +7,13 @@ text \<open> This section introduces the concepts of cameras, resource algebras 
     
 (* Non-expansive functions, i.e. equivalence persisting functions from one OFE to another. *)
 typedef (overloaded) ('a::ofe,'b::ofe) non_expansive = 
-  "{ne::'a\<Rightarrow>'b. \<forall>(x::'a) y n. (x,y) \<in> n_equiv n \<longrightarrow> (ne x, ne y) \<in> n_equiv n }"
+  "{ne::'a\<Rightarrow>'b. \<forall>(x::'a) y n. n_equiv n x y \<longrightarrow> n_equiv n (ne x) (ne y)}"
 proof
   fix b :: 'b
   define ne where "ne = (\<lambda>_::'a. b)"
-  hence "\<forall>x y n. (x, y) \<in> n_equiv n \<longrightarrow> (ne x, ne y) \<in> n_equiv n" by (simp add: ofe_refl)
-  then show "ne \<in> {ne. \<forall>x y n. (x, y) \<in> n_equiv n \<longrightarrow> (ne x, ne y) \<in> n_equiv n}" by blast
+  hence "\<forall>x y n. n_equiv n x y \<longrightarrow> n_equiv n (ne x) (ne y)" by (simp add: ofe_refl)
+  then show "ne \<in> {ne. \<forall>x y n. n_equiv n x y \<longrightarrow> n_equiv n (ne x) (ne y)}" by blast
 qed
-
 setup_lifting type_definition_non_expansive
 
 (* Resource algebra *)
@@ -53,8 +52,8 @@ class camera = ofe +
       "Rep_sprop (Rep_non_expansive valid_raw (Rep_non_expansive comp (a,b))) n 
       \<Longrightarrow> Rep_sprop (Rep_non_expansive valid_raw a) n"
     and camera_extend: 
-      "\<lbrakk>Rep_sprop (Rep_non_expansive valid_raw a) n; (a,Rep_non_expansive comp (b1,b2)) \<in> n_equiv n\<rbrakk> \<Longrightarrow>
-      \<exists>c1 c2. (a=Rep_non_expansive comp (c1,c2) \<and> (c1,b2) \<in> n_equiv n \<and> (c2,b2) \<in> n_equiv n)"
+      "\<lbrakk>Rep_sprop (Rep_non_expansive valid_raw a) n; n_equiv n a (Rep_non_expansive comp (b1,b2))\<rbrakk> \<Longrightarrow>
+      \<exists>c1 c2. (a=Rep_non_expansive comp (c1,c2) \<and> n_equiv n c1 b2 \<and> n_equiv n c2 b2)"
 begin
 definition rep_valid_raw :: "'a \<Rightarrow> sprop" where  "rep_valid_raw = Rep_non_expansive valid_raw"      
 definition rep_core :: "'a \<Rightarrow> 'a option" where  "rep_core = Rep_non_expansive core"
@@ -67,7 +66,11 @@ definition incl :: "'a \<Rightarrow> 'a \<Rightarrow> bool" where
   "incl a b = (\<exists>c. b = rep_comp (a,c))"
 
 definition n_incl :: "nat \<Rightarrow> 'a \<Rightarrow> 'a \<Rightarrow> bool" where
-  "n_incl n a b = (\<exists>c. (b, rep_comp (a,c)) \<in> n_equiv n)"
+  "n_incl n a b = (\<exists>c. n_equiv n b (rep_comp (a,c)))"
+
+(* Frame-preserving update *)
+definition fup :: "'a \<Rightarrow> 'a set \<Rightarrow> bool" (infixl "\<leadsto>" 50) where
+  "a\<leadsto>B \<equiv> (\<forall>x::'a. valid a \<longrightarrow> valid (rep_comp (a,x)) \<longrightarrow> (\<exists>b\<in>B. valid (rep_comp (b,x))))"
 end
   
 class total_camera = camera +
@@ -113,9 +116,9 @@ instantiation uprop :: (camera) cofe begin
       \<longrightarrow> Rep_sprop (rep_mon (c n') x) n ))"
   sorry (* This is a direct translation from the Coq formalization, so it should hold. *)
     
-  lift_definition n_equiv_uprop :: "nat \<Rightarrow> ('a uprop\<times>'a uprop) set" is
-    "\<lambda>n. {(x,y) | x y. \<forall>m\<le>n. \<forall>a. 
-      Rep_sprop (rep_valid_raw a) m \<longrightarrow> (Rep_sprop (rep_mon x a) m \<longleftrightarrow> Rep_sprop (rep_mon y a) m)}" .
+  lift_definition n_equiv_uprop :: "nat \<Rightarrow> 'a uprop \<Rightarrow> 'a uprop \<Rightarrow> bool" is
+    "\<lambda>n x y. \<forall>m\<le>n. \<forall>a. Rep_sprop (rep_valid_raw a) m \<longrightarrow> (Rep_sprop (rep_mon x a) m \<longleftrightarrow> Rep_sprop (rep_mon y a) m)"
+    by (auto simp: rep_mon_def rep_valid_raw_def mon_ne_equiv_def)
 
   lift_definition ofe_eq_uprop :: "'a uprop \<Rightarrow> 'a uprop \<Rightarrow> bool" is "\<lambda>x y. mon_ne_equiv x y" 
     unfolding mon_ne_equiv_def by auto
