@@ -15,6 +15,9 @@ class ofe =
     and ofe_mono: "\<lbrakk>m\<le>n; n_equiv n x y\<rbrakk> \<Longrightarrow> n_equiv m x y"
     and ofe_limit: "(ofe_eq x y) \<longleftrightarrow> (\<forall>n. n_equiv n x y)"
     and ofe_eq_eq: "(x=y) \<Longrightarrow> ofe_eq x y"
+
+lemma (in ofe) ofe_eq_limit: "(x=y) \<Longrightarrow> (\<forall>n. n_equiv n x y)"
+  using ofe_limit ofe_eq_eq by simp    
     
 (* Step indexed propositions. They are defined to hold for all steps below a maximum. *)
 typedef sprop = "{s::nat\<Rightarrow>bool. \<forall>n m. m\<le>n \<longrightarrow> s n \<longrightarrow> s m}"
@@ -35,7 +38,10 @@ end
 lift_definition sFalse :: sprop is "\<lambda>_. False" .
 lemma sFalseF: "Rep_sprop (Abs_sprop (\<lambda>_. False)) n = False"
 using Abs_sprop_inverse by auto
-lemmas [simp] = sFalse_def sFalseF
+lift_definition sTrue :: sprop is "\<lambda>_. True" .
+lemma sTrueT: "Rep_sprop (Abs_sprop (\<lambda>_. True)) n = True"
+using Abs_sprop_inverse by auto
+lemmas [simp] = sFalse_def sFalseF sTrue_def sTrueT
 
 lift_definition n_subseteq :: "nat \<Rightarrow> sprop \<Rightarrow> sprop \<Rightarrow> bool" is
   "\<lambda>n X Y. \<forall>m\<le>n. X m \<longrightarrow> Y m" .

@@ -78,10 +78,13 @@ class total_camera = camera +
   assumes \<epsilon>_valid: "valid \<epsilon>"
     and \<epsilon>_left_id: "rep_comp (\<epsilon>,a) = a"
     and \<epsilon>_core: "rep_core \<epsilon> = Some \<epsilon>"
-
-definition (in total_camera) total_core :: "'a \<Rightarrow> 'a" where
+begin
+definition total_core :: "'a \<Rightarrow> 'a" where
   "total_core a = (case rep_core a of Some a \<Rightarrow> a | None \<Rightarrow> \<epsilon>)"
 
+lemma \<epsilon>_total[simp]: "total_core \<epsilon> = \<epsilon>"
+  by (auto simp: total_core_def \<epsilon>_core )
+end
 subsection \<open> Uniform Predicates \<close>
 (* First monotone, non-expansive functions *)  
 typedef (overloaded) 'm mon_ne = "{\<Phi>::('m::camera,sprop) non_expansive. 
@@ -109,7 +112,7 @@ definition mon_ne_equiv :: "('a::camera) mon_ne \<Rightarrow> 'a mon_ne \<Righta
 (* Then the actual uniform predicate *)
 quotient_type (overloaded) 'b uprop = "('b::camera) mon_ne" / mon_ne_equiv
   by (simp add: mon_ne_equiv_def equivp_reflp_symp_transp reflp_def symp_def transp_def)
-
+  
 instantiation uprop :: (camera) cofe begin
   lift_definition lim_uprop :: "(nat \<Rightarrow> 'a uprop) \<Rightarrow> 'a uprop" is
     "\<lambda>c. abs_mon (\<lambda>x. Abs_sprop (\<lambda>n. \<forall>n'\<le>n. Rep_sprop (rep_valid_raw x) n' 
