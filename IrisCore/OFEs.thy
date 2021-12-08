@@ -15,10 +15,10 @@ class ofe =
     and ofe_mono: "\<lbrakk>m\<le>n; n_equiv n x y\<rbrakk> \<Longrightarrow> n_equiv m x y"
     and ofe_limit: "(ofe_eq x y) \<longleftrightarrow> (\<forall>n. n_equiv n x y)"
     and ofe_eq_eq: "(x=y) \<Longrightarrow> ofe_eq x y"
-
-lemma (in ofe) ofe_eq_limit: "(x=y) \<Longrightarrow> (\<forall>n. n_equiv n x y)"
-  using ofe_limit ofe_eq_eq by simp    
-    
+begin 
+lemma  ofe_eq_limit: "(x=y) \<Longrightarrow> (\<forall>n. n_equiv n x y)"
+  using ofe_limit ofe_eq_eq by simp  
+end
 (* Step indexed propositions. They are defined to hold for all steps below a maximum. *)
 typedef sprop = "{s::nat\<Rightarrow>bool. \<forall>n m. m\<le>n \<longrightarrow> s n \<longrightarrow> s m}"
 proof
@@ -37,14 +37,20 @@ end
 
 lift_definition sFalse :: sprop is "\<lambda>_. False" .
 lemma sFalseF: "Rep_sprop (Abs_sprop (\<lambda>_. False)) n = False"
-using Abs_sprop_inverse by auto
+  using Abs_sprop_inverse by auto
 lift_definition sTrue :: sprop is "\<lambda>_. True" .
 lemma sTrueT: "Rep_sprop (Abs_sprop (\<lambda>_. True)) n = True"
-using Abs_sprop_inverse by auto
+  using Abs_sprop_inverse by auto
 lemmas [simp] = sFalse_def sFalseF sTrue_def sTrueT
 
 lift_definition n_subseteq :: "nat \<Rightarrow> sprop \<Rightarrow> sprop \<Rightarrow> bool" is
   "\<lambda>n X Y. \<forall>m\<le>n. X m \<longrightarrow> Y m" .
+lift_definition sprop_conj :: "sprop \<Rightarrow> sprop \<Rightarrow> sprop" (infixl "\<and>\<^sub>s" 60) is 
+  "\<lambda>x y. (\<lambda>n. x n \<and> y n)" using conj_forward by simp
+lift_definition sprop_disj :: "sprop \<Rightarrow> sprop \<Rightarrow> sprop" (infixl "\<or>\<^sub>s" 60) is
+  "\<lambda>x y. (\<lambda>n. x n \<or> y n)" using disj_forward by simp
+lift_definition sprop_impl :: "sprop \<Rightarrow> sprop \<Rightarrow> sprop" (infixr "\<longrightarrow>\<^sub>s" 60) is
+  "\<lambda>x y. (\<lambda>n. \<forall>m\<le>n. x m \<longrightarrow> y m)" by (meson dual_order.trans)
 
 instantiation option :: (ofe) ofe begin
   definition n_equiv_option :: "nat \<Rightarrow> 'a option \<Rightarrow> 'a option \<Rightarrow> bool" where

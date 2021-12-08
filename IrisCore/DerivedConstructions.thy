@@ -131,7 +131,7 @@ next
 fix a b1 b2 :: "('a,'b) sum_camera"
 fix n
 show "Rep_sprop (Rep_non_expansive valid_raw a) n \<Longrightarrow>
-  n_equiv n a (Rep_non_expansive comp (b1, b2)) \<Longrightarrow> \<exists>c1 c2. a = Rep_non_expansive comp (c1, c2) \<and> n_equiv n c1 b2 \<and> n_equiv n c2 b2"
+  n_equiv n a (Rep_non_expansive comp (b1, b2)) \<Longrightarrow> \<exists>c1 c2. a = Rep_non_expansive comp (c1, c2) \<and> n_equiv n c1 b1 \<and> n_equiv n c2 b2"
   apply (cases a; cases b1; cases b2) 
   apply (auto simp: rep_valid_raw_def rep_comp_def comp_sum_camera.rep_eq Abs_sprop_inverse valid_raw_sum_camera.rep_eq intro: camera_extend split: option.splits)
   apply (metis camera_extend n_equiv_sum_camera.simps(1) rep_comp_def sum_comp.simps(1))
@@ -140,15 +140,15 @@ qed
 end
 
 lemma sum_update_l: "a\<leadsto>B \<Longrightarrow> (Inl a) \<leadsto> {Inl b |b. b\<in>B}"
-apply (auto simp: fup_def rep_comp_def valid_def rep_valid_raw_def comp_sum_camera.rep_eq valid_raw_sum_camera.rep_eq Abs_sprop_inverse split: sum_camera.splits)
+apply (auto simp: fup_def rep_comp_def valid_def rep_valid_raw_def valid_n_def comp_sum_camera.rep_eq valid_raw_sum_camera.rep_eq Abs_sprop_inverse split: sum_camera.splits)
 apply (smt (z3) rep_comp_def sum_camera.distinct(1) sum_camera.distinct(3) sum_camera.inject(1) sum_comp.simps(1) sum_comp.simps(6) sum_comp.simps(8) sum_core.cases)
 by (metis (no_types, lifting) camera_assoc camera_comm comp_sum_camera.rep_eq sum_camera.distinct(5) sum_comp.simps(2) sum_comp.simps(6) sum_comp.simps(8))
 
 lemma sum_update_r: "a\<leadsto>B \<Longrightarrow> (Inr a) \<leadsto> {Inr b |b. b\<in>B}"
 sorry (* Same as above *)
 
-lemma sum_swap_l: "\<lbrakk>\<forall>c n. \<not> Rep_sprop (rep_valid_raw (rep_comp (a,c))) n; valid b\<rbrakk> \<Longrightarrow> (Inl a) \<leadsto> {Inr b}"
-apply (auto simp: valid_def rep_comp_def rep_valid_raw_def fup_def)
+lemma sum_swap_l: "\<lbrakk>\<forall>c n. \<not> valid_n (rep_comp (a,c)) n; valid b\<rbrakk> \<Longrightarrow> (Inl a) \<leadsto> {Inr b}"
+apply (auto simp: valid_def rep_comp_def rep_valid_raw_def fup_def valid_n_def)
 apply (auto simp: rep_valid_raw_def comp_sum_camera.rep_eq valid_raw_sum_camera.rep_eq Abs_sprop_inverse split: sum_camera.splits)
 apply (metis (no_types, lifting) camera_assoc camera_comm comp_sum_camera.rep_eq sum_camera.simps(6) sum_comp.simps(1) sum_comp.simps(3))
 subgoal for x y z d
@@ -230,19 +230,21 @@ next
 fix a b1 b2 :: "'a option"
 fix n
 show "\<lbrakk>Rep_sprop (Rep_non_expansive valid_raw a) n; n_equiv n a (Rep_non_expansive comp (b1, b2))\<rbrakk>
-   \<Longrightarrow> \<exists>c1 c2. a = Rep_non_expansive comp (c1, c2) \<and> n_equiv n c1 b2 \<and> n_equiv n c2 b2"
+   \<Longrightarrow> \<exists>c1 c2. a = Rep_non_expansive comp (c1, c2) \<and> n_equiv n c1 b1 \<and> n_equiv n c2 b2"
    apply (cases a; cases b1; cases b2) 
    apply  (auto simp: valid_raw_option.rep_eq comp_option.rep_eq)
    using ofe_refl apply force+
    apply (simp_all add: n_equiv_option_def)
-   sorry
+   apply force
+   apply force
+   by (metis camera_extend option_comp.simps(1) rep_comp_def rep_valid_raw_def)
 qed
 end  
 
 instantiation option :: (camera) total_camera begin
 definition "\<epsilon>_option \<equiv> None"
 instance apply (standard) 
-apply (auto simp: \<epsilon>_option_def rep_comp_def valid_def rep_valid_raw_def rep_core_def valid_raw_option_def comp_option.rep_eq core_option.rep_eq)
+apply (auto simp: \<epsilon>_option_def rep_comp_def valid_def rep_valid_raw_def rep_core_def valid_raw_option_def comp_option.rep_eq core_option.rep_eq valid_n_def)
 apply (metis option.simps(4) sTrue.rep_eq valid_raw_option.abs_eq valid_raw_option.rep_eq)
 by (metis not_None_eq option_comp.simps(3) option_comp.simps(4))
 end
@@ -390,7 +392,7 @@ also have "... = (\<forall>n. Rep_sprop (rep_valid_raw (Auth (None, \<epsilon>::
 also have "... = (\<forall>n. Rep_sprop (Abs_sprop (\<lambda>n. Rep_sprop (rep_valid_raw  (\<epsilon>::'a)) n)) n)"
   by (auto simp: rep_valid_raw_def valid_raw_auth.rep_eq Rep_sprop_inverse)
 also have "... = (\<forall>n. Rep_sprop (rep_valid_raw (\<epsilon>::'a)) n)" using Rep_sprop_inverse by simp
-also have "... = valid (\<epsilon>::'a)" using valid_def by blast
+also have "... = valid (\<epsilon>::'a)" using valid_def valid_n_def by metis
 also have "... = True" using \<epsilon>_valid by simp
 finally show "valid (\<epsilon>::'a auth)" by simp
 next
