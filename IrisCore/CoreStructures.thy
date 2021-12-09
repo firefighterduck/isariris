@@ -59,10 +59,10 @@ class camera = ofe +
       "\<lbrakk>Rep_sprop (Rep_non_expansive valid_raw a) n; n_equiv n a (Rep_non_expansive comp (b1,b2))\<rbrakk> \<Longrightarrow>
       \<exists>c1 c2. (a=Rep_non_expansive comp (c1,c2) \<and> n_equiv n c1 b1 \<and> n_equiv n c2 b2)"
 begin
-definition rep_valid_raw :: "'a \<Rightarrow> sprop" where  "rep_valid_raw = Rep_non_expansive valid_raw"
-definition valid_n :: "'a \<Rightarrow> nat \<Rightarrow> bool" where "valid_n x = Rep_sprop (rep_valid_raw x)"
-definition rep_core :: "'a \<Rightarrow> 'a option" where  "rep_core = Rep_non_expansive core"
-definition rep_comp :: "('a\<times>'a) \<Rightarrow> 'a" where  "rep_comp = Rep_non_expansive comp"
+abbreviation rep_valid_raw :: "'a \<Rightarrow> sprop" where  "rep_valid_raw \<equiv> Rep_non_expansive valid_raw"
+abbreviation valid_n :: "'a \<Rightarrow> nat \<Rightarrow> bool" where "valid_n x \<equiv> Rep_sprop (rep_valid_raw x)"
+abbreviation rep_core :: "'a \<Rightarrow> 'a option" where "rep_core \<equiv> Rep_non_expansive core"
+abbreviation rep_comp :: "('a\<times>'a) \<Rightarrow> 'a" where "rep_comp \<equiv> Rep_non_expansive comp"
 
 definition valid :: "'a \<Rightarrow> bool" where
   "valid a = (\<forall>n. valid_n a n)"
@@ -79,7 +79,7 @@ definition fup :: "'a \<Rightarrow> 'a set \<Rightarrow> bool" (infixl "\<leadst
 
 (* Auxiliary camera lemmas *)
 lemma camera_n_incl_le: "\<lbrakk>n_incl n x y; m\<le>n\<rbrakk> \<Longrightarrow> n_incl m x y"
-  by (auto simp: n_incl_def rep_comp_def) (meson ofe_class.ofe_mono)
+  by (auto simp: n_incl_def) (meson ofe_class.ofe_mono)
 
 lemma comp_equiv: "\<lbrakk>n_equiv n x y; n_equiv n a b\<rbrakk> \<Longrightarrow> n_equiv n (rep_comp (x,a)) (rep_comp (y,b))"
 proof -
@@ -87,7 +87,7 @@ proof -
   hence "n_equiv n (x,a) (y,b)" by simp
   hence "n_equiv n (Rep_non_expansive comp (x,a)) (Rep_non_expansive comp (y,b))" 
     using Rep_non_expansive by blast
-  thus "n_equiv n (rep_comp (x,a)) (rep_comp (y,b))" using rep_comp_def by simp
+  thus "n_equiv n (rep_comp (x,a)) (rep_comp (y,b))" by simp
 qed  
 
 lemma comp_equiv_subst: 
@@ -101,22 +101,21 @@ proof -
   assume assm2: "valid_n (rep_comp (x,x')) n"
   from assm1 have "n_equiv n (rep_comp (x,x')) (rep_comp (rep_comp (y,z),x'))" 
     by (simp add: ofe_class.ofe_refl comp_equiv)
-    from ne_sprop_weaken[OF this, of n, simplified, OF assm2[simplified valid_n_def rep_valid_raw_def]]
-  show "valid_n (rep_comp (rep_comp (y,z),x')) n" unfolding valid_n_def rep_valid_raw_def .
+    from ne_sprop_weaken[OF this, of n, simplified, OF assm2]
+  show "valid_n (rep_comp (rep_comp (y,z),x')) n" .
 qed
 
 lemma valid_n_incl_subst: "\<lbrakk>n_incl n a b; valid_n (rep_comp (b,c)) m; m\<le>n\<rbrakk> 
   \<Longrightarrow> valid_n (rep_comp (a,c)) m"
-  using n_incl_def rep_comp_def valid_n_def
-  by (smt (verit, ccfv_threshold) camera_assoc camera_comm camera_valid_op ofe_class.ofe_mono rep_valid_raw_def valid_comp_comp_weaken)
+  using n_incl_def
+  by (smt (verit, ccfv_threshold) camera_assoc camera_comm camera_valid_op ofe_class.ofe_mono valid_comp_comp_weaken)
   
 lemma incl_comp_extend: "incl a b \<Longrightarrow> incl a (rep_comp (b,c))"
-  by (auto simp: incl_def rep_comp_def camera_assoc)
+  by (auto simp: incl_def camera_assoc)
 lemma n_incl_comp_extend: "n_incl n a (rep_comp (a,c))"
   by (meson n_incl_def ofe_class.ofe_eq_limit)
 lemma n_incl_extend: "\<lbrakk>n_incl n a b; m\<le>n\<rbrakk> \<Longrightarrow> n_incl m (rep_comp (a,c)) (rep_comp (b,c))"
-  using n_incl_def rep_comp_def
-  by (smt (verit, ccfv_threshold) comp_equiv_subst camera_assoc camera_comm ofe_class.ofe_refl)
+  using n_incl_def by (smt (verit, ccfv_threshold) comp_equiv_subst camera_assoc camera_comm ofe_class.ofe_refl)
 end
   
 class total_camera = camera +
@@ -136,7 +135,7 @@ proof (unfold camera_class.n_incl_def; standard)
   assume "n2\<le>n1" "n_equiv n1 x1 x2"
   then have "n_equiv n2 x1 x2" by (rule ofe_class.ofe_mono)
   then have "n_equiv n2 (rep_comp (x1,\<epsilon>)) x2" 
-    by (metis camera_class.camera_comm camera_class.rep_comp_def \<epsilon>_left_id)
+    by (metis camera_class.camera_comm \<epsilon>_left_id)
   then show "n_equiv n2 x2 (rep_comp (x1, \<epsilon>))" by (simp add: ofe_class.ofe_sym)
 qed
 end

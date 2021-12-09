@@ -1,5 +1,5 @@
 theory Locations
-imports Main
+imports "../IrisCore/OFEs"
 begin
 
 section \<open> Locations \<close>
@@ -7,8 +7,7 @@ text \<open> Based on https://gitlab.mpi-sws.org/iris/iris/-/blob/master/iris_he
 
 datatype loc = Loc (loc_car: int)
 
-instantiation loc :: ord
-begin
+instantiation loc :: ord begin
 definition less_eq_loc :: "loc \<Rightarrow> loc \<Rightarrow> bool" where
   "less_eq_loc l1 l2 = ((loc_car l1) \<le> (loc_car l2))"
 definition less_loc :: "loc \<Rightarrow> loc \<Rightarrow> bool" where
@@ -16,8 +15,7 @@ definition less_loc :: "loc \<Rightarrow> loc \<Rightarrow> bool" where
 instance ..
 end
                            
-instantiation loc :: linorder
-begin
+instantiation loc :: linorder begin
 instance proof qed (auto simp: less_eq_loc_def less_loc_def loc.expand)
 end
 
@@ -36,8 +34,7 @@ by (auto simp: less_eq_loc_def less_loc_def loc_add_def, smt (z3) loc.exhaust_se
 definition fresh_locs :: "loc list \<Rightarrow> loc" where
   "fresh_locs ls = Loc (fold (\<lambda>k r. max (1+loc_car k) r) ls 1)"
 
-locale fresh_loc_properties
-begin
+locale fresh_loc_properties begin
 lemma max_fold_mono: 
   "l\<le>u \<Longrightarrow> fold (\<lambda>k r. max (1+loc_car k) r) ls l \<le> fold (\<lambda>k r. max (1+loc_car k) r) ls u"
   by (induction ls arbitrary: l u) auto
@@ -65,7 +62,14 @@ lemma fresh_locs_fresh:
   shows "fresh_locs ls +\<^sub>\<iota> i \<notin> (set ls)"
 proof
   assume "fresh_locs ls +\<^sub>\<iota> i \<in> set ls"
-  hence "loc_car (fresh_locs ls +\<^sub>\<iota> i) < loc_car (fresh_locs ls)" by (rule fresh_loc_properties.fresh_locs_strict)
+  hence "loc_car (fresh_locs ls +\<^sub>\<iota> i) < loc_car (fresh_locs ls)" 
+    by (rule fresh_loc_properties.fresh_locs_strict)
   with assms show "False" by (simp add: loc_add_def)
 qed
+
+instantiation loc :: ofe begin
+definition n_equiv_loc :: "nat \<Rightarrow> loc \<Rightarrow> loc \<Rightarrow> bool" where "n_equiv_loc _ \<equiv> (=)"
+definition ofe_eq_loc :: "loc \<Rightarrow> loc \<Rightarrow> bool" where "ofe_eq_loc \<equiv> (=)"
+instance by standard (auto simp: n_equiv_loc_def ofe_eq_loc_def)
+end
 end

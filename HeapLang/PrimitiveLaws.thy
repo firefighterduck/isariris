@@ -1,5 +1,5 @@
 theory PrimitiveLaws
-imports State
+imports State "../IrisCore/BaseLogicShallow"
 begin
 
 section \<open> Basic laws for HeapLang programs \<close>

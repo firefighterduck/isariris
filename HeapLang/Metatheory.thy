@@ -63,7 +63,8 @@ qed auto
 lemma is_closed_weaken_nil: "is_closed_expr {} e \<Longrightarrow> is_closed_expr X e"
   using is_closed_weaken by fastforce
 
-lemma is_closed_subst: "\<lbrakk>is_closed_val v; is_closed_expr (insert x X) e\<rbrakk> \<Longrightarrow> is_closed_expr X (subst x v e)"  
+lemma is_closed_subst: "\<lbrakk>is_closed_val v; is_closed_expr (insert x X) e\<rbrakk> 
+  \<Longrightarrow> is_closed_expr X (subst x v e)"  
 proof (induction e arbitrary: X)
   case (Rec x1 x2 e)
   then show ?case
