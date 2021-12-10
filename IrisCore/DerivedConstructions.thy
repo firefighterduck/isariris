@@ -6,14 +6,30 @@ text \<open> A few basic camera constructions \<close>
 text \<open> Tuple/Product type \<close>
 instantiation prod :: (camera,camera) camera begin
   lift_definition valid_raw_prod :: "('a \<times> 'b, sprop) non_expansive" is
-    "\<lambda>(x,y). Abs_sprop (\<lambda>n. Rep_sprop (rep_valid_raw x) n \<and> Rep_sprop (rep_valid_raw y) n)"
-   sorry   
+    "\<lambda>(x,y). Abs_sprop (\<lambda>n. valid_n x n \<and> valid_n y n)"
+    apply (auto simp: n_equiv_sprop_def ne_sprop_weaken ofe_mono ofe_sym split: prod.splits)
+    apply (smt (z3) Abs_sprop_inverse mem_Collect_eq ne_sprop_weaken ofe_mono ofe_refl order_refl)
+    proof -
+    fix nat :: nat and x1 :: 'a and x2 :: 'b and x1a :: 'a and x2a :: 'b and m :: nat
+    assume a1: "m \<le> nat"
+    assume a2: "n_equiv nat x2 x2a"
+    assume a3: "Rep_sprop (Abs_sprop (\<lambda>n. valid_n x1a n \<and> valid_n x2a n)) m"
+    assume "n_equiv nat x1 x1a"
+    then have f4: "n_equiv nat (rep_valid_raw x1) (rep_valid_raw x1a)"
+    using Rep_non_expansive by blast
+    have "n_equiv m x2a x2"
+    using a2 a1 by (meson ofe_mono ofe_sym)
+    then show "Rep_sprop (Abs_sprop (\<lambda>n. valid_n x1 n \<and> valid_n x2 n)) m"
+    using f4 a3 a1 by (simp add: Abs_sprop_inverse n_equiv_sprop_def ne_sprop_weaken)
+    qed
   lift_definition core_prod :: "('a \<times> 'b, ('a \<times> 'b) option) non_expansive" is
     "\<lambda>(x,y). case rep_core x of Some x' \<Rightarrow> (case rep_core y of Some y' \<Rightarrow> Some (x,y) | None \<Rightarrow> None) | None \<Rightarrow> None"
-    sorry    
+    apply (auto simp: n_equiv_option_def ofe_refl split: option.splits)
+    apply (metis option.distinct(1) core_ne)
+    apply (metis option.distinct(1) core_ne)
+    by (metis core_ne not_None_eq ofe_sym)+
   lift_definition comp_prod :: "(('a \<times> 'b) \<times> 'a \<times> 'b, 'a \<times> 'b) non_expansive" is
-    "\<lambda>((x,y),(a,b)). (rep_comp (x,a),rep_comp (y,b))"
-    sorry
+    "\<lambda>((x,y),(a,b)). (rep_comp (x,a),rep_comp (y,b))" by auto
 instance sorry
 end
 
@@ -83,17 +99,15 @@ fun sum_comp :: "(('a::camera,'b::camera) sum_camera\<times>('a,'b) sum_camera) 
 instantiation sum_camera :: (camera,camera) camera begin
   lift_definition valid_raw_sum_camera :: "(('a, 'b) sum_camera, sprop) non_expansive" is
     "\<lambda>sum::('a, 'b) sum_camera. (case sum of Inl a \<Rightarrow> rep_valid_raw a | Inr b \<Rightarrow> rep_valid_raw b | Inv \<Rightarrow> sFalse)"
-      apply (auto split: sum_camera.splits)
-      using Rep_non_expansive apply blast using Rep_non_expansive apply blast
-      by (rule ofe_refl)
+      by (auto split: sum_camera.splits) (rule ofe_refl)
   lift_definition core_sum_camera :: "(('a, 'b) sum_camera, ('a, 'b) sum_camera option) non_expansive" is
     "sum_core"
     proof - fix m1 m2 n assume assm: "n_equiv n m1 (m2::('a, 'b) sum_camera)"
     thus "n_equiv n (sum_core m1) (sum_core m2)"
     apply (cases m1; cases m2) apply (auto simp: ofe_refl split: option.splits)
-    apply (smt (verit, ccfv_threshold) Rep_non_expansive mem_Collect_eq n_equiv_option_def option.distinct(1))
-    apply (smt (verit, ccfv_threshold) Rep_non_expansive mem_Collect_eq n_equiv_option_def option.distinct(1))
-    apply (smt (verit) Rep_non_expansive mem_Collect_eq n_equiv_option_def n_equiv_sum_camera.simps(1) option.distinct(1) option.sel)
+    apply (metis core_ne ofe_sym option.simps(3))
+    apply (metis core_ne option.simps(3))
+    using core_ne n_equiv_option_def apply fastforce
     apply (smt (verit, best) Rep_non_expansive mem_Collect_eq n_equiv_option_def option.distinct(1))
     apply (smt (verit, best) Rep_non_expansive mem_Collect_eq n_equiv_option_def option.distinct(1))
     by (smt (verit, del_insts) Rep_non_expansive mem_Collect_eq n_equiv_option_def n_equiv_sum_camera.simps(2) option.distinct(1) option.inject)
@@ -104,9 +118,7 @@ instantiation sum_camera :: (camera,camera) camera begin
     assume assm: "n_equiv n m1 (m2::(('a, 'b) sum_camera\<times>('a, 'b) sum_camera))"
     obtain a1 b1 a2 b2 where "m1=(a1,b1)" "m2=(a2,b2)" by fastforce
     thus "n_equiv n (sum_comp m1) (sum_comp m2)"
-    apply (cases a1; cases a2; cases b1; cases b2) using assm apply (auto)
-    apply (smt (verit, ccfv_threshold) Rep_non_expansive mem_Collect_eq n_equiv_prod.simps)
-    by (smt (verit, ccfv_threshold) Rep_non_expansive mem_Collect_eq n_equiv_prod.simps)
+    apply (cases a1; cases a2; cases b1; cases b2) using assm by (auto)
     qed
 instance proof (standard)
 fix a b c :: "('a,'b) sum_camera"
@@ -125,14 +137,14 @@ by (metis camera_core_id option.sel  )+
 next
 fix a :: "('a,'b) sum_camera"
 show "\<exists>a'. Rep_non_expansive core a = Some a' \<Longrightarrow> Rep_non_expansive core (the (Rep_non_expansive core a)) = Rep_non_expansive core a"
-apply (cases a) apply (auto simp:  core_sum_camera.rep_eq intro: camera_core_idem split: option.splits)
-using camera_core_idem apply fastforce using camera_core_idem apply fastforce using camera_core_idem apply fastforce
-using camera_core_idem by fastforce
+apply (cases a) apply (auto simp:  core_sum_camera.rep_eq split: option.splits)
+using camera_core_idem by fastforce+
 next
-fix a b :: "('a,'b) sum_camera"
-show "\<lbrakk>\<exists>a'. Rep_non_expansive core a = Some a';\<exists>c. b = Rep_non_expansive comp (a, c)\<rbrakk> \<Longrightarrow>
-  \<exists>b'. Rep_non_expansive core b = Some b' \<and>
-  (\<exists>c. the (Rep_non_expansive core b) = Rep_non_expansive comp (the (Rep_non_expansive core a), c))"
+fix a b a' c :: "('a,'b) sum_camera"
+show "\<lbrakk>Rep_non_expansive core a = Some a'; \<exists>c. b = Rep_non_expansive comp (a, c)\<rbrakk> \<Longrightarrow>
+  \<exists>b'. Rep_non_expansive core b = Some b' \<and> (\<exists>c. b' = Rep_non_expansive comp (a', c))"
+  apply (cases a; cases b; cases c; cases a')
+  apply (auto simp: core_sum_camera.rep_eq comp_sum_camera.rep_eq split: option.splits)
   sorry
 next
 fix a b :: "('a,'b) sum_camera"
@@ -205,10 +217,7 @@ instantiation option :: (camera) camera begin
     apply (metis (no_types, lifting) Rep_non_expansive mem_Collect_eq n_equiv_option_def)
     by (metis (no_types, lifting) Rep_non_expansive mem_Collect_eq n_equiv_option_def)
   lift_definition comp_option :: "('a option \<times> 'a option, 'a option) non_expansive" is
-    "option_comp"
-    apply (auto simp: n_equiv_option_def )
-    apply (metis (no_types, lifting) Rep_non_expansive mem_Collect_eq n_equiv_prod.simps)
-    by (metis (no_types, lifting) Rep_non_expansive mem_Collect_eq n_equiv_prod.simps)
+    "option_comp" by (auto simp: n_equiv_option_def )
 instance proof 
 fix a b c :: "'a option"
 show "Rep_non_expansive comp (Rep_non_expansive comp (a, b), c) = Rep_non_expansive comp (a, Rep_non_expansive comp (b, c))"
@@ -229,10 +238,9 @@ show "\<exists>a'. Rep_non_expansive core a = Some a' \<Longrightarrow> Rep_non_
 apply (cases a) apply (auto simp: core_option.rep_eq  split: option.splits)
 using camera_core_idem by fastforce+
 next
-fix a b :: "'a option"
-show "\<lbrakk>\<exists>a'. Rep_non_expansive core a = Some a'; \<exists>c. b = Rep_non_expansive comp (a, c)\<rbrakk> \<Longrightarrow>
-  \<exists>b'. Rep_non_expansive core b = Some b' 
-  \<and> (\<exists>c. the (Rep_non_expansive core b) = Rep_non_expansive comp (the (Rep_non_expansive core a), c))"
+fix a b a' c :: "'a option"
+show "\<lbrakk>Rep_non_expansive core a = Some a'; b=Rep_non_expansive comp (a,c)\<rbrakk> \<Longrightarrow> 
+      (\<exists>b'. (Rep_non_expansive core b = Some b') \<and> (b' = Rep_non_expansive comp (a',c)))"
   sorry  
 next
 fix a b :: "'a option"
@@ -255,10 +263,10 @@ qed
 end  
 
 instantiation option :: (camera) total_camera begin
-definition "\<epsilon>_option \<equiv> None"
+definition [simp]: "\<epsilon>_option \<equiv> None"
 instance apply (standard) 
-apply (auto simp: \<epsilon>_option_def  valid_def valid_raw_option_def comp_option.rep_eq core_option.rep_eq )
-apply (metis option.simps(4) sTrue.rep_eq valid_raw_option.abs_eq valid_raw_option.rep_eq)
+apply (auto simp: valid_def valid_raw_option_def comp_option.rep_eq core_option.rep_eq)
+apply (metis option.simps(4) sTrue_def sPure.rep_eq valid_raw_option.abs_eq valid_raw_option.rep_eq)
 by (metis not_None_eq option_comp.simps(3) option_comp.simps(4))
 end
 
@@ -375,9 +383,7 @@ lift_definition core_auth :: "('a auth, 'a auth option) non_expansive" is
   by (smt (verit, best) Rep_non_expansive mem_Collect_eq n_equiv_auth.simps n_equiv_option_def n_equiv_prod.simps option.discI option.inject)
 lift_definition comp_auth :: "('a auth \<times> 'a auth, 'a auth) non_expansive" is
   "\<lambda>a. case a of (Auth (x1,b1),Auth (x2,b2)) \<Rightarrow> Auth (rep_comp ((x1,b1),(x2,b2)))"
-  apply (auto simp:  comp_prod.rep_eq split: auth.splits)
-  apply (metis (no_types, lifting) Rep_non_expansive mem_Collect_eq n_equiv_prod.simps)
-  by (metis (no_types, lifting) Rep_non_expansive mem_Collect_eq n_equiv_prod.simps)
+  by (auto simp:  comp_prod.rep_eq split: auth.splits) 
 instance apply (standard)
 apply (auto simp: comp_auth.rep_eq  core_auth.rep_eq valid_raw_auth.rep_eq   split: auth.splits)
 apply (rule camera_assoc)
@@ -389,12 +395,12 @@ show "rep_comp (None, a) = a" by (rule \<epsilon>_left_id[of a, simplified \<eps
 next assume "Rep_non_expansive camera_class.core b = Some b'"
 with camera_core_id[of b, simplified  this] show "rep_comp (b', b) = b"
 by (metis option.sel ) qed
-apply (metis \<epsilon>_core option.simps(3) )+
-apply (metis \<epsilon>_core option.inject )
+apply (metis (mono_tags) \<epsilon>_core option.simps(3))+
+apply (metis \<epsilon>_core option.inject)
 using camera_core_idem apply force+
-apply (metis \<epsilon>_core \<open>\<And>b' b a. Rep_non_expansive camera_class.core b = Some b' \<Longrightarrow> Rep_non_expansive camera_class.comp ((None, b'), a, b) = (a, b)\<close> auth.inject )
-apply (metis \<epsilon>_core \<epsilon>_left_id camera_core_mono option.distinct(1)  )
-apply (metis \<epsilon>_core \<epsilon>_left_id camera_core_mono option.distinct(1)  )
+apply (metis \<epsilon>_core \<epsilon>_left_id camera_core_mono option.distinct(1))
+apply (metis \<epsilon>_core \<epsilon>_left_id camera_core_mono option.distinct(1))
+apply (metis \<epsilon>_core \<epsilon>_left_id camera_core_mono option.distinct(1))
 sorry
 end
 
@@ -404,7 +410,7 @@ instance proof (standard)
 have "valid (\<epsilon>::'a auth) = valid (Auth (None, \<epsilon>::'a))" by (simp add: \<epsilon>_auth_def)
 also have "... = (\<forall>n. Rep_sprop (rep_valid_raw (Auth (None, \<epsilon>::'a))) n)" by (simp add: valid_def)
 also have "... = (\<forall>n. Rep_sprop (Abs_sprop (\<lambda>n. Rep_sprop (rep_valid_raw  (\<epsilon>::'a)) n)) n)"
-  by (auto simp:  valid_raw_auth.rep_eq Rep_sprop_inverse)
+  by (auto simp:  valid_raw_auth.rep_eq)
 also have "... = (\<forall>n. Rep_sprop (rep_valid_raw (\<epsilon>::'a)) n)" using Rep_sprop_inverse by simp
 also have "... = valid (\<epsilon>::'a)" using valid_def  by metis
 also have "... = True" using \<epsilon>_valid by simp
@@ -423,47 +429,86 @@ show "rep_core (\<epsilon>::'a auth) = Some \<epsilon>"
 qed
 end
 
-text \<open> Map functors, based on a simple wrapper type \<close>
-datatype ('a,'b) MapW = Map (map: "('a,'b) map")
+abbreviation full :: "'m::total_camera \<Rightarrow> 'm auth" where "full \<equiv> \<lambda>a::'m. Auth (Some (Ex a), \<epsilon>)"
+abbreviation fragm :: "'m::total_camera \<Rightarrow> 'm auth" where "fragm \<equiv> \<lambda>a::'m. Auth (None, a)"
+abbreviation comb :: "'m::total_camera \<Rightarrow> 'm \<Rightarrow> 'm auth" where "comb \<equiv> \<lambda>(a::'m) b. Auth (Some (Ex a), b)"
 
-instantiation MapW :: (type,ofe) ofe begin
-definition n_equiv_MapW :: "nat \<Rightarrow> ('a, 'b) MapW \<Rightarrow> ('a, 'b) MapW \<Rightarrow> bool" where
-  "n_equiv_MapW n m1 m2 \<equiv> \<forall>i. n_equiv n (map m1 i) (map m2 i)"
-definition ofe_eq_MapW :: "('a, 'b) MapW \<Rightarrow> ('a, 'b) MapW \<Rightarrow> bool" where
-  "ofe_eq_MapW m1 m2 \<equiv> \<forall>i. ofe_eq (map m1 i) (map m2 i)"
-instance by (standard, unfold n_equiv_MapW_def ofe_eq_MapW_def) 
+text \<open> Map functors, based on a simple wrapper type \<close>
+
+text \<open>
+  As maps are only functions to options and thus can't directly be declared as class instances, 
+  we need a bit of class magic. Based on ideas from the AFP entry Separation Logic Algebra.
+\<close>
+class opt = fixes none :: 'a begin definition "domain f \<equiv> {x. f x \<noteq> none}" end
+instantiation option :: (type) opt begin definition [simp]: "none \<equiv> None" instance .. end
+class opt_ofe = opt + ofe
+instance option :: (ofe) opt_ofe ..
+class opt_camera = opt_ofe + camera
+instance option :: (camera) opt_camera ..
+class opt_total_camera = opt_camera + total_camera
+instance option :: (camera) opt_total_camera ..
+
+instantiation "fun" :: (type,opt_ofe) ofe begin
+definition n_equiv_fun :: "nat \<Rightarrow> ('a\<Rightarrow>'b) \<Rightarrow> ('a\<Rightarrow>'b) \<Rightarrow> bool" where
+  "n_equiv_fun n m1 m2 \<equiv> \<forall>i. n_equiv n (m1 i) (m2 i)"
+definition ofe_eq_fun :: "('a\<Rightarrow>'b) \<Rightarrow> ('a\<Rightarrow>'b) \<Rightarrow> bool" where
+  "ofe_eq_fun m1 m2 \<equiv> \<forall>i. ofe_eq (m1 i) (m2 i)"
+instance by (standard, unfold n_equiv_fun_def ofe_eq_fun_def) 
   (auto simp: ofe_sym  ofe_limit intro: ofe_refl ofe_trans ofe_mono ofe_limit ofe_eq_eq)
 end
 
 (* No cofe instantiation because I have no idea how the Coq maps work for this one. *)
 
-instantiation MapW :: (type, camera) camera begin
-lift_definition valid_raw_MapW :: "(('a, 'b) MapW, sprop) non_expansive" is
-  "\<lambda>m. Abs_sprop (\<lambda>n. \<forall>i. valid_n (map m i) n)" sorry
-lift_definition core_MapW :: "(('a, 'b) MapW, ('a, 'b) MapW option) non_expansive" is
-  "\<lambda>m. Some (Map ((\<lambda>a. Option.bind a rep_core) \<circ> map m))" sorry
-lift_definition comp_MapW :: "(('a, 'b) MapW \<times> ('a, 'b) MapW, ('a, 'b) MapW) non_expansive" is
-  "\<lambda>(m1, m2). Map (\<lambda>i. rep_comp (map m1 i,map m2 i))" 
-  by (auto simp: comp_equiv n_equiv_MapW_def split: prod.splits)
+instantiation "fun" :: (type, opt_camera) camera begin
+lift_definition valid_raw_fun :: "(('a\<Rightarrow>'b), sprop) non_expansive" is
+  "\<lambda>m. Abs_sprop (\<lambda>n. \<forall>i. valid_n (m i) n)" sorry
+lift_definition core_fun :: "(('a\<Rightarrow>'b), ('a\<Rightarrow>'b) option) non_expansive" is
+  "\<lambda>m. Some ((\<lambda>b. case rep_core b of Some a \<Rightarrow> a | None \<Rightarrow> none) \<circ> m)" sorry
+lift_definition comp_fun :: "(('a\<Rightarrow>'b)\<times>('a\<Rightarrow>'b), ('a\<Rightarrow>'b)) non_expansive" is
+  "\<lambda>(m1, m2). (\<lambda>i. rep_comp (m1 i,m2 i))"
+  by (auto simp: comp_equiv n_equiv_fun_def split: prod.splits)
 instance sorry
 end
 
-instantiation MapW :: (type, camera) total_camera begin
-definition \<epsilon>_MapW :: "('a, 'b) MapW" where "\<epsilon>_MapW \<equiv> Map Map.empty"
-instance apply (standard, unfold \<epsilon>_MapW_def) 
-apply (auto simp: valid_def valid_raw_MapW.rep_eq Abs_sprop_inverse valid_raw_option.rep_eq)
-apply (auto simp: core_MapW.rep_eq comp_MapW.rep_eq)
-proof -
-fix a :: "('a,'b) MapW"
-have "rep_comp (None, map a i) = map a i" for i using \<epsilon>_left_id \<epsilon>_option_def by metis
-then show "Map (\<lambda>i. rep_comp (None, map a i)) = a" by auto
-qed
+instantiation "fun" :: (type, opt_total_camera) total_camera begin
+definition \<epsilon>_fun :: "'a\<Rightarrow>'b" where [simp]: "\<epsilon>_fun \<equiv> (\<lambda>_. \<epsilon>)"
+instance apply (standard) 
+apply (auto simp: valid_def valid_raw_fun.rep_eq Abs_sprop_inverse valid_raw_option.rep_eq)
+subgoal using Rep_sprop_inverse \<epsilon>_valid valid_def by auto
+subgoal by (auto simp: comp_fun.rep_eq \<epsilon>_left_id)
+by (auto simp: core_fun.rep_eq \<epsilon>_core split: option.splits)
 end
 
 text \<open> Fractions camera/RA \<close>
+text \<open> Based on the interval (0,1] together with an invalid element for computations outside of this
+    interval. \<close>
+typedef frac_raw = "{p::rat. 0<p \<and> p\<le>1}" by force
+datatype frac = Frac frac_raw | Inv
 
-typedef frac = "{p::rat. 0<p \<and> p\<le>1}" by force
+(* Addition within the interval. *)
+fun frac_add :: "frac \<Rightarrow> frac \<Rightarrow> frac" where
+  "frac_add (Frac p) (Frac q) = (let pq = (Rep_frac_raw p + Rep_frac_raw q) in
+    (if pq\<le>1 then Frac (Abs_frac_raw pq) else Inv))"
+| "frac_add _ _ = Inv"
 
+lemma frac_add_comm: "frac_add a b = frac_add b a" 
+  by (cases a; cases b) (auto simp: add.commute)
+  
+lemma frac_add_assoc: "frac_add (frac_add a b) c = frac_add a (frac_add b c)"
+  apply (cases a; cases b; cases c) apply auto 
+proof-
+fix a' b' c'
+assume assms: " a = Frac a'" "b = Frac b'" "c = Frac c'"
+show "frac_add (let pq = Rep_frac_raw a' + Rep_frac_raw b' in if pq \<le> 1 then Frac (Abs_frac_raw pq) else frac.Inv) (Frac c') =
+       frac_add (Frac a') (let pq = Rep_frac_raw b' + Rep_frac_raw c' in if pq \<le> 1 then Frac (Abs_frac_raw pq) else frac.Inv)"
+  apply (cases "Rep_frac_raw a' + Rep_frac_raw b'\<le>1")
+  apply (cases "Rep_frac_raw b' + Rep_frac_raw c'\<le>1")
+  apply auto
+  apply (smt (z3) Abs_frac_raw_inverse Rep_frac_raw group_cancel.add1 le_add_same_cancel1 less_le_trans mem_Collect_eq order_less_imp_le)
+  apply (smt (z3) Abs_frac_raw_inverse Rep_frac_raw add_le_same_cancel2 dual_order.trans le_diff_eq linear mem_Collect_eq not_le)     
+  by (smt (verit, del_insts) Abs_frac_raw_inverse Rep_frac_raw add_le_same_cancel1 add_mono_thms_linordered_semiring(1) add_nonneg_nonneg diff_add_cancel frac_add.simps(1) frac_add.simps(3) le_diff_eq less_eq_rat_def mem_Collect_eq not_le)
+qed  
+  
 instantiation frac :: ofe begin
 lift_definition n_equiv_frac :: "nat \<Rightarrow> frac \<Rightarrow> frac \<Rightarrow> bool" is "\<lambda>_. (=)" .
 lift_definition ofe_eq_frac :: "frac \<Rightarrow> frac \<Rightarrow> bool" is "(=)" .
@@ -471,12 +516,17 @@ instance by standard (auto simp: n_equiv_frac.rep_eq ofe_eq_frac.rep_eq)
 end
 
 instantiation frac :: camera begin
-lift_definition valid_raw_frac :: "(frac, sprop) non_expansive" is "\<lambda>_. sTrue" by (rule ofe_refl)
-lift_definition core_frac :: "(frac, frac option) non_expansive" is "\<lambda>_. None" by (rule ofe_refl)
-lift_definition comp_frac :: "(frac \<times> frac, frac) non_expansive" is 
-  "\<lambda>(x,y). Abs_frac (Rep_frac x + Rep_frac y)" 
+lift_definition valid_raw_frac :: "(frac, sprop) non_expansive" is "\<lambda>p. sPure (p\<noteq>Inv)" 
+  by (simp add: n_equiv_frac.abs_eq ofe_refl)
+lift_definition core_frac :: "(frac, frac option) non_expansive" is 
+  "\<lambda>p. case p of Frac _ \<Rightarrow> None | Inv \<Rightarrow> Some Inv" 
+  by (auto simp: n_equiv_frac.rep_eq n_equiv_option_def split: frac.splits)
+lift_definition comp_frac :: "(frac \<times> frac, frac) non_expansive" is "\<lambda>(x,y). frac_add x y" 
   by (smt (z3) n_equiv_frac.abs_eq n_equiv_prod.elims(2))
-  instance sorry
+instance 
+  apply standard 
+  apply (auto simp: valid_raw_frac.rep_eq core_frac.rep_eq comp_frac.rep_eq n_equiv_frac.rep_eq split: frac.splits)
+  using frac_add_assoc frac_add_comm by auto
 end
 
 text \<open> Set type camera \<close>

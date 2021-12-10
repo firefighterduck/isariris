@@ -26,6 +26,8 @@ proof
   thus "s \<in> {s::nat\<Rightarrow>bool. \<forall>n m. m\<le>n \<longrightarrow> s n \<longrightarrow> s m}" by simp
 qed
 setup_lifting type_definition_sprop
+lemmas [simp] = Rep_sprop_inverse Rep_sprop_inject
+lemmas [simp, intro!] = Rep_sprop[unfolded mem_Collect_eq]
 
 instantiation sprop :: ofe begin
   definition n_equiv_sprop :: "nat \<Rightarrow> sprop \<Rightarrow> sprop \<Rightarrow> bool" where
@@ -35,13 +37,12 @@ instantiation sprop :: ofe begin
 instance by (standard, unfold n_equiv_sprop_def ofe_eq_sprop_def) auto
 end
 
-lift_definition sFalse :: sprop is "\<lambda>_. False" .
-lemma sFalseF: "Rep_sprop (Abs_sprop (\<lambda>_. False)) n = False"
+lift_definition sPure :: "bool \<Rightarrow> sprop" is "\<lambda>b _. b" .
+lemma sPureId: "Rep_sprop (Abs_sprop ((\<lambda>b _. b) b)) n = b"
   using Abs_sprop_inverse by auto
-lift_definition sTrue :: sprop is "\<lambda>_. True" .
-lemma sTrueT: "Rep_sprop (Abs_sprop (\<lambda>_. True)) n = True"
-  using Abs_sprop_inverse by auto
-lemmas [simp] = sFalse_def sFalseF sTrue_def sTrueT
+definition sFalse :: sprop where [simp]: "sFalse \<equiv> sPure False"
+definition sTrue :: sprop where [simp]: "sTrue \<equiv> sPure True"
+lemmas [simp] = sPure.rep_eq sPureId
 
 lift_definition n_subseteq :: "nat \<Rightarrow> sprop \<Rightarrow> sprop \<Rightarrow> bool" is
   "\<lambda>n X Y. \<forall>m\<le>n. X m \<longrightarrow> Y m" .

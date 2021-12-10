@@ -12,7 +12,7 @@ text \<open> Based on https://gitlab.mpi-sws.org/iris/examples/-/blob/master/the
 type_synonym chl = "loc option\<times>loc option"
 
 (* The graph camera, a total or unital camera. *)
-type_synonym graphUR = "((loc,chl ex) MapW\<times>frac) option"
+type_synonym graphUR = "((loc\<rightharpoonup>chl ex)\<times>frac) option"
 
 (* A camera for duplicatable markings *)
 type_synonym markingUR = "loc set"
@@ -26,5 +26,5 @@ type_synonym markingUR = "loc set"
  *)
 type_synonym graphG = "(markingUR auth,graphUR auth) sum_camera"
 
-lift_definition is_marked ::"loc \<Rightarrow> graphG iprop" is "\<lambda>l. Own(Inl(Auth(None,{l})))"
+lift_definition is_marked ::"loc \<Rightarrow> graphG iprop" is "\<lambda>l. Own(Inl(fragm {l}))"
 end

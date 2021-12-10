@@ -56,7 +56,6 @@ typedef (overloaded) 'm upred_f = "{f::('m::total_camera \<Rightarrow> nat \<Rig
 qed
 
 setup_lifting type_definition_upred_f
-
 lemmas [simp] = Rep_upred_f_inverse Rep_upred_f_inject
 lemmas [simp, intro!] = Rep_upred_f[unfolded mem_Collect_eq]
 
@@ -71,8 +70,8 @@ instantiation upred_f :: (total_camera) cofe begin
   lift_definition lim_upred_f :: "(nat \<Rightarrow> 'a upred_f) \<Rightarrow> 'a upred_f" is
     "\<lambda>c a n. \<forall>m\<le>n. valid_n a m \<longrightarrow> c m a m" 
     by (meson camera_valid_op eq_imp_le ne_sprop_weaken ofe_mono order.trans n_incl_def)
-instance by (standard; auto simp: is_chain_def; transfer; auto) 
-  (meson dual_order.refl n_incl_def ofe_refl total_n_inclI)    
+instance by (standard; auto simp: is_chain_def; transfer; auto)
+  (meson ne_sprop_weaken ofe_refl order_refl total_n_inclI)
 end
 
 text \<open> upred as a predicate on functions\<close>
@@ -92,9 +91,9 @@ lemma upred_weaken_simple: "\<lbrakk>upred_def f; f x n; m\<le>n\<rbrakk> \<Long
   using ofe_refl upred_weaken by blast 
 
 (* Arcane Isabelle magic, presented to you by Manuel Eberl *)
-context assumes "SORT_CONSTRAINT('a :: total_camera)"
+context assumes "SORT_CONSTRAINT('a::total_camera)"
 begin
-  
+
 (* This shows that upred and upred_f are equivalent types. *)
 theorem upred_equiv_upred_f: 
   "(\<forall>n1 n2 x1 (x2::'a). f x1 n1 \<longrightarrow> n_incl n1 x1 x2 \<longrightarrow> n2\<le>n1 \<longrightarrow> f x2 n2) \<longleftrightarrow> 
@@ -116,7 +115,7 @@ qed
 
 text \<open> The semantic of uniform predicates is defined as a shallow embedding. \<close>
 
-lift_definition uPure :: "bool \<Rightarrow> 'a upred_f" is "\<lambda>b. \<lambda>_::'a. \<lambda>_::nat. b" .
+lift_definition uPure :: "bool \<Rightarrow> 'a upred_f" ("\<upharpoonleft>_") is "\<lambda>b. \<lambda>_::'a. \<lambda>_::nat. b" .
 
 lift_definition upred_eq :: "'b::ofe \<Rightarrow> 'b \<Rightarrow> 'a::total_camera upred_f" (infix "=\<^sub>u" 60) is 
   "\<lambda>x (y::'b). \<lambda>_::'a. \<lambda>n. ofe_class.n_equiv n x y" by (rule ofe_mono)
@@ -194,7 +193,18 @@ lift_definition upred_own :: "'a \<Rightarrow> 'a upred_f" ("Own(_)") is "\<lamb
 lift_definition upred_valid :: "'a \<Rightarrow> 'a upred_f" ("\<V>(_)") is "\<lambda>a _. valid_n a" 
   using Rep_sprop n_incl_def by blast
   
-lift_definition upred_persis :: "'a upred_f \<Rightarrow> 'a upred_f" ("\<box>_") is "\<lambda>P a. P (total_core a)" sorry
+lift_definition upred_persis :: "'a upred_f \<Rightarrow> 'a upred_f" ("\<box>_") is "\<lambda>P a. P (total_core a)"
+apply (auto simp: total_core_def n_incl_def split: option.splits)
+apply (metis \<epsilon>_left_id ofe_refl)
+apply (metis \<epsilon>_left_id ofe_eq_limit)
+apply (metis \<epsilon>_core \<epsilon>_left_id camera_core_mono option.distinct(1))
+proof -
+fix f n m a b x c y
+assume "m\<le>n" "(\<And>n m x y. f x n \<Longrightarrow> \<exists>c. n_equiv m y (rep_comp (x, c)) \<Longrightarrow> m \<le> n \<Longrightarrow> f y m)"
+  "rep_core (a::'a) = Some x" "n_equiv m b (rep_comp (a, c))" "f x n" "rep_core b = Some y"
+from camera_core_mono[of a b] have "n_equiv m y (rep_comp (x,c))" sorry
+show "f y m" sorry
+qed
 
 lift_definition upred_plain :: "'a upred_f \<Rightarrow> 'a upred_f" ("\<^item>_") is "\<lambda>P _ n. P \<epsilon> n"
   by (metis \<epsilon>_left_id ofe_eq_limit n_incl_def)

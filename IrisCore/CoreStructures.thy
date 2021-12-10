@@ -15,10 +15,12 @@ proof
   then show "ne \<in> {ne. \<forall>x y n. n_equiv n x y \<longrightarrow> n_equiv n (ne x) (ne y)}" by blast
 qed
 setup_lifting type_definition_non_expansive
+lemmas [simp] = Rep_non_expansive_inverse Rep_non_expansive_inject
+lemmas [simp, intro!] = Rep_non_expansive[unfolded mem_Collect_eq]
 
 lemma ne_sprop_weaken: 
   "\<lbrakk>n_equiv n x y; m\<le>n; Rep_sprop (Rep_non_expansive P x) n\<rbrakk> \<Longrightarrow> Rep_sprop (Rep_non_expansive P y) m"
-  using Rep_non_expansive Rep_sprop n_equiv_sprop_def by fastforce
+  using Rep_non_expansive Rep_sprop n_equiv_sprop_def by blast
 
 (* Resource algebra *)
 class ra =
@@ -49,9 +51,8 @@ class camera = ofe +
       "\<exists>a'. Rep_non_expansive core a = Some a' 
       \<Longrightarrow> Rep_non_expansive core (the (Rep_non_expansive core a)) = Rep_non_expansive core a"
     and camera_core_mono: 
-      "\<lbrakk>\<exists>a'. Rep_non_expansive core a = Some a'; \<exists>c. b=Rep_non_expansive comp (a,c)\<rbrakk> \<Longrightarrow> 
-      (\<exists>b'. (Rep_non_expansive core b = Some b') 
-      \<and> (\<exists>c. (the (Rep_non_expansive core b)) = Rep_non_expansive comp (the (Rep_non_expansive core a),c)))"
+      "\<lbrakk>Rep_non_expansive core a = Some a'; \<exists>c. b=Rep_non_expansive comp (a,c)\<rbrakk> \<Longrightarrow> 
+      (\<exists>b'. (Rep_non_expansive core b = Some b') \<and> (\<exists>c. b' = Rep_non_expansive comp (a',c)))"
     and camera_valid_op: 
       "Rep_sprop (Rep_non_expansive valid_raw (Rep_non_expansive comp (a,b))) n 
       \<Longrightarrow> Rep_sprop (Rep_non_expansive valid_raw a) n"
@@ -116,6 +117,13 @@ lemma n_incl_comp_extend: "n_incl n a (rep_comp (a,c))"
   by (meson n_incl_def ofe_class.ofe_eq_limit)
 lemma n_incl_extend: "\<lbrakk>n_incl n a b; m\<le>n\<rbrakk> \<Longrightarrow> n_incl m (rep_comp (a,c)) (rep_comp (b,c))"
   using n_incl_def by (smt (verit, ccfv_threshold) comp_equiv_subst camera_assoc camera_comm ofe_class.ofe_refl)
+
+lemma core_ne: "\<lbrakk>n_equiv n x y; rep_core x = Some x'\<rbrakk> \<Longrightarrow> \<exists>y'. (rep_core y = Some y' \<and> n_equiv n x' y')"
+using Rep_non_expansive[of core]
+by (smt (verit, best) mem_Collect_eq n_equiv_option_def option.inject option.simps(3))
+
+lemmas camera_props = camera_assoc camera_comm camera_core_id camera_core_idem camera_core_mono
+  camera_valid_op camera_extend
 end
   
 class total_camera = camera +
