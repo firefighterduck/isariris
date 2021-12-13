@@ -5,7 +5,7 @@ begin
 section \<open> Ordered family of equivalences \<close>
 text \<open> The definition of OFEs, COFEs and instances of those. \<close>
 
-subsection \<open> OFE \<close>
+section \<open> OFE \<close>
 class ofe =
   fixes n_equiv :: "nat \<Rightarrow> 'a \<Rightarrow> 'a \<Rightarrow> bool"
     and ofe_eq :: "'a \<Rightarrow> 'a \<Rightarrow> bool" (* Allow for custom equality *)
@@ -19,7 +19,9 @@ begin
 lemma  ofe_eq_limit: "(x=y) \<Longrightarrow> (\<forall>n. n_equiv n x y)"
   using ofe_limit ofe_eq_eq by simp  
 end
-(* Step indexed propositions. They are defined to hold for all steps below a maximum. *)
+
+subsection \<open> Simple OFE instances \<close>
+text \<open> Step indexed propositions. They are defined to hold for all steps below a maximum. \<close>
 typedef sprop = "{s::nat\<Rightarrow>bool. \<forall>n m. m\<le>n \<longrightarrow> s n \<longrightarrow> s m}"
 proof
   define s :: "nat\<Rightarrow>bool" where "s = (\<lambda>_. True)"
@@ -42,7 +44,7 @@ lemma sPureId: "Rep_sprop (Abs_sprop ((\<lambda>b _. b) b)) n = b"
   using Abs_sprop_inverse by auto
 definition sFalse :: sprop where [simp]: "sFalse \<equiv> sPure False"
 definition sTrue :: sprop where [simp]: "sTrue \<equiv> sPure True"
-lemmas [simp] = sPure.rep_eq sPureId
+lemmas [simp] = sPure.rep_eq sPureId sPureId[simplified sPure.abs_eq[symmetric]]
 
 lift_definition n_subseteq :: "nat \<Rightarrow> sprop \<Rightarrow> sprop \<Rightarrow> bool" is
   "\<lambda>n X Y. \<forall>m\<le>n. X m \<longrightarrow> Y m" .
@@ -52,6 +54,18 @@ lift_definition sprop_disj :: "sprop \<Rightarrow> sprop \<Rightarrow> sprop" (i
   "\<lambda>x y. (\<lambda>n. x n \<or> y n)" using disj_forward by simp
 lift_definition sprop_impl :: "sprop \<Rightarrow> sprop \<Rightarrow> sprop" (infixr "\<longrightarrow>\<^sub>s" 60) is
   "\<lambda>x y. (\<lambda>n. \<forall>m\<le>n. x m \<longrightarrow> y m)" by (meson dual_order.trans)
+
+instantiation nat :: ofe begin
+  definition n_equiv_nat :: "nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> bool" where [simp]: "n_equiv_nat _ \<equiv> (=)"
+  definition ofe_eq_nat :: "nat \<Rightarrow> nat \<Rightarrow> bool" where [simp]: "ofe_eq_nat \<equiv> (=)"
+instance by standard auto
+end
+
+instantiation bool :: ofe begin
+  definition n_equiv_bool :: "nat \<Rightarrow> bool \<Rightarrow> bool \<Rightarrow> bool" where [simp]: "n_equiv_bool _ \<equiv> (=)"
+  definition ofe_eq_bool :: "bool \<Rightarrow> bool \<Rightarrow> bool" where [simp]: "ofe_eq_bool \<equiv> (=)"
+instance by standard auto
+end
 
 instantiation option :: (ofe) ofe begin
   definition n_equiv_option :: "nat \<Rightarrow> 'a option \<Rightarrow> 'a option \<Rightarrow> bool" where
