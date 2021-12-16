@@ -8,7 +8,7 @@ text \<open> A simple example application of the Iris base logic;
 
 subsection \<open> Graph definition \<close>
 
-type_synonym 'a graph = "('a,('a option\<times>'a option)) map"
+type_synonym 'a graph = "'a \<rightharpoonup> ('a option\<times>'a option)"
 
 definition get_left :: "'a graph \<Rightarrow> 'a \<Rightarrow> 'a option" where
   "get_left g x = Option.bind (g x) fst"

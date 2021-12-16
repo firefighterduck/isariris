@@ -93,8 +93,8 @@ proof (induction vs arbitrary: k)
     case False
     from Cons(1)[OF heap_array_step[OF Cons(2) False]] obtain j w 
       where jw: "0 \<le> j \<and> k +\<^sub>\<iota> - 1 = l +\<^sub>\<iota> j \<and> vs ! nat j = w \<and> w = ow" by blast
-    hence "0\<le>j+1 \<and> k=l+\<^sub>\<iota>(j+1) \<and> (a#vs)!(nat (j+1)) = w \<and> w = ow" apply (simp add: loc_add_def)
-      by (metis (no_types, hide_lams) Suc_nat_eq_nat_zadd1 diff_Suc_Suc diff_add_cancel diff_zero group_cancel.add2 loc.exhaust_sel)
+    hence "0\<le>j+1 \<and> k=l+\<^sub>\<iota>(j+1) \<and> (a#vs)!(nat (j+1)) = w \<and> w = ow" by (simp add: loc_add_def)
+      (smt (verit, ccfv_SIG) loc.collapse nat_1 nat_diff_distrib)
     then show ?thesis by fast
   qed
 qed (simp)

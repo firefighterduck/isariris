@@ -1,7 +1,6 @@
 theory HeapLang
 imports 
   Main
-  "HOL-Library.Bit_Operations"
   Locations
 begin
 

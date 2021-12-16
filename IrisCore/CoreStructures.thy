@@ -129,8 +129,8 @@ lemma incl_op_extend: "incl a b \<Longrightarrow> incl a (b \<cdot> c)"
 lemma n_incl_op_extend: "n_incl n a (a \<cdot> c)"
   by (meson n_incl_def ofe_class.ofe_eq_limit)
 lemma n_incl_extend: "\<lbrakk>n_incl n a b; m\<le>n\<rbrakk> \<Longrightarrow> n_incl m (a \<cdot> c) (b \<cdot> c)"
-  using n_incl_def 
-  by (smt (verit, ccfv_threshold) op_equiv_subst camera_assoc camera_comm ofe_class.ofe_refl)
+  using n_incl_def
+  by (smt (verit, ccfv_SIG) camera_n_incl_le local.camera_assoc local.camera_comm ofe_class.ofe_eq_limit op_ne)
 
 lemmas camera_props = camera_assoc camera_comm camera_pcore_id camera_pcore_idem camera_pcore_mono
   camera_valid_op camera_extend valid_raw_ne pcore_ne op_ne
@@ -181,5 +181,22 @@ proof (unfold n_incl_def; standard)
     by (metis camera_comm \<epsilon>_left_id)
   then show "n_equiv n2 x2 (op x1 \<epsilon>)" by (simp add: ofe_class.ofe_sym)
 qed
+
+lemma n_incl_\<epsilon>[simp]: "n_incl n \<epsilon> a"
+proof (unfold n_incl_def)
+  have "n_equiv n a a" by (simp add: ofe_class.ofe_refl)
+  then have "n_equiv n a (\<epsilon>\<cdot>a)" by (simp add: \<epsilon>_left_id)
+  then show "\<exists>c. n_equiv n a (\<epsilon> \<cdot> c)" by fast
+qed
+
+lemma \<epsilon>_right_id: "a\<cdot>\<epsilon>=a"
+  by (auto simp: \<epsilon>_left_id camera_comm)
+
+lemma n_incl_refl[simp]: "n_incl n a a"
+proof (unfold n_incl_def)
+  have "n_equiv n a (a\<cdot>\<epsilon>)"
+    by (auto simp: \<epsilon>_right_id ofe_class.ofe_refl)
+  then show "\<exists>c. n_equiv n a (a \<cdot> c)" by auto
+qed  
 end
 end

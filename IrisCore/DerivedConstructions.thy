@@ -23,7 +23,7 @@ show "non_expansive (pcore::'a\<times>'b \<Rightarrow> ('a\<times>'b) option)"
 next
 show "non_expansive2 (op::'a\<times>'b \<Rightarrow> 'a\<times>'b \<Rightarrow> 'a\<times>'b)"
   by (rule non_expansive2I) (auto simp: op_prod_def)
-next  
+next
 fix a b c :: "'a\<times>'b"
 show "a \<cdot> b \<cdot> c = a \<cdot> (b \<cdot> c)"
   by (auto simp: op_prod_def camera_assoc split: prod.splits)
@@ -55,10 +55,13 @@ fix a b c :: "'a\<times>'b"
 fix n
 show "Rep_sprop (valid_raw a) n \<Longrightarrow> n_equiv n a (b \<cdot> c) \<Longrightarrow> 
   \<exists>c1 c2. a = c1 \<cdot> c2 \<and> n_equiv n c1 b \<and> n_equiv n c2 c"
-  by (transfer; auto simp: valid_raw_prod_def sprop_conj.rep_eq op_prod_def split: prod.splits
-    ; metis camera_extend)
+  by (transfer; auto simp: valid_raw_prod_def sprop_conj.rep_eq op_prod_def split: prod.splits)
+    (metis camera_extend)
 qed
 end
+
+lemma n_incl_prod[simp]: "n_incl n (a,b) (x,y) = (n_incl n a x \<and> n_incl n b y)"
+  by (auto simp: n_incl_def op_prod_def)
 
 instantiation prod :: (ucamera,ucamera) ucamera begin
 definition \<epsilon>_prod :: "'a \<times> 'b" where [simp]: "\<epsilon>_prod = (\<epsilon>,\<epsilon>)"
@@ -548,6 +551,32 @@ abbreviation full :: "'m::ucamera \<Rightarrow> 'm auth" where "full \<equiv> \<
 abbreviation fragm :: "'m::ucamera \<Rightarrow> 'm auth" where "fragm \<equiv> \<lambda>a::'m. Auth (None, a)"
 abbreviation comb :: "'m::ucamera \<Rightarrow> 'm \<Rightarrow> 'm auth" where "comb \<equiv> \<lambda>(a::'m) b. Auth (Some (Ex a), b)"
 
+lemma auth_frag_op: "fragm (a\<cdot>b) = fragm a \<cdot> fragm b"
+  by (auto simp: op_auth_def op_prod_def op_option_def)
+
+lemma [simp]: "n_valid (Auth (a,b)::('m::ucamera) auth) n \<equiv> (a = None \<and> n_valid b n \<or> (\<exists>c. a = Some (ex.Ex c) \<and> n_incl n b c \<and> n_valid c n))"
+  by (auto simp: valid_raw_auth_def Abs_sprop_inverse[OF valid_raw_auth_aux2])
+
+lemma n_incl_fragm[simp]: "n_incl n (fragm a) (Auth (b,c)) = n_incl n a c"
+proof (standard; unfold n_incl_def)
+  assume "\<exists>ca. n_equiv n (Auth (b, c)) (fragm a \<cdot> ca)"
+  then obtain d e where "n_equiv n (Auth (b, c)) (fragm a \<cdot> (Auth (d,e)))"
+    by (metis auth.exhaust old.prod.exhaust)
+  then have "n_equiv n (Auth (b, c)) (Auth (None\<cdot>d,a\<cdot>e))"
+    by (auto simp: op_auth_def op_prod_def)
+  then have "n_equiv n c (a\<cdot>e)" by auto
+  then show "\<exists>ca. n_equiv n c (a \<cdot> ca)" by auto
+next
+  assume "\<exists>ca. n_equiv n c (a \<cdot> ca)"
+  then obtain d where "n_equiv n c (a \<cdot> d)" by blast
+  moreover have "n_equiv n b (None\<cdot>b)" by (metis \<epsilon>_left_id \<epsilon>_option_def ofe_refl)
+  ultimately have "n_equiv n (Auth (b,c)) (Auth ((None\<cdot>b),(a\<cdot>d)))"
+    by (auto simp: op_auth_def)
+  then have "n_equiv n (Auth (b,c)) (fragm a \<cdot> (Auth (b,d)))"
+    by (auto simp: op_auth_def op_prod_def)  
+  then show "\<exists>ca. n_equiv n (Auth (b, c)) (fragm a \<cdot> ca)" by blast
+qed
+
 text \<open> Map functors, based on a simple wrapper type \<close>
 
 text \<open>
@@ -744,6 +773,11 @@ show "non_expansive2 (op::'a set \<Rightarrow> 'a set \<Rightarrow> 'a set)"
 qed (auto simp: valid_raw_set_def pcore_set_def op_set_def n_equiv_set_def)
 end
 
+lemma n_incl_set[simp]: "n_incl n a (b::'a set) = (a\<subseteq>b)"
+  by (auto simp: n_incl_def op_set_def n_equiv_set_def)
+lemma n_incl_single[simp]: "n_incl n {x} a = (x\<in>a)"
+  by auto
+  
 instantiation set :: (type) ucamera begin
 definition \<epsilon>_set :: "'a set" where [simp]: "\<epsilon>_set = {}"
 instance by (standard) (auto simp: op_set_def valid_def valid_raw_set_def pcore_set_def)

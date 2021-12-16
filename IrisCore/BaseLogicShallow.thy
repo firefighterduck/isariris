@@ -64,7 +64,6 @@ theorem upred_equiv_upred_f:
 proof
 assume assm: "?u f"
 then show "?sprop f \<and> ?ne f \<and> ?mon f" apply auto
-  using total_n_inclI ofe_refl apply metis
   using total_n_inclI apply blast
   apply (meson total_n_inclI ofe_sym order_refl)
   by (meson camera_n_incl_le order_refl total_n_inclI)
@@ -120,7 +119,7 @@ lift_definition upred_forall :: "('b \<Rightarrow> 'a upred_f) \<Rightarrow> 'a 
 lift_definition upred_exists :: "('b \<Rightarrow> 'a upred_f) \<Rightarrow> 'a upred_f" ("\<exists>\<^sub>u _") is "\<lambda>f a n. \<exists>x. f x a n"
   by (rule ex_forward)
 
-lift_definition upred_sep :: "'a upred_f \<Rightarrow> 'a upred_f \<Rightarrow> 'a upred_f" (infixl "\<^emph>" 60) is
+lift_definition upred_sep :: "'a upred_f \<Rightarrow> 'a upred_f \<Rightarrow> 'a upred_f" (infixl "\<^emph>" 80) is
   "\<lambda>x y a n. \<exists>b1 b2. n_equiv n a (op b1 b2) \<and> x b1 n \<and> y b2 n"
 proof auto
   fix P Q n m a b c1 c2
@@ -178,10 +177,20 @@ lift_definition upred_bupd :: "'a upred_f \<Rightarrow> 'a upred_f" ("\<Rrightar
   "\<lambda>P a n. \<forall>m b. m\<le>n \<longrightarrow> n_valid (op a b) m \<longrightarrow> (\<exists>c. n_valid (op c b) m \<and> P c m)"
   by (meson dual_order.trans n_incl_def n_valid_incl_subst)
 
-lift_definition upred_entails :: "'a upred_f \<Rightarrow> 'a upred_f \<Rightarrow> bool" is
-  "\<lambda>P Q. \<forall>a n. n_valid a n \<longrightarrow> P a n \<longrightarrow> Q a n" .  
+lift_definition upred_entails :: "'a upred_f \<Rightarrow> 'a upred_f \<Rightarrow> bool" (infix "\<turnstile>" 50) is
+  "\<lambda>P Q. \<forall>a n. n_valid a n \<longrightarrow> P a n \<longrightarrow> Q a n" .
+
+definition upred_entail_eq :: "'a upred_f \<Rightarrow> 'a upred_f \<Rightarrow> bool" (infix "\<stileturn>\<turnstile>" 40) where
+  "P \<stileturn>\<turnstile> Q \<equiv> (upred_entails P Q) \<and> (upred_entails Q P)"
 end
 
+lemma upred_entail_eq_simp: "P\<stileturn>\<turnstile>Q \<equiv> \<forall>a n. n_valid a n \<longrightarrow> Rep_upred_f P a n = Rep_upred_f Q a n"
+  by (auto simp: upred_entail_eq_def upred_entails.rep_eq) (smt (verit))
+lemma upred_entail_eqE: "P\<stileturn>\<turnstile>Q \<Longrightarrow> (\<And>a n. n_valid a n \<Longrightarrow> Rep_upred_f P a n = Rep_upred_f Q a n)"
+  using upred_entail_eq_simp by auto  
+lemma upred_entail_eqI: "(\<And>a n. n_valid a n \<Longrightarrow> Rep_upred_f P a n = Rep_upred_f Q a n) \<Longrightarrow> P\<stileturn>\<turnstile>Q"
+  using upred_entail_eq_simp by auto
+  
 (* Simple definition of iprop due to the axiomatic character of our work. *)
 type_synonym 'a iprop = "'a upred_f"
 end
