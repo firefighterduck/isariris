@@ -1,5 +1,5 @@
 theory DerivedConstructions
-imports CoreStructures HOL.Rat
+imports CoreStructures
 begin
 text \<open> A few basic camera constructions \<close>
 
@@ -682,72 +682,6 @@ apply (auto simp: valid_def valid_raw_fun_def Abs_sprop_inverse valid_raw_option
 subgoal using Rep_sprop_inverse \<epsilon>_valid valid_def by auto
 subgoal by (auto simp: op_fun_def \<epsilon>_left_id)
 by (auto simp: pcore_fun_def \<epsilon>_pcore split: option.splits)
-end
-
-text \<open> Fractions camera/RA \<close>
-text \<open> Based on the interval (0,1] together with an invalid element for oputations outside of this
-    interval. \<close>
-typedef frac_raw = "{p::rat. 0<p \<and> p\<le>1}" by force
-datatype frac = Frac frac_raw | Inv
-
-(* Addition within the interval. *)
-fun frac_add :: "frac \<Rightarrow> frac \<Rightarrow> frac" where
-  "frac_add (Frac p) (Frac q) = (let pq = (Rep_frac_raw p + Rep_frac_raw q) in
-    (if pq\<le>1 then Frac (Abs_frac_raw pq) else Inv))"
-| "frac_add _ _ = Inv"
-
-lemma frac_add_comm: "frac_add a b = frac_add b a" 
-  by (cases a; cases b) (auto simp: add.commute)
-  
-lemma frac_add_assoc: "frac_add (frac_add a b) c = frac_add a (frac_add b c)"
-  apply (cases a; cases b; cases c) apply auto 
-proof-
-fix a' b' c'
-assume assms: " a = Frac a'" "b = Frac b'" "c = Frac c'"
-show "frac_add (let pq = Rep_frac_raw a' + Rep_frac_raw b' in if pq \<le> 1 then Frac (Abs_frac_raw pq) else frac.Inv) (Frac c') =
-       frac_add (Frac a') (let pq = Rep_frac_raw b' + Rep_frac_raw c' in if pq \<le> 1 then Frac (Abs_frac_raw pq) else frac.Inv)"
-  apply (cases "Rep_frac_raw a' + Rep_frac_raw b'\<le>1")
-  apply (cases "Rep_frac_raw b' + Rep_frac_raw c'\<le>1")
-  apply auto
-  apply (smt (z3) Abs_frac_raw_inverse Rep_frac_raw group_cancel.add1 le_add_same_cancel1 less_le_trans mem_Collect_eq order_less_imp_le)
-  apply (smt (z3) Abs_frac_raw_inverse Rep_frac_raw add_le_same_cancel2 dual_order.trans le_diff_eq linear mem_Collect_eq not_le)     
-  by (smt (verit, del_insts) Abs_frac_raw_inverse Rep_frac_raw add_le_same_cancel1 add_mono_thms_linordered_semiring(1) add_nonneg_nonneg diff_add_cancel frac_add.simps(1) frac_add.simps(3) le_diff_eq less_eq_rat_def mem_Collect_eq not_le)
-qed
-
-instantiation frac :: ofe begin
-definition n_equiv_frac :: "nat \<Rightarrow> frac \<Rightarrow> frac \<Rightarrow> bool" where "n_equiv_frac _ \<equiv> (=)"
-definition ofe_eq_frac :: "frac \<Rightarrow> frac \<Rightarrow> bool" where "ofe_eq_frac \<equiv> (=)"
-instance by standard (auto simp: n_equiv_frac_def ofe_eq_frac_def)
-end
-
-lemma frac_add_ne: "non_expansive2 frac_add"
-proof (rule non_expansive2I)
-fix x y a b :: "frac"
-fix n
-show "n_equiv n x y \<Longrightarrow> n_equiv n a b \<Longrightarrow> n_equiv n (frac_add x a) (frac_add y b)"
-  by (cases x; cases y; cases a; cases b) (auto simp: n_equiv_frac_def)
-qed
-
-instantiation frac :: camera begin
-definition valid_raw_frac :: "frac \<Rightarrow> sprop" where "valid_raw_frac p = sPure (p\<noteq>Inv)" 
-definition pcore_frac :: "frac \<Rightarrow> frac option" where 
-  "pcore_frac p = (case p of Frac _ \<Rightarrow> None | Inv \<Rightarrow> Some Inv)" 
-definition op_frac :: "frac \<Rightarrow> frac \<Rightarrow> frac" where "op_frac x y = frac_add x y" 
-instance proof
-show "non_expansive (valid_raw::frac \<Rightarrow> sprop)"
-  by (rule non_expansiveI) (auto simp: valid_raw_frac_def n_equiv_sprop_def n_equiv_frac_def)
-next
-show "non_expansive (pcore::frac \<Rightarrow> frac option)" by (rule non_expansiveI) 
-  (auto simp: pcore_frac_def n_equiv_option_def n_equiv_frac_def split: frac.splits)
-next
-show "non_expansive2 (op::frac \<Rightarrow> frac \<Rightarrow> frac)" unfolding op_frac_def by (simp add: frac_add_ne)
-next
-fix a b c :: frac
-show "a \<cdot> b \<cdot> c = a \<cdot> (b \<cdot> c)" by (auto simp: op_frac_def frac_add_assoc)
-next
-fix a b :: frac
-show "a \<cdot> b = b \<cdot> a" by (auto simp: op_frac_def frac_add_comm)
-qed (auto simp: op_frac_def valid_raw_frac_def n_equiv_frac_def pcore_frac_def split: frac.splits)
 end
 
 text \<open> Set type camera \<close>

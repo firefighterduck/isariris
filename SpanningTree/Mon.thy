@@ -1,6 +1,7 @@
 theory Mon
 imports Graph 
-  "../IrisCore/DerivedConstructions" 
+  "../IrisCore/DerivedConstructions"
+  "../IrisCore/Frac"
   "../HeapLang/HeapLang"
   "../HeapLang/Notation"
   "../IrisCore/BaseLogicShallow"
@@ -28,10 +29,10 @@ lemma n_incl_fragm_l: "n_incl n (fragm {l}) a = (case a of Auth (b,c) \<Rightarr
   by (auto split: auth.splits)
 
 text \<open> Marking Definitions \<close>
-lift_definition is_marked ::"loc \<Rightarrow> graphG iprop" is "\<lambda>l. Own((fragm {l},\<epsilon>))" .
+definition is_marked ::"loc \<Rightarrow> graphG iprop" where "is_marked l = Own((fragm {l},\<epsilon>))"
 
 lemma dup_marked: "is_marked l \<stileturn>\<turnstile> is_marked l \<^emph> is_marked l"
-proof (rule upred_entail_eqI; auto simp: is_marked.rep_eq upred_sep.rep_eq upred_own.rep_eq n_incl_fragm_l split: auth.splits)
+proof (rule upred_entail_eqI; auto simp: is_marked_def upred_sep.rep_eq upred_own.rep_eq n_incl_fragm_l split: auth.splits)
   fix a1 a2 b n
   assume assms: "l \<in> a2"
   define c1 c2 where cs: "c1 \<equiv> Auth (a1,a2)" "c2 \<equiv> Auth (None,a2)"
@@ -61,7 +62,7 @@ next
   then have "n_equiv n x2 (a2\<cdot>bd)" by (auto simp: op_auth_def op_prod_def)
   then have "x2=a2\<union>bd" by (auto simp: n_equiv_set_def op_set_def)
   with be(2,3) show "l\<in>x2" by simp
-  qed
+qed
 (* More tbd *)
 
 text \<open> Another monoid for graphs?  \<close>
