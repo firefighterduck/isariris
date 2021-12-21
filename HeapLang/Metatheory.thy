@@ -187,7 +187,8 @@ lemma subst_map_empty[simp]: "subst_map Map.empty e = e"
 by (induction e) (auto simp: binder_delete_def split: option.splits)
 
 lemma subst_map_insert: "subst_map (vs(x\<mapsto>v)) e = subst x v (subst_map (vs(x:=None)) e)"
-by (induction e arbitrary: vs) (auto simp: binder_delete_def fun_upd_twist split: option.splits)
+  by (induction e arbitrary: vs; auto simp: binder_delete_def fun_upd_twist split: option.splits)
+    (metis fun_upd_twist)
 
 lemma subst_map_singleton: "subst_map [x\<mapsto>v] e = subst x v e"
 by (simp add: subst_map_insert binder_delete_def)

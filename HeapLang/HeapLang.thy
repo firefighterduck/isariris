@@ -68,7 +68,7 @@ and val =
   | PairV val val
   | InjLV val
   | InjRV val
-
+  
 (* An observation associates a prophecy variable (identifier) to a pair of values. *)
 type_synonym observation = "proph_id * val * val"
 

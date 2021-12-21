@@ -31,4 +31,6 @@ definition span :: val where "span \<equiv>
     else FalseE
     fi
   hctam"
+
+
 end

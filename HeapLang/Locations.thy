@@ -48,7 +48,7 @@ case (Cons a ls)
   then show ?case proof (cases "l=a")
     case True
     have aux: "x < fold (\<lambda>k r. max (1+loc_car k) r) ls (max (1+x) 1)" for x
-    by (induction ls) (auto, simp add: less_le_trans fresh_loc_cons_mono max_fold_mono fold_simps(2))
+      by (induction ls; auto) (smt (verit, best) max_fold_mono)
     from True show ?thesis by (simp add: fresh_locs_def)(rule aux[of "loc_car a"])
   next
     case False

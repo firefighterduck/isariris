@@ -9,11 +9,18 @@ text \<open> Positive rational numbers, that are only valid \<le> 1. \<close>
 typedef frac = "{p::rat. 0<p}" by (simp add: gt_ex)
 setup_lifting type_definition_frac
 
+instantiation frac :: one begin
+lift_definition one_frac :: frac is "1::rat" by simp
+instance ..
+end
+lemmas [simp] = one_frac.rep_eq one_frac_def
+
 instantiation frac :: ofe begin
 definition n_equiv_frac :: "nat \<Rightarrow> frac \<Rightarrow> frac \<Rightarrow> bool" where "n_equiv_frac _ \<equiv> (=)"
 definition ofe_eq_frac :: "frac \<Rightarrow> frac \<Rightarrow> bool" where "ofe_eq_frac \<equiv> (=)"
 instance by standard (auto simp: n_equiv_frac_def ofe_eq_frac_def)
 end
+instance frac :: discrete by standard (auto simp: n_equiv_frac_def ofe_eq_frac_def)
 
 instantiation frac :: camera begin
 lift_definition valid_raw_frac :: "frac \<Rightarrow> sprop" is "\<lambda>p _. (p\<le>1)" .
@@ -42,6 +49,8 @@ show "Rep_sprop (valid_raw (a \<cdot> b)) n \<Longrightarrow> Rep_sprop (valid_r
   (metis Rep_frac add_le_same_cancel1 dual_order.trans linorder_not_less mem_Collect_eq nle_le)
 qed (auto simp: op_frac_def valid_raw_frac_def n_equiv_frac_def pcore_frac_def)
 end
+
+instance frac :: dcamera by (standard; auto simp: valid_raw_frac_def valid_def)
 
 lemma valid_frac: "valid (q::frac) = n_valid q n"
   by (auto simp: valid_def valid_raw_frac_def)
@@ -76,6 +85,7 @@ definition n_equiv_dfrac :: "nat \<Rightarrow> dfrac \<Rightarrow> dfrac \<Right
 definition ofe_eq_dfrac :: "dfrac \<Rightarrow> dfrac \<Rightarrow> bool" where [simp]: "ofe_eq_dfrac \<equiv> (=)"
 instance by standard auto
 end
+instance dfrac :: discrete by standard auto
 
 fun dfrac_add :: "dfrac \<Rightarrow> dfrac \<Rightarrow> dfrac" where
   "dfrac_add (DfracOwn q) (DfracOwn q') = DfracOwn (q \<cdot> q')"
@@ -90,7 +100,7 @@ fun dfrac_add :: "dfrac \<Rightarrow> dfrac \<Rightarrow> dfrac" where
 
 instantiation dfrac :: camera begin
 lift_definition valid_raw_dfrac :: "dfrac \<Rightarrow> sprop" is 
-  "\<lambda>dq. case dq of DfracOwn q \<Rightarrow> valid_raw q | DfracDiscarded \<Rightarrow> sTrue | DfracBoth q \<Rightarrow> sPure (q<(Abs_frac 1))" .
+  "\<lambda>dq. case dq of DfracOwn q \<Rightarrow> valid_raw q | DfracDiscarded \<Rightarrow> sTrue | DfracBoth q \<Rightarrow> sPure (q<1)" .
 definition pcore_dfrac :: "dfrac \<Rightarrow> dfrac option" where "pcore_dfrac dq \<equiv>
   case dq of DfracOwn _ \<Rightarrow> None | _ \<Rightarrow> Some DfracDiscarded"
 definition op_dfrac :: "dfrac \<Rightarrow> dfrac \<Rightarrow> dfrac" where "op_dfrac \<equiv> dfrac_add"
@@ -134,6 +144,10 @@ show "Rep_sprop (valid_raw a) n \<Longrightarrow> n_equiv n a (b1 \<cdot> b2) \<
 qed
 end
 
+instance dfrac :: dcamera 
+  apply (standard; auto simp: valid_raw_dfrac_def valid_def  split: dfrac.splits)
+  using d_valid[simplified valid_def] by fast
+
 lemma dfrac_own_incl: "incl (DfracOwn p) (DfracOwn q) \<longleftrightarrow> (p<q)"
 proof (standard; unfold incl_def op_dfrac_def)
   assume "\<exists>c. DfracOwn q = dfrac_add (DfracOwn p) c"
@@ -153,13 +167,13 @@ lemma valid_dfrac: "valid (q::dfrac) = n_valid q n"
   apply (auto simp: valid_def valid_raw_dfrac_def split: dfrac.splits) 
   using valid_frac by simp
 
-lemma dfrac_valid_own_r: "valid (dq \<cdot> DfracOwn q) \<Longrightarrow> (q < Abs_frac 1)"
+lemma dfrac_valid_own_r: "valid (dq \<cdot> DfracOwn q) \<Longrightarrow> (q < 1)"
 apply (cases dq) apply (auto simp: op_dfrac_def valid_raw_dfrac_def valid_def split: dfrac.splits)
 apply (metis valid_frac frac_valid camera_comm)
 unfolding op_frac_def
 by (metis Rep_frac dual_order.strict_trans less_add_same_cancel2 less_frac.rep_eq mem_Collect_eq op_frac.rep_eq op_frac_def)
 
-lemma dfrac_valid_own_l: "valid (DfracOwn q \<cdot> dq) \<Longrightarrow> (q < Abs_frac 1)"
+lemma dfrac_valid_own_l: "valid (DfracOwn q \<cdot> dq) \<Longrightarrow> (q < 1)"
   using dfrac_valid_own_r camera_comm by metis
 
 lemma dfrac_discard_update: "dq \<leadsto> {DfracDiscarded}"
@@ -180,5 +194,4 @@ next
   with DfracBoth show ?thesis by (auto simp: valid_def op_dfrac_def valid_raw_dfrac.rep_eq)
 qed
 qed
-
 end

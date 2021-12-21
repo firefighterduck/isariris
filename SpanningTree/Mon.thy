@@ -4,7 +4,9 @@ imports Graph
   "../IrisCore/Frac"
   "../HeapLang/HeapLang"
   "../HeapLang/Notation"
+  "../HeapLang/PrimitiveLaws"
   "../IrisCore/BaseLogicShallow"
+  "../IrisCore/PointTo"
 begin
 
 subsection \<open> The underlying structures of the spanning tree \<close>
@@ -92,4 +94,16 @@ definition of_graph_elem :: "gmon \<Rightarrow> loc \<Rightarrow> chl \<Rightarr
 
 definition of_graph :: "loc graph \<Rightarrow> gmon \<Rightarrow> marked_graph" where
   "of_graph g G l = Option.bind (g l) (\<lambda>chl. of_graph_elem G l chl)"
+
+
+definition own_graph :: "frac \<Rightarrow> gmon \<Rightarrow> graphG iprop" where
+  "own_graph q G = Own((\<epsilon>, fragm (Some (G,q))))"
+
+(* This doesn't type check (yet). *)
+(* definition heap_owns :: "marked_graph \<Rightarrow> (loc\<rightharpoonup>loc) \<Rightarrow> graphG iprop" where
+  "heap_owns M markings = 
+  folding_on.F 
+  (\<lambda>(l,(b,cl)) pred. (\<exists>\<^sub>u(\<lambda>m. (\<upharpoonleft>(markings l = Some m)) \<^emph> (l\<mapsto>\<^sub>u(m, children_to_val cl)) \<^emph> (m\<mapsto>\<^sub>uVal(LitV(LitBool b))))) \<^emph> pred)
+  \<upharpoonleft>(True)
+  {(l,mark) | l mark. M l = Some mark}" *)
 end

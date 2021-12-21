@@ -123,7 +123,7 @@ proof -
   assume assms: "n_equiv n x y" "n_valid x n"
   then show "Rep_sprop (valid_raw y) n" using valid_raw_non_expansive ne_sprop_weaken by blast
 qed
-  
+
 lemma incl_op_extend: "incl a b \<Longrightarrow> incl a (b \<cdot> c)"
   by (auto simp: incl_def camera_assoc)
 lemma n_incl_op_extend: "n_incl n a (a \<cdot> c)"
@@ -131,7 +131,9 @@ lemma n_incl_op_extend: "n_incl n a (a \<cdot> c)"
 lemma n_incl_extend: "\<lbrakk>n_incl n a b; m\<le>n\<rbrakk> \<Longrightarrow> n_incl m (a \<cdot> c) (b \<cdot> c)"
   using n_incl_def
   by (smt (verit, ccfv_SIG) camera_n_incl_le local.camera_assoc local.camera_comm ofe_class.ofe_eq_limit op_ne)
-
+lemma incl_n_incl: "incl a b \<Longrightarrow> n_incl n a b"
+  using ofe_class.ofe_refl by (auto simp: incl_def n_incl_def) 
+  
 lemmas camera_props = camera_assoc camera_comm camera_pcore_id camera_pcore_idem camera_pcore_mono
   camera_valid_op camera_extend valid_raw_ne pcore_ne op_ne
 end
@@ -156,6 +158,9 @@ lemma camera_core_id: "(core a) \<cdot> a = a"
   and camera_core_mono: "incl a b \<Longrightarrow> incl (core a) (core b)"
   apply (auto simp: core_def camera_pcore_id camera_pcore_idem total_pcore incl_def)
   using camera_pcore_mono total_pcore by fastforce
+
+lemma camera_core_mono_n: "n_incl n a b \<Longrightarrow> n_incl n (core a) (core b)"
+  by (metis core_ne local.incl_def local.n_incl_def non_expansiveE camera_core_mono)
 end 
 
 class ucamera = camera +
@@ -199,4 +204,20 @@ proof (unfold n_incl_def)
   then show "\<exists>c. n_equiv n a (a \<cdot> c)" by auto
 qed  
 end
+
+class core_id = camera + assumes pcore_id: "pcore a = Some a"
+begin
+lemma the_core_id: "the (pcore a) = a" by (simp add: pcore_id)
+end
+
+lemma core_id: "core (a::'a::{core_id,total_camera}) = a"
+  by (simp add: the_core_id core_def)
+  
+class dcamera = camera + discrete + assumes d_valid: "n_valid x 0 \<Longrightarrow> valid x"
+begin
+lemma dcamera_valid_iff: "valid x \<longleftrightarrow> n_valid x n"
+by (auto simp: d_valid)(auto simp: valid_def)
+end
+
+class ducamera = dcamera + ucamera
 end

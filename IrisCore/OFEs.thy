@@ -20,6 +20,8 @@ lemma  ofe_eq_limit: "(x=y) \<Longrightarrow> (\<forall>n. n_equiv n x y)"
   using ofe_limit ofe_eq_eq by simp  
 end
 
+class discrete = ofe + assumes d_equiv: "n_equiv n a b = (a=b)" and d_eq: "ofe_eq a b = (a=b)"
+
 subsection \<open> Simple OFE instances \<close>
 text \<open> Step indexed propositions. They are defined to hold for all steps below a maximum. \<close>
 typedef sprop = "{s::nat\<Rightarrow>bool. \<forall>n m. m\<le>n \<longrightarrow> s n \<longrightarrow> s m}"
@@ -56,16 +58,18 @@ lift_definition sprop_impl :: "sprop \<Rightarrow> sprop \<Rightarrow> sprop" (i
   "\<lambda>x y. (\<lambda>n. \<forall>m\<le>n. x m \<longrightarrow> y m)" by (meson dual_order.trans)
 
 instantiation nat :: ofe begin
-  definition n_equiv_nat :: "nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> bool" where [simp]: "n_equiv_nat _ \<equiv> (=)"
+  definition n_equiv_nat :: "nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> bool" where [simp]: "n_equiv_nat \<equiv> \<lambda>_. (=)"
   definition ofe_eq_nat :: "nat \<Rightarrow> nat \<Rightarrow> bool" where [simp]: "ofe_eq_nat \<equiv> (=)"
 instance by standard auto
 end
+instance nat :: discrete by standard (auto)
 
 instantiation bool :: ofe begin
-  definition n_equiv_bool :: "nat \<Rightarrow> bool \<Rightarrow> bool \<Rightarrow> bool" where [simp]: "n_equiv_bool _ \<equiv> (=)"
+  definition n_equiv_bool :: "nat \<Rightarrow> bool \<Rightarrow> bool \<Rightarrow> bool" where [simp]: "n_equiv_bool \<equiv> \<lambda>_. (=)"
   definition ofe_eq_bool :: "bool \<Rightarrow> bool \<Rightarrow> bool" where [simp]: "ofe_eq_bool \<equiv> (=)"
 instance by standard auto
 end
+instance bool :: discrete by standard (auto)
 
 instantiation option :: (ofe) ofe begin
   definition n_equiv_option :: "nat \<Rightarrow> 'a option \<Rightarrow> 'a option \<Rightarrow> bool" where
@@ -86,6 +90,14 @@ next
     by (auto simp: n_equiv_option_def ofe_mono)
 qed (auto simp: n_equiv_option_def ofe_eq_option_def ofe_eq_eq ofe_refl intro: ofe_trans)
 end
+instance option :: (discrete) discrete 
+proof 
+fix a b :: "'a option" fix n
+show "n_equiv n a b = (a=b)" by (cases a; cases b) (auto simp: n_equiv_option_def d_equiv)
+next
+fix a b :: "'a option"
+show "ofe_eq a b = (a = b)" by (cases a; cases b) (auto simp: ofe_eq_option_def d_eq)
+qed
 
 instantiation prod :: (ofe,ofe) ofe begin
   fun n_equiv_prod :: "nat \<Rightarrow> ('a\<times>'b) \<Rightarrow> ('a\<times>'b) \<Rightarrow> bool" where
@@ -107,6 +119,7 @@ next
     by (cases x; cases y) (auto simp: ofe_limit)
 qed (auto simp: ofe_sym ofe_eq_eq intro: ofe_refl ofe_trans)
 end
+instance prod :: (discrete,discrete) discrete by standard (auto simp: d_equiv d_eq)
 
 instantiation unit :: ofe begin
   definition n_equiv_unit :: "nat \<Rightarrow> unit \<Rightarrow> unit \<Rightarrow> bool" where
@@ -114,6 +127,7 @@ instantiation unit :: ofe begin
   fun ofe_eq_unit :: "unit \<Rightarrow> unit \<Rightarrow> bool" where "ofe_eq_unit _ _ = True"
 instance by (standard, unfold n_equiv_unit_def) auto
 end
+instance unit :: discrete by standard (auto simp: n_equiv_unit_def)
 
 datatype ('a::ofe) later = Next 'a
 instantiation later :: (ofe) ofe begin
