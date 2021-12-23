@@ -75,6 +75,8 @@ instance by standard
     \<epsilon>_left_id \<epsilon>_pcore \<epsilon>_valid[unfolded valid_def]) 
 end
 
+instance prod :: (ducamera,ducamera) ducamera ..
+
 text \<open> Sum type \<close>
 datatype ('a::camera,'b::camera) sum_camera = Inl 'a | Inr 'b | Inv
 instantiation sum_camera :: (camera,camera) ofe begin
@@ -304,6 +306,8 @@ instance by (standard; auto simp: valid_def valid_raw_option_def op_option_def p
   (metis not_Some_eq option_op.simps(3) option_op.simps(4))
 end
 
+instance option :: (dcamera) ducamera ..
+
 text \<open> Agreement camera functor \<close>
 typedef 'a::ofe ag = "{a::'a set | a. finite a \<and> a\<noteq>{} }"
   by auto
@@ -378,7 +382,7 @@ end
 
 instance ag :: (dcamera) dcamera
   by standard (auto simp: valid_raw_ag.rep_eq valid_def d_equiv split: option.splits)
-
+  
 instance ag :: (ofe) core_id by standard (auto simp: pcore_ag_def)
 
 lift_definition to_ag :: "'a::ofe \<Rightarrow> 'a ag" is "\<lambda>a::'a. {a}" by simp
@@ -443,7 +447,7 @@ show "non_expansive2 (op::'a ex \<Rightarrow> 'a ex \<Rightarrow> 'a ex)" by (ru
 qed (auto simp: valid_raw_ex_def pcore_ex_def split: ex.splits)
 end
 
-instance ex :: (dcamera) dcamera by (standard; auto simp: valid_raw_ex_def valid_def split: ex.splits)
+instance ex :: (discrete) dcamera by (standard; auto simp: valid_raw_ex_def valid_def split: ex.splits)
 
 text \<open> Authoritative camera functor \<close>
 datatype 'm auth = Auth "('m ex option\<times>'m)"
@@ -594,7 +598,13 @@ ultimately show "\<exists>c1 c2. a = c1 \<cdot> c2 \<and> n_equiv n c1 b \<and> 
   using a apply (cases a1) apply blast using a_val by blast
 qed
 end
-  
+
+instance auth :: (ducamera) dcamera 
+  apply standard 
+  apply (auto simp: valid_raw_auth_def Abs_sprop_inverse[OF valid_raw_auth_aux2] valid_def n_incl_def 
+    split: auth.splits)
+  by (auto simp: d_equiv dcamera_valid_iff[symmetric])
+
 instantiation auth :: (ucamera) ucamera begin
 definition "\<epsilon>_auth \<equiv> Auth (None, \<epsilon>)"
 instance proof (standard)
@@ -614,6 +624,8 @@ next
 show "pcore (\<epsilon>::'a auth) = Some \<epsilon>" by (auto simp: \<epsilon>_auth_def pcore_auth_def \<epsilon>_core split: auth.splits)
 qed
 end
+
+instance auth :: (ducamera) ducamera ..
 
 abbreviation full :: "'m::ucamera \<Rightarrow> 'm auth" where "full \<equiv> \<lambda>a::'m. Auth (Some (Ex a), \<epsilon>)"
 abbreviation fragm :: "'m::ucamera \<Rightarrow> 'm auth" where "fragm \<equiv> \<lambda>a::'m. Auth (None, a)"
@@ -765,6 +777,8 @@ subgoal by (auto simp: op_fun_def \<epsilon>_left_id)
 by (auto simp: pcore_fun_def \<epsilon>_pcore split: option.splits)
 end
 
+instance "fun" :: (type,d_opt) ducamera ..
+
 text \<open> Set type camera \<close>
 instantiation set :: (type) ofe begin
 definition n_equiv_set :: "nat \<Rightarrow> 'a set \<Rightarrow> 'a set \<Rightarrow> bool" where "n_equiv_set _ \<equiv> (=)"
@@ -802,4 +816,24 @@ instantiation set :: (type) ucamera begin
 definition \<epsilon>_set :: "'a set" where [simp]: "\<epsilon>_set = {}"
 instance by (standard) (auto simp: op_set_def valid_def valid_raw_set_def pcore_set_def)
 end
+
+instance set :: (type) ducamera ..
+
+
+text \<open> Unit type camera \<close>
+instantiation unit :: camera begin
+definition valid_raw_unit :: "unit \<Rightarrow> sprop" where [simp]: "valid_raw_unit _ = sTrue"
+definition pcore_unit :: "unit \<Rightarrow> unit option" where [simp]: "pcore_unit = Some"
+definition op_unit :: "unit \<Rightarrow> unit \<Rightarrow> unit" where [simp]: "op_unit _ _ = ()"
+instance by standard (auto simp: non_expansive_def non_expansive2_def n_equiv_option_def n_equiv_sprop_def)
+end
+
+instance unit :: dcamera by standard (auto simp: valid_def)
+
+instantiation unit :: ucamera begin
+definition  \<epsilon>_unit :: unit where [simp]: "\<epsilon>_unit = ()"
+instance by standard (auto simp: valid_def)
+end
+
+instance unit :: ducamera ..
 end

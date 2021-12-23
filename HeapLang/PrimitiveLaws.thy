@@ -1,5 +1,5 @@
 theory PrimitiveLaws
-imports State "../IrisCore/BaseLogicShallow"
+imports State "../IrisCore/BaseLogicShallow" "../IrisCore/PointTo"
 begin
 
 section \<open> Basic laws for HeapLang programs \<close>
@@ -14,5 +14,8 @@ instance by standard auto
 end
 
 instance expr and val :: discrete by standard auto
+
+(* Simplified heap camera, does not contain the prophecy map. *)
+type_synonym heapGS = "(loc, val option) heap"
 
 end

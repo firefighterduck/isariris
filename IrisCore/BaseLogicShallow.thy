@@ -57,10 +57,10 @@ lemma upred_weaken: "\<lbrakk>n_equiv n x y; m\<le>n;upred_def f; f x n\<rbrakk>
 lemma upred_weaken_simple: "\<lbrakk>upred_def f; f x n; m\<le>n\<rbrakk> \<Longrightarrow> f x m"
   using ofe_refl upred_weaken by blast 
 
-lift_definition upred_f_holds :: "'a upred_f \<Rightarrow> bool" is
+lift_definition upred_holds :: "'a upred_f \<Rightarrow> bool" is
   "\<lambda>u. \<forall>a n. n_valid a n \<longrightarrow>  u a n" .
   
-(* This shows that upred_f are pointwise down-closes, non-expansive and monotone. *)
+(* This shows that upred_f are pointwise down-closed, non-expansive and monotone. *)
 theorem upred_equiv_upred_f: 
   "upred_def f \<longleftrightarrow> 
   ((\<forall>x n m. m \<le> n \<longrightarrow> f x n \<longrightarrow> f x m) \<and>
@@ -199,6 +199,9 @@ lemma upred_entail_eqE: "P\<stileturn>\<turnstile>Q \<Longrightarrow> (\<And>a n
 lemma upred_entail_eqI: "(\<And>a n. n_valid a n \<Longrightarrow> Rep_upred_f P a n = Rep_upred_f Q a n) \<Longrightarrow> P\<stileturn>\<turnstile>Q"
   using upred_entail_eq_simp by auto
 
+lemma upred_entail_eq_symm: "P\<stileturn>\<turnstile>Q \<Longrightarrow> Q\<stileturn>\<turnstile>P"
+  by (auto simp: upred_entail_eq_def)
+  
 lemma upred_entail_eqL: "P\<stileturn>\<turnstile>Q \<Longrightarrow> P\<turnstile>Q" by (simp add: upred_entail_eq_def)
 lemma upred_entail_eqR: "P\<stileturn>\<turnstile>Q \<Longrightarrow> Q\<turnstile>P" by (simp add: upred_entail_eq_def)
 
@@ -209,8 +212,8 @@ lemma own_valid: "Own(a) \<turnstile> \<V>(a)"
   apply (auto simp: upred_entails.rep_eq upred_own.rep_eq upred_valid.rep_eq n_incl_def)
   using camera_valid_op n_valid_ne by blast
 
-lemma upred_holds_entails: "upred_f_holds P \<longleftrightarrow> ((\<upharpoonleft>True) \<turnstile> P)"
-  by (auto simp: upred_f_holds.rep_eq upred_entails.rep_eq upred_pure.rep_eq)
+lemma upred_holds_entails: "upred_holds P \<longleftrightarrow> ((\<upharpoonleft>True) \<turnstile> P)"
+  by (auto simp: upred_holds.rep_eq upred_entails.rep_eq upred_pure.rep_eq)
 
 lemma upred_entailsE: "P \<turnstile> Q \<Longrightarrow> (\<And>a n. \<lbrakk>n_valid a n; Rep_upred_f P a n\<rbrakk> \<Longrightarrow> Rep_upred_f Q a n)"
   by (auto simp: upred_entails.rep_eq)
@@ -218,6 +221,8 @@ lemma upred_entailsE: "P \<turnstile> Q \<Longrightarrow> (\<And>a n. \<lbrakk>n
 lemma upred_wandI: "(P \<^emph> Q) \<turnstile> R \<Longrightarrow> P \<turnstile> (Q-\<^emph>R)"
   apply (auto simp: upred_entails.rep_eq upred_sep.rep_eq upred_wand.rep_eq)
   using ofe_refl upred_def_rep upred_weaken_simple by blast
+lemma upred_wandE: "P \<turnstile> (Q-\<^emph>R) \<Longrightarrow> (P \<^emph> Q) \<turnstile> R"
+  by transfer (meson camera_valid_op dual_order.refl n_valid_ne ofe_sym total_n_inclI)
 
 lemma upred_true_sep: "(P \<^emph> \<upharpoonleft>True) = P"
   apply transfer using n_incl_def by fastforce
@@ -225,24 +230,32 @@ lemma upred_true_sep: "(P \<^emph> \<upharpoonleft>True) = P"
 lemma upred_sep_comm: "P \<^emph> Q = Q \<^emph> P"
   by transfer (metis (no_types, opaque_lifting) camera_comm)
 
-lemma upred_wand_holdsI: "Q \<turnstile> R \<Longrightarrow> upred_f_holds (Q-\<^emph>R)"
+lemma upred_sep_mono: "\<lbrakk>P1\<turnstile>Q;P2\<turnstile>R\<rbrakk> \<Longrightarrow> P1\<^emph>P2\<turnstile>Q\<^emph>R"
+  by transfer (metis camera_comm camera_valid_op n_valid_ne)
+
+lemma upred_sep_pure: "\<lbrakk>P\<turnstile>Q;P\<turnstile>\<upharpoonleft>b\<rbrakk> \<Longrightarrow> P\<turnstile>Q\<^emph>\<upharpoonleft>b"
+  by transfer (meson n_incl_def n_incl_refl)
+
+lemma upred_wand_holdsI: "Q \<turnstile> R \<Longrightarrow> upred_holds (Q-\<^emph>R)"
   by (metis upred_wandI upred_holds_entails upred_true_sep upred_sep_comm)
+lemma upred_wand_holdsE: "upred_holds (Q-\<^emph>R) \<Longrightarrow> Q \<turnstile> R"
+  by transfer (metis \<epsilon>_left_id camera_valid_op dual_order.refl)
 
 lemma upred_own_core_persis: "Own(a) \<turnstile> \<box>Own(core a)"
   by (auto simp: upred_entails.rep_eq upred_own.rep_eq upred_persis.rep_eq camera_core_mono_n)
 
-lemma upred_entails_wand_holdsL: "\<lbrakk>P \<turnstile> Q; upred_f_holds (Q-\<^emph>R)\<rbrakk> \<Longrightarrow> upred_f_holds (P-\<^emph>R)"
+lemma upred_entails_wand_holdsL: "\<lbrakk>P \<turnstile> Q; upred_holds (Q-\<^emph>R)\<rbrakk> \<Longrightarrow> upred_holds (P-\<^emph>R)"
   by transfer (metis camera_comm camera_valid_op)
 
-lemma upred_entails_wand_holdsR: "\<lbrakk>Q \<turnstile> R; upred_f_holds (P-\<^emph>Q)\<rbrakk> \<Longrightarrow> upred_f_holds (P-\<^emph>R)"
+lemma upred_entails_wand_holdsR: "\<lbrakk>Q \<turnstile> R; upred_holds (P-\<^emph>Q)\<rbrakk> \<Longrightarrow> upred_holds (P-\<^emph>R)"
   by transfer auto
 
-lemma upred_entails_wand_holdsR2: "\<lbrakk>Q \<turnstile> R; upred_f_holds (P1-\<^emph>P2-\<^emph>Q)\<rbrakk> \<Longrightarrow> upred_f_holds (P1-\<^emph>P2-\<^emph>R)"
+lemma upred_entails_wand_holdsR2: "\<lbrakk>Q \<turnstile> R; upred_holds (P1-\<^emph>P2-\<^emph>Q)\<rbrakk> \<Longrightarrow> upred_holds (P1-\<^emph>P2-\<^emph>R)"
   by transfer auto
 
 lemma pure_entailsI: "(p \<Longrightarrow> q) \<Longrightarrow> \<upharpoonleft>p\<turnstile>\<upharpoonleft>q"
   by (auto simp: upred_pure_def upred_entails.rep_eq Abs_upred_f_inverse)
-  
+
 lemma discrete_valid: "\<V>(a::'a::dcamera) \<stileturn>\<turnstile> \<upharpoonleft>(valid a)"
   apply (rule upred_entail_eqI; auto simp: upred_valid.rep_eq upred_pure.rep_eq)
   using dcamera_valid_iff by blast+
@@ -253,11 +266,23 @@ lemma own_op: "Own(a\<cdot>b) \<stileturn>\<turnstile> Own(a) \<^emph> Own(b)"
   apply (metis camera_assoc n_incl_def n_incl_op_extend n_incl_refl)
   by (smt (z3) camera_assoc camera_comm n_incl_def ofe_trans op_equiv)
 
-lemma own_valid2: "upred_f_holds (Own(a1) -\<^emph> Own (a2) -\<^emph> \<V>(a1\<cdot>a2))"
+lemma own_valid2: "upred_holds (Own(a1) -\<^emph> Own (a2) -\<^emph> \<V>(a1\<cdot>a2))"
   apply (rule upred_wand_holdsI)
   apply (rule upred_wandI)
   using own_op own_valid upred_entails_trans upred_entail_eq_def by blast
 
+lemma entails_pure_extend: "\<lbrakk>P\<turnstile>\<upharpoonleft>b;b \<Longrightarrow> P\<turnstile>Q\<rbrakk> \<Longrightarrow> P\<turnstile>Q"
+  by transfer blast
+
+lemma upred_wand_holds2I: "P\<^emph>Q\<turnstile>R \<Longrightarrow> upred_holds (P -\<^emph> Q -\<^emph> R)"
+  apply (rule upred_wand_holdsI)
+  apply (rule upred_wandI)
+  by assumption
+lemma upred_wand_holds2E: "upred_holds (P -\<^emph> Q -\<^emph> R) \<Longrightarrow> P\<^emph>Q\<turnstile>R"
+  apply (rule upred_wandE)  
+  apply (rule upred_wand_holdsE)
+  by assumption
+  
 (* Simple definition of iprop due to the axiomatic character of our work. *)
 type_synonym 'a iprop = "'a upred_f"
 

@@ -8,6 +8,8 @@ text \<open> Fractions camera/RA \<close>
 text \<open> Positive rational numbers, that are only valid \<le> 1. \<close>
 typedef frac = "{p::rat. 0<p}" by (simp add: gt_ex)
 setup_lifting type_definition_frac
+lemmas [simp] = Rep_frac_inverse Rep_frac_inject
+lemmas [simp, intro!] = Rep_frac[unfolded mem_Collect_eq]
 
 instantiation frac :: one begin
 lift_definition one_frac :: frac is "1::rat" by simp
@@ -61,9 +63,13 @@ lift_definition less_eq_frac :: "frac \<Rightarrow> frac \<Rightarrow> bool" is 
 instance by standard (auto simp: less_frac.rep_eq less_eq_frac.rep_eq Rep_frac_inject)
 end
 
-lemma frac_valid: "valid (p\<cdot>q) \<Longrightarrow> (p<Abs_frac 1)"
-  by (auto simp: valid_def valid_raw_frac.rep_eq less_eq_frac_def less_frac_def op_frac.rep_eq)
-  (metis Abs_frac_inverse Rep_frac less_add_same_cancel1 mem_Collect_eq order_less_le_trans zero_less_one)
+lemma frac_valid: "valid (p\<cdot>q) \<Longrightarrow> ((p::frac)<1)"
+  by (auto simp: valid_def valid_raw_frac.rep_eq less_eq_frac.rep_eq less_frac.rep_eq op_frac.rep_eq)
+  (metis Rep_frac less_add_same_cancel1 mem_Collect_eq one_frac.rep_eq one_frac_def order_less_le_trans)
+
+lemma frac_not_valid: "(p::frac)=1 \<Longrightarrow> \<not> valid (p\<cdot>q)"
+  by (auto simp: valid_def valid_raw_frac.rep_eq less_eq_frac.rep_eq less_frac.rep_eq op_frac.rep_eq)
+  (metis Rep_frac add_le_same_cancel1 linorder_not_less mem_Collect_eq one_frac.rep_eq one_frac_def)
 
 lemma frac_own_incl: "incl (p::frac) q \<longleftrightarrow> (p<q)"
 proof (auto simp: incl_def op_frac_def less_frac.rep_eq; transfer; auto simp: Abs_frac_inverse)
@@ -169,13 +175,18 @@ lemma valid_dfrac: "valid (q::dfrac) = n_valid q n"
 
 lemma dfrac_valid_own_r: "valid (dq \<cdot> DfracOwn q) \<Longrightarrow> (q < 1)"
 apply (cases dq) apply (auto simp: op_dfrac_def valid_raw_dfrac_def valid_def split: dfrac.splits)
-apply (metis valid_frac frac_valid camera_comm)
+apply (metis camera_comm frac_valid one_frac_def valid_frac)
 unfolding op_frac_def
 by (metis Rep_frac dual_order.strict_trans less_add_same_cancel2 less_frac.rep_eq mem_Collect_eq op_frac.rep_eq op_frac_def)
 
 lemma dfrac_valid_own_l: "valid (DfracOwn q \<cdot> dq) \<Longrightarrow> (q < 1)"
   using dfrac_valid_own_r camera_comm by metis
 
+lemma dfrac_not_valid_own: "\<not> valid (DfracOwn 1 \<cdot> dq)"
+apply (cases dq) apply (auto simp: valid_def valid_raw_dfrac.rep_eq op_dfrac_def split: dfrac.splits)
+apply (metis frac_not_valid one_frac_def valid_frac)
+by (meson dual_order.asym frac_own_incl incl_def)
+  
 lemma dfrac_discard_update: "dq \<leadsto> {DfracDiscarded}"
 proof (auto simp: fup_def)
 fix x

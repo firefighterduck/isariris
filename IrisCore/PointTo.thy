@@ -245,6 +245,8 @@ next
 qed (auto simp: \<epsilon>_heap_def valid_raw_heap.rep_eq valid_def split: heap.splits)
 end
 
+instance heap :: (type, discrete) ducamera ..
+
 definition points_to :: "'l \<Rightarrow> dfrac \<Rightarrow> 'v::ofe \<Rightarrow> ('l,'v option) heap iprop" ("_ \<mapsto>{_} _" 60) where
   "points_to l dq v = Own(Heap [l\<mapsto>(dq, to_ag (Some v))])"
 abbreviation points_to_disc :: "'l \<Rightarrow> 'v::ofe \<Rightarrow> ('l,'v option) heap iprop" (infix "\<mapsto>\<box>" 60) where 
@@ -254,44 +256,81 @@ abbreviation points_to_own :: "'l \<Rightarrow> frac \<Rightarrow> 'v::ofe \<Rig
 abbreviation points_to_full :: "'l \<Rightarrow> 'v::ofe \<Rightarrow> ('l,'v option) heap iprop" (infix "\<mapsto>\<^sub>u" 60) where
   "points_to_full \<equiv> \<lambda>l v. (l \<mapsto>{DfracOwn 1} v)"
   
-lemma frag_map_valid: "valid (Heap [k\<mapsto>(dq,to_ag v)]) \<longleftrightarrow> valid dq"
-  apply (auto simp: valid_def valid_raw_heap.rep_eq)  using ofe_refl by blast
-
-lemma points_to_valid: "upred_f_holds ((l \<mapsto>{dq} (v::'v::discrete)) -\<^emph> \<upharpoonleft>(valid dq))"
+lemma frag_heap_valid: "valid (Heap [k\<mapsto>(dq,to_ag v)]) \<longleftrightarrow> valid dq"
+  apply (auto simp: valid_def valid_raw_heap.rep_eq) using ofe_refl by blast
+  
+lemma points_to_valid: "upred_holds ((l \<mapsto>{dq} (v::'v::discrete)) -\<^emph> \<upharpoonleft>(valid dq))"
 proof -
   have "(l \<mapsto>{dq} v) \<turnstile> \<V>(Heap [l\<mapsto>(dq,to_ag (Some v))])" by (auto simp: points_to_def own_valid)
   moreover have "\<V>(Heap [l\<mapsto>(dq,to_ag (Some v))]) \<turnstile> \<upharpoonleft>(valid(Heap [l\<mapsto>(dq,to_ag (Some v))]))"
     using discrete_valid[of "Heap [l\<mapsto>(dq,to_ag (Some v))]"] upred_entail_eq_def by auto
   ultimately have "(l \<mapsto>{dq} v) \<turnstile> \<upharpoonleft>(valid dq)" 
-    by (auto simp: frag_map_valid intro: upred_entails_trans)
+    by (auto simp: frag_heap_valid intro: upred_entails_trans)
   from upred_wand_holdsI [OF this] show ?thesis .
 qed
 
-lemma map_op: "[l\<mapsto>(dq1, to_ag (Some v1))]\<cdot>[l\<mapsto>(dq2, to_ag (Some v2))] = 
-  [l\<mapsto>(dq1, to_ag (Some v1))\<cdot>(dq2, to_ag (Some v2))]"
+lemma heap_op: "[l\<mapsto>(dq1, to_ag v1)]\<cdot>[l\<mapsto>(dq2, to_ag v2)] = [l\<mapsto>(dq1, to_ag v1)\<cdot>(dq2, to_ag v2)]"
   by (auto simp: op_fun_def op_option_def)
+
+lemma heap_op_val_eq: "[l\<mapsto>(dq1, to_ag v)]\<cdot>[l\<mapsto>(dq2, to_ag v)] = [l\<mapsto>(dq1\<cdot>dq2, to_ag v)]" 
+  unfolding heap_op by (auto simp: op_prod_def op_ag_def to_ag_def Rep_ag_inverse)
+
+lemma heap_valid_op: "valid (Heap [l1\<mapsto>(dq1,v1)] \<cdot> Heap [l2\<mapsto>(dq2,v2)]) \<longleftrightarrow>
+  (l1\<noteq>l2 \<and> valid (Heap [l1\<mapsto>(dq1,v1)]) \<and> valid (Heap [l2\<mapsto>(dq2,v2)])) \<or>
+  (l1=l2 \<and> (\<forall>n. heap_rel ([l1\<mapsto>(dq1,v1)\<cdot>(dq2,v2)]) n))"
+  by (auto simp: heap_op valid_raw_heap.rep_eq valid_def op_fun_def op_option_def)
   
-lemma mapsto_agree: "upred_f_holds ((l \<mapsto>{dq1} (v1::'a::discrete)) -\<^emph> (l \<mapsto>{dq2} v2) -\<^emph> \<upharpoonleft>(v1 = v2))"
+lemma points_to_agree: "upred_holds ((l \<mapsto>{dq1} (v1::'v::discrete)) -\<^emph> (l \<mapsto>{dq2} v2) -\<^emph> \<upharpoonleft>(v1 = v2))"
 proof -
-  have "upred_f_holds ((l \<mapsto>{dq1} v1) -\<^emph> (l \<mapsto>{dq2} v2) -\<^emph> 
+  have "upred_holds ((l \<mapsto>{dq1} v1) -\<^emph> (l \<mapsto>{dq2} v2) -\<^emph> 
     \<V>(Heap [l\<mapsto>(dq1, to_ag (Some v1))]\<cdot>Heap [l\<mapsto>(dq2, to_ag (Some v2))]))"
     apply (auto simp: points_to_def) using own_valid2 by (metis (no_types, lifting) op_heap.simps)
-  then have "upred_f_holds ((l \<mapsto>{dq1} v1) -\<^emph> (l \<mapsto>{dq2} v2) -\<^emph> 
-    \<V>(Heap ([l\<mapsto>(dq1, to_ag (Some v1))\<cdot>(dq2, to_ag (Some v2))])))" by (metis map_op op_heap.simps)
+  then have "upred_holds ((l \<mapsto>{dq1} v1) -\<^emph> (l \<mapsto>{dq2} v2) -\<^emph> 
+    \<V>(Heap ([l\<mapsto>(dq1, to_ag (Some v1))\<cdot>(dq2, to_ag (Some v2))])))" by (metis heap_op op_heap.simps)
   from upred_entails_wand_holdsR2[OF upred_entail_eqL[OF discrete_valid] this] 
-  have "upred_f_holds ((l \<mapsto>{dq1} v1) -\<^emph> (l \<mapsto>{dq2} v2) -\<^emph> 
+  have "upred_holds ((l \<mapsto>{dq1} v1) -\<^emph> (l \<mapsto>{dq2} v2) -\<^emph> 
     \<upharpoonleft>(All (heap_rel [l\<mapsto>(dq1\<cdot>dq2, to_ag (Some v1)\<cdot>to_ag (Some v2))])))" 
     by (auto simp: valid_raw_heap.rep_eq valid_def op_prod_def)
-  then have "upred_f_holds ((l \<mapsto>{dq1} v1) -\<^emph> (l \<mapsto>{dq2} v2) -\<^emph> 
+  then have "upred_holds ((l \<mapsto>{dq1} v1) -\<^emph> (l \<mapsto>{dq2} v2) -\<^emph> 
     \<upharpoonleft>(valid (dq1\<cdot>dq2) \<and> (\<forall>n. \<exists>ag. n_equiv n (to_ag (Some v1)\<cdot>to_ag (Some v2)) (to_ag ag))))"
     by (smt (verit, ccfv_threshold) camera_comm camera_valid_op dcamera_valid_iff fun_upd_same 
       points_to_valid upred_entails_wand_holdsR upred_holds_entails)
-  then have "upred_f_holds ((l \<mapsto>{dq1} v1) -\<^emph> (l \<mapsto>{dq2} v2) -\<^emph> 
+  then have "upred_holds ((l \<mapsto>{dq1} v1) -\<^emph> (l \<mapsto>{dq2} v2) -\<^emph> 
     \<upharpoonleft>(\<forall>n. \<exists>ag. n_equiv n (to_ag (Some v1)\<cdot>to_ag (Some v2)) (to_ag ag)))"
     using upred_entails_wand_holdsR2 pure_entailsI by (metis (no_types, lifting))
-  then have "upred_f_holds ((l \<mapsto>{dq1} v1) -\<^emph> (l \<mapsto>{dq2} v2) -\<^emph> 
+  then have "upred_holds ((l \<mapsto>{dq1} v1) -\<^emph> (l \<mapsto>{dq2} v2) -\<^emph> 
     \<upharpoonleft>(\<exists>ag. to_ag (Some v1)\<cdot>to_ag (Some v2) = to_ag ag))" using d_equiv by (smt (verit, ccfv_SIG))
   then show ?thesis 
     by (smt (z3) option.inject pure_entailsI singleton_inject to_ag.rep_eq to_ag_op upred_entails_wand_holdsR2)
 qed
+
+lemma points_to_combine: "upred_holds ((l\<mapsto>{dq1} (v1::'v::discrete)) -\<^emph> (l\<mapsto>{dq2} v2) -\<^emph> (l\<mapsto>{dq1\<cdot>dq2} v1) \<^emph> \<upharpoonleft>(v1=v2))"
+  apply (rule upred_wand_holds2I)
+  apply (rule upred_sep_pure)
+  apply (rule entails_pure_extend[OF upred_wandE[OF upred_wand_holdsE[OF points_to_agree]]])
+  apply (unfold points_to_def)[1]
+  apply (metis (mono_tags, lifting) op_heap.simps upred_entail_eqR[OF own_op] heap_op_val_eq)
+  using upred_wandE[OF upred_wand_holdsE[OF points_to_agree]] by fast
+
+lemma points_to_frac_ne: 
+  assumes "\<not> (valid (dq1\<cdot>dq2))"
+  shows "upred_holds ((l1 \<mapsto>{dq1} (v1::'v::discrete)) -\<^emph> (l2 \<mapsto>{dq2} v2) -\<^emph> \<upharpoonleft>(l1\<noteq>l2))"
+proof -
+  from upred_wand_holds2I[OF upred_entails_trans[OF upred_wand_holds2E[OF own_valid2] 
+    upred_entail_eqL[OF discrete_valid]]]
+  have base: "upred_holds ((l1 \<mapsto>{dq1} v1) -\<^emph> (l2 \<mapsto>{dq2} v2) -\<^emph>
+    \<upharpoonleft>(valid ((Heap [l1\<mapsto>(dq1,to_ag (Some v1))]) \<cdot> (Heap [l2\<mapsto>(dq2,to_ag (Some v2))]))))"
+    by (metis points_to_def)
+  from assms have "\<not> (\<forall>n. heap_rel ([l1\<mapsto>(dq1,to_ag (Some v1))\<cdot>(dq2,to_ag (Some v2))]) n)"
+    by (auto simp: op_fun_def valid_def op_prod_def)
+  with heap_valid_op have "valid ((Heap [l1\<mapsto>(dq1,to_ag (Some v1))]) \<cdot> (Heap [l2\<mapsto>(dq2,to_ag (Some v2))])) =
+    (l1\<noteq>l2 \<and> valid (Heap [l1\<mapsto>(dq1,to_ag (Some v1))]) \<and> valid (Heap [l2\<mapsto>(dq2,to_ag (Some v2))]))"
+    by metis
+  then have "\<upharpoonleft>(valid ((Heap [l1\<mapsto>(dq1,to_ag (Some v1))]) \<cdot> (Heap [l2\<mapsto>(dq2,to_ag (Some v2))]))) \<turnstile>
+    \<upharpoonleft>(l1\<noteq>l2)" using pure_entailsI by blast
+  from upred_entails_wand_holdsR2[OF this base] show ?thesis .
+qed
+
+lemma points_to_ne: "upred_holds ((l1\<mapsto>\<^sub>u(v1::'a::discrete)) -\<^emph> (l2\<mapsto>{dq2} v2) -\<^emph> \<upharpoonleft>(l1\<noteq>l2))"
+  by (rule points_to_frac_ne[OF dfrac_not_valid_own])
 end

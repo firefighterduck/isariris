@@ -24,11 +24,44 @@ abbreviation "Alloc \<equiv> AllocN (Val (LitV (LitInt 1)))"
 
 notation LamE ("E\<lambda>_: _")
 notation LamV ("V\<lambda>_: _")
-notation LetE ("let: _ := _ in _ tel" 40)
+notation LetE ("let: _ := _ in _ endlet" 40)
 notation Load ("!_")
 notation Store (infix "\<leftarrow>" 60)
-notation MatchOpt ("match: _ with NoneCase \<Rightarrow> _ | SomeCase _ \<Rightarrow> _ hctam")
-notation If ("if: _ then _ else _ fi")
+notation MatchOpt ("match: _ with NoneCase \<Rightarrow> _ | SomeCase _ \<Rightarrow> _ endmatch")
+notation If ("if: _ then _ else _ endif")
 notation Seq (infixl ";;" 40)
 notation Var ("V_")
+
+class to_val = fixes to_val :: "'a \<Rightarrow> val" ("#[_]")
+
+instantiation int :: to_val begin
+  definition to_val_int :: "int \<Rightarrow> val" where "to_val_int i = LitV (LitInt i)"
+instance ..
+end
+
+instantiation bool :: to_val begin
+  definition to_val_bool :: "bool \<Rightarrow> val" where "to_val_bool b = LitV (LitBool b)"
+instance ..
+end
+
+instantiation val :: to_val begin
+  definition to_val_val :: "val \<Rightarrow> val" where "to_val_val v = v"
+instance ..
+end
+
+instantiation loc :: to_val begin
+  definition to_val_loc :: "loc \<Rightarrow> val" where "to_val_loc l = LitV (LitLoc l)"
+instance ..
+end
+
+instantiation unit :: to_val begin
+  definition to_val_unit :: "unit \<Rightarrow> val" where "to_val_unit _ = LitV LitUnit"
+instance ..
+end
+
+instantiation prod :: (to_val,to_val) to_val begin
+  definition to_val_prod :: "('a\<times>'b) \<Rightarrow> val" where "to_val_prod \<equiv> \<lambda>(x,y). PairV #[x] #[y]"
+instance ..
+end
+
 end

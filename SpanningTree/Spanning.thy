@@ -6,15 +6,15 @@ subsection \<open> Spanning Tree \<close>
 text \<open> Based on https://gitlab.mpi-sws.org/iris/examples/-/blob/master/theories/spanning_tree/spanning.v\<close>
 
 definition try_mark :: val where "try_mark \<equiv> 
-  V\<lambda> Some ''y'': let: Some ''e'' := Fst (!(V ''y'')) in (CAS (V ''e'') FalseE TrueE) tel"
+  V\<lambda> Some ''y'': let: Some ''e'' := Fst (!(V ''y'')) in (CAS (V ''e'') FalseE TrueE) endlet"
 
 definition unmark_fst :: val where "unmark_fst \<equiv>
   V\<lambda> Some ''y'': let: Some ''e'' := !(V ''y'') in 
-  ((V ''y'') \<leftarrow> (Pair (Fst (V ''e'')) (Pair NoneE (Snd (Snd (V ''e'')))))) tel"
+  ((V ''y'') \<leftarrow> (Pair (Fst (V ''e'')) (Pair NoneE (Snd (Snd (V ''e'')))))) endlet"
 
 definition unmark_snd :: val where "unmark_snd \<equiv>
   V\<lambda> Some ''y'': let: Some ''e'' := !(V ''y'') in 
-  ((V ''y'') \<leftarrow> (Pair (Fst (V ''e'')) (Pair (Fst (Snd (V (''e'')))) NoneE))) tel"
+  ((V ''y'') \<leftarrow> (Pair (Fst (V ''e'')) (Pair (Fst (Snd (V (''e'')))) NoneE))) endlet"
 
 definition span :: val where "span \<equiv>
   RecV (Some ''span'') (Some ''x'')
@@ -25,12 +25,12 @@ definition span :: val where "span \<equiv>
       let: Some ''e'' := !(V ''y'') in
       let: Some ''rs'' := 
         (App (V ''span'') (Fst (Snd (V ''e'')))) ||| (App (V ''span'') (Snd (Snd (V ''e'')))) in
-      if: UnOp NegOp (Fst (V ''rs'')) then App (Val unmark_fst) (V ''y'') else UnitE fi ;;
-      if: UnOp NegOp (Snd (V ''rs'')) then App (Val unmark_snd) (V ''y'') else UnitE fi ;;
-      TrueE tel tel
+      if: UnOp NegOp (Fst (V ''rs'')) then App (Val unmark_fst) (V ''y'') else UnitE endif ;;
+      if: UnOp NegOp (Snd (V ''rs'')) then App (Val unmark_snd) (V ''y'') else UnitE endif ;;
+      TrueE endlet endlet
     else FalseE
-    fi
-  hctam"
+    endif
+  endmatch"
 
 
 end

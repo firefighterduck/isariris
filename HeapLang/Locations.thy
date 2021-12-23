@@ -72,4 +72,6 @@ definition n_equiv_loc :: "nat \<Rightarrow> loc \<Rightarrow> loc \<Rightarrow>
 definition ofe_eq_loc :: "loc \<Rightarrow> loc \<Rightarrow> bool" where "ofe_eq_loc \<equiv> (=)"
 instance by standard (auto simp: n_equiv_loc_def ofe_eq_loc_def)
 end
+
+instance loc :: discrete by standard (auto simp: n_equiv_loc_def ofe_eq_loc_def)
 end
