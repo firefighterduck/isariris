@@ -62,6 +62,9 @@ end
 lemma n_incl_prod[simp]: "n_incl n (a,b) (x,y) = (n_incl n a x \<and> n_incl n b y)"
   by (auto simp: n_incl_def op_prod_def)
 
+lemma prod_valid_def: "valid (x,y) \<longleftrightarrow> valid x \<and> valid y"
+  by (auto simp: valid_raw_prod_def valid_def sprop_conj.rep_eq)
+
 instance prod :: (core_id,core_id) core_id by standard (auto simp: pcore_prod_def pcore_id)
 
 instance prod :: (dcamera,dcamera) dcamera 

@@ -208,6 +208,8 @@ lemma upred_entail_eqR: "P\<stileturn>\<turnstile>Q \<Longrightarrow> Q\<turnsti
 lemma upred_entails_trans: "\<lbrakk>P\<turnstile>Q; Q\<turnstile>R\<rbrakk> \<Longrightarrow> P\<turnstile>R"
   by (auto simp: upred_entails.rep_eq)
 
+lemma upred_entails_refl [simp]: "P\<turnstile>P" by (auto simp: upred_entails_def)
+
 lemma own_valid: "Own(a) \<turnstile> \<V>(a)"
   apply (auto simp: upred_entails.rep_eq upred_own.rep_eq upred_valid.rep_eq n_incl_def)
   using camera_valid_op n_valid_ne by blast

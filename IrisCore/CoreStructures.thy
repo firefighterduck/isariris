@@ -202,7 +202,9 @@ proof (unfold n_incl_def)
   have "n_equiv n a (a\<cdot>\<epsilon>)"
     by (auto simp: \<epsilon>_right_id ofe_class.ofe_refl)
   then show "\<exists>c. n_equiv n a (a \<cdot> c)" by auto
-qed  
+qed
+
+lemma \<epsilon>_n_valid: "n_valid \<epsilon> n" by (simp add: \<epsilon>_valid[unfolded valid_def])
 end
 
 class core_id = camera + assumes pcore_id: "pcore a = Some a"

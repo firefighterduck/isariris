@@ -247,15 +247,23 @@ end
 
 instance heap :: (type, discrete) ducamera ..
 
-definition points_to :: "'l \<Rightarrow> dfrac \<Rightarrow> 'v::ofe \<Rightarrow> ('l,'v option) heap iprop" ("_ \<mapsto>{_} _" 60) where
+definition points_to :: "'l \<Rightarrow> dfrac \<Rightarrow> 'v::ofe \<Rightarrow> ('l,'v option) heap iprop" where
   "points_to l dq v = Own(Heap [l\<mapsto>(dq, to_ag (Some v))])"
-abbreviation points_to_disc :: "'l \<Rightarrow> 'v::ofe \<Rightarrow> ('l,'v option) heap iprop" (infix "\<mapsto>\<box>" 60) where 
-  "points_to_disc \<equiv> \<lambda>l v. (l \<mapsto>{DfracDiscarded} v)"
-abbreviation points_to_own :: "'l \<Rightarrow> frac \<Rightarrow> 'v::ofe \<Rightarrow> ('l,'v option) heap iprop" ("_\<mapsto>{#_}_" 60) where
-  "points_to_own \<equiv> \<lambda>l p v. (l\<mapsto>{DfracOwn p} v)"  
-abbreviation points_to_full :: "'l \<Rightarrow> 'v::ofe \<Rightarrow> ('l,'v option) heap iprop" (infix "\<mapsto>\<^sub>u" 60) where
-  "points_to_full \<equiv> \<lambda>l v. (l \<mapsto>{DfracOwn 1} v)"
-  
+abbreviation points_to_disc :: "'l \<Rightarrow> 'v::ofe \<Rightarrow> ('l,'v option) heap iprop" where 
+  "points_to_disc \<equiv> \<lambda>l v. points_to l DfracDiscarded v"
+abbreviation points_to_own :: "'l \<Rightarrow> frac \<Rightarrow> 'v::ofe \<Rightarrow> ('l,'v option) heap iprop" where
+  "points_to_own \<equiv> \<lambda>l p v. points_to l (DfracOwn p) v"
+abbreviation points_to_full :: "'l \<Rightarrow> 'v::ofe \<Rightarrow> ('l,'v option) heap iprop" where
+  "points_to_full \<equiv> \<lambda>l v. points_to_own l 1 v"
+
+bundle points_to_syntax begin
+  notation points_to ("_ \<mapsto>{_} _" 60)
+  notation points_to_disc (infix "\<mapsto>\<box>" 60)
+  notation points_to_own ("_\<mapsto>{#_}_" 60)
+  notation points_to_full (infix "\<mapsto>\<^sub>u" 60)
+end
+
+context includes points_to_syntax begin
 lemma frag_heap_valid: "valid (Heap [k\<mapsto>(dq,to_ag v)]) \<longleftrightarrow> valid dq"
   apply (auto simp: valid_def valid_raw_heap.rep_eq) using ofe_refl by blast
   
@@ -310,7 +318,7 @@ lemma points_to_combine: "upred_holds ((l\<mapsto>{dq1} (v1::'v::discrete)) -\<^
   apply (rule entails_pure_extend[OF upred_wandE[OF upred_wand_holdsE[OF points_to_agree]]])
   apply (unfold points_to_def)[1]
   apply (metis (mono_tags, lifting) op_heap.simps upred_entail_eqR[OF own_op] heap_op_val_eq)
-  using upred_wandE[OF upred_wand_holdsE[OF points_to_agree]] by fast
+  by (rule upred_wandE[OF upred_wand_holdsE[OF points_to_agree]])
 
 lemma points_to_frac_ne: 
   assumes "\<not> (valid (dq1\<cdot>dq2))"
@@ -333,4 +341,5 @@ qed
 
 lemma points_to_ne: "upred_holds ((l1\<mapsto>\<^sub>u(v1::'a::discrete)) -\<^emph> (l2\<mapsto>{dq2} v2) -\<^emph> \<upharpoonleft>(l1\<noteq>l2))"
   by (rule points_to_frac_ne[OF dfrac_not_valid_own])
+end
 end
