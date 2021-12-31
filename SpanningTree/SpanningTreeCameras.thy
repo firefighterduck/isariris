@@ -17,7 +17,7 @@ type_synonym markingUR = "loc set"
 
 (* 
   This would normally be a list of camera functors to allow for modular reasoning.
-  Isabelle does not support type lists and thus we use a record for this simple example.  
+  Isabelle does not support type lists and thus we use a tuple for this simple example.  
 *)
 type_synonym graphG = "graphUR auth \<times> markingUR auth \<times> heapGS"
 
