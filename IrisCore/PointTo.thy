@@ -53,6 +53,7 @@ begin
   data but it is a real big issue for a complete port to Isabelle!
 *)
 
+subsubsection \<open>View based heap\<close>
 text \<open> An own heap camera that is a simplification of the one used in the Coq implementation. \<close>
 datatype ('l,'v::ofe) heap = Heap "'l \<rightharpoonup> (dfrac\<times>'v ag)"
 
@@ -247,13 +248,18 @@ end
 
 instance heap :: (type, discrete) ducamera ..
 
-definition points_to :: "'l \<Rightarrow> dfrac \<Rightarrow> 'v::ofe \<Rightarrow> ('l,'v option) heap iprop" where
-  "points_to l dq v = Own(Heap [l\<mapsto>(dq, to_ag (Some v))])"
-abbreviation points_to_disc :: "'l \<Rightarrow> 'v::ofe \<Rightarrow> ('l,'v option) heap iprop" where 
+text \<open>The modular heap camera\<close>
+type_synonym ('l,'v,'c) heapCmra = "('l,'v) heap\<times>'c"
+abbreviation own_heap :: "('l,'v::ofe) heap \<Rightarrow> ('l,'v,'c::ucamera) heapCmra iprop" ("Own\<^sub>h _") where
+   "own_heap \<equiv> \<lambda>h. Own(h,\<epsilon>)"
+
+definition points_to :: "'l \<Rightarrow> dfrac \<Rightarrow> 'v::ofe \<Rightarrow> ('l,'v option,'c::ucamera) heapCmra iprop" where
+  "points_to l dq v = Own\<^sub>h(Heap [l\<mapsto>(dq, to_ag (Some v))])"
+abbreviation points_to_disc :: "'l \<Rightarrow> 'v::ofe \<Rightarrow> ('l,'v option,'c::ucamera) heapCmra iprop" where 
   "points_to_disc \<equiv> \<lambda>l v. points_to l DfracDiscarded v"
-abbreviation points_to_own :: "'l \<Rightarrow> frac \<Rightarrow> 'v::ofe \<Rightarrow> ('l,'v option) heap iprop" where
+abbreviation points_to_own :: "'l \<Rightarrow> frac \<Rightarrow> 'v::ofe \<Rightarrow> ('l,'v option,'c::ucamera) heapCmra iprop" where
   "points_to_own \<equiv> \<lambda>l p v. points_to l (DfracOwn p) v"
-abbreviation points_to_full :: "'l \<Rightarrow> 'v::ofe \<Rightarrow> ('l,'v option) heap iprop" where
+abbreviation points_to_full :: "'l \<Rightarrow> 'v::ofe \<Rightarrow> ('l,'v option,'c::ucamera) heapCmra iprop" where
   "points_to_full \<equiv> \<lambda>l v. points_to_own l 1 v"
 
 bundle points_to_syntax begin
@@ -263,16 +269,20 @@ bundle points_to_syntax begin
   notation points_to_full (infix "\<mapsto>\<^sub>u" 60)
 end
 
-context includes points_to_syntax begin
+context includes points_to_syntax assumes "SORT_CONSTRAINT('c::ucamera)" begin
 lemma frag_heap_valid: "valid (Heap [k\<mapsto>(dq,to_ag v)]) \<longleftrightarrow> valid dq"
   apply (auto simp: valid_def valid_raw_heap.rep_eq) using ofe_refl by blast
   
-lemma points_to_valid: "upred_holds ((l \<mapsto>{dq} (v::'v::discrete)) -\<^emph> \<upharpoonleft>(valid dq))"
+lemma points_to_valid: "upred_holds (((l \<mapsto>{dq} v)::('a,'v::discrete option,'c) heapCmra iprop) -\<^emph> \<upharpoonleft>(valid dq))"
 proof -
-  have "(l \<mapsto>{dq} v) \<turnstile> \<V>(Heap [l\<mapsto>(dq,to_ag (Some v))])" by (auto simp: points_to_def own_valid)
+  have "((l \<mapsto>{dq} v)::('a,'v option,'c) heapCmra iprop) 
+    \<turnstile> \<V>(Heap [l\<mapsto>(dq,to_ag (Some v))],\<epsilon>::'c)" by (auto simp: points_to_def own_valid)
+  moreover have "\<V>(Heap [l\<mapsto>(dq,to_ag (Some v))],\<epsilon>::'c)\<turnstile>\<V>(Heap [l\<mapsto>(dq,to_ag (Some v))])"
+    by (auto simp: upred_valid_def valid_def valid_raw_prod_def sprop_conj.rep_eq \<epsilon>_n_valid)
   moreover have "\<V>(Heap [l\<mapsto>(dq,to_ag (Some v))]) \<turnstile> \<upharpoonleft>(valid(Heap [l\<mapsto>(dq,to_ag (Some v))]))"
-    using discrete_valid[of "Heap [l\<mapsto>(dq,to_ag (Some v))]"] upred_entail_eq_def by auto
-  ultimately have "(l \<mapsto>{dq} v) \<turnstile> \<upharpoonleft>(valid dq)" 
+    using discrete_valid[of "Heap [l\<mapsto>(dq,to_ag (Some v))]"] upred_entail_eq_def 
+    by (auto simp: valid_raw_prod_def \<epsilon>_n_valid valid_def)
+  ultimately have "((l \<mapsto>{dq} v)::('a,'v option,'c) heapCmra iprop) \<turnstile> \<upharpoonleft>(valid dq)" 
     by (auto simp: frag_heap_valid intro: upred_entails_trans)
   from upred_wand_holdsI [OF this] show ?thesis .
 qed
@@ -288,47 +298,70 @@ lemma heap_valid_op: "valid (Heap [l1\<mapsto>(dq1,v1)] \<cdot> Heap [l2\<mapsto
   (l1=l2 \<and> (\<forall>n. heap_rel ([l1\<mapsto>(dq1,v1)\<cdot>(dq2,v2)]) n))"
   by (auto simp: heap_op valid_raw_heap.rep_eq valid_def op_fun_def op_option_def)
   
-lemma points_to_agree: "upred_holds ((l \<mapsto>{dq1} (v1::'v::discrete)) -\<^emph> (l \<mapsto>{dq2} v2) -\<^emph> \<upharpoonleft>(v1 = v2))"
+lemma points_to_agree: "upred_holds ((l \<mapsto>{dq1} (v1::'v::discrete)) -\<^emph> 
+  ((l \<mapsto>{dq2} v2)::('a,'v option,'c::ucamera) heapCmra iprop) -\<^emph> \<upharpoonleft>(v1 = v2))"
 proof -
-  have "upred_holds ((l \<mapsto>{dq1} v1) -\<^emph> (l \<mapsto>{dq2} v2) -\<^emph> 
-    \<V>(Heap [l\<mapsto>(dq1, to_ag (Some v1))]\<cdot>Heap [l\<mapsto>(dq2, to_ag (Some v2))]))"
-    apply (auto simp: points_to_def) using own_valid2 by (metis (no_types, lifting) op_heap.simps)
-  then have "upred_holds ((l \<mapsto>{dq1} v1) -\<^emph> (l \<mapsto>{dq2} v2) -\<^emph> 
-    \<V>(Heap ([l\<mapsto>(dq1, to_ag (Some v1))\<cdot>(dq2, to_ag (Some v2))])))" by (metis heap_op op_heap.simps)
-  from upred_entails_wand_holdsR2[OF upred_entail_eqL[OF discrete_valid] this] 
-  have "upred_holds ((l \<mapsto>{dq1} v1) -\<^emph> (l \<mapsto>{dq2} v2) -\<^emph> 
+  have "upred_holds ((l \<mapsto>{dq1} v1) -\<^emph> ((l \<mapsto>{dq2} v2)::('a,'v option,'c::ucamera) heapCmra iprop) -\<^emph> 
+    \<V>((Heap [l\<mapsto>(dq1, to_ag (Some v1))],\<epsilon>::'c)\<cdot>(Heap [l\<mapsto>(dq2, to_ag (Some v2))],\<epsilon>)))"
+    apply (auto simp: points_to_def) using own_valid2 by blast
+  then have "upred_holds ((l \<mapsto>{dq1} v1) -\<^emph> ((l \<mapsto>{dq2} v2)::('a,'v option,'c::ucamera) heapCmra iprop) -\<^emph> 
+    \<V>((Heap ([l\<mapsto>(dq1, to_ag (Some v1))\<cdot>(dq2, to_ag (Some v2))]),\<epsilon>::'c)))"
+    by (auto simp: heap_op \<epsilon>_left_id op_prod_def)
+  then have "upred_holds ((l \<mapsto>{dq1} v1) -\<^emph> ((l \<mapsto>{dq2} v2)::('a,'v option,'c::ucamera) heapCmra iprop) -\<^emph> 
+    \<V>(Heap ([l\<mapsto>(dq1, to_ag (Some v1))\<cdot>(dq2, to_ag (Some v2))])))"
+    by (auto simp: upred_valid_def valid_def valid_raw_prod_def \<epsilon>_n_valid sprop_conj.rep_eq)
+  from upred_entails_wand_holdsR2[OF upred_entail_eqL[OF discrete_valid] this]
+  have "upred_holds ((l \<mapsto>{dq1} v1) -\<^emph> ((l \<mapsto>{dq2} v2)::('a,'v option,'c::ucamera) heapCmra iprop) -\<^emph>
     \<upharpoonleft>(All (heap_rel [l\<mapsto>(dq1\<cdot>dq2, to_ag (Some v1)\<cdot>to_ag (Some v2))])))" 
     by (auto simp: valid_raw_heap.rep_eq valid_def op_prod_def)
-  then have "upred_holds ((l \<mapsto>{dq1} v1) -\<^emph> (l \<mapsto>{dq2} v2) -\<^emph> 
+  then have "upred_holds ((l \<mapsto>{dq1} v1) -\<^emph> ((l \<mapsto>{dq2} v2)::('a,'v option,'c::ucamera) heapCmra iprop) -\<^emph>
     \<upharpoonleft>(valid (dq1\<cdot>dq2) \<and> (\<forall>n. \<exists>ag. n_equiv n (to_ag (Some v1)\<cdot>to_ag (Some v2)) (to_ag ag))))"
     by (smt (verit, ccfv_threshold) camera_comm camera_valid_op dcamera_valid_iff fun_upd_same 
       points_to_valid upred_entails_wand_holdsR upred_holds_entails)
-  then have "upred_holds ((l \<mapsto>{dq1} v1) -\<^emph> (l \<mapsto>{dq2} v2) -\<^emph> 
+  then have "upred_holds ((l \<mapsto>{dq1} v1) -\<^emph> ((l \<mapsto>{dq2} v2)::('a,'v option,'c::ucamera) heapCmra iprop) -\<^emph>
     \<upharpoonleft>(\<forall>n. \<exists>ag. n_equiv n (to_ag (Some v1)\<cdot>to_ag (Some v2)) (to_ag ag)))"
     using upred_entails_wand_holdsR2 pure_entailsI by (metis (no_types, lifting))
-  then have "upred_holds ((l \<mapsto>{dq1} v1) -\<^emph> (l \<mapsto>{dq2} v2) -\<^emph> 
+  then have "upred_holds ((l \<mapsto>{dq1} v1) -\<^emph> ((l \<mapsto>{dq2} v2)::('a,'v option,'c::ucamera) heapCmra iprop) -\<^emph>
     \<upharpoonleft>(\<exists>ag. to_ag (Some v1)\<cdot>to_ag (Some v2) = to_ag ag))" using d_equiv by (smt (verit, ccfv_SIG))
   then show ?thesis 
     by (smt (z3) option.inject pure_entailsI singleton_inject to_ag.rep_eq to_ag_op upred_entails_wand_holdsR2)
 qed
 
-lemma points_to_combine: "upred_holds ((l\<mapsto>{dq1} (v1::'v::discrete)) -\<^emph> (l\<mapsto>{dq2} v2) -\<^emph> (l\<mapsto>{dq1\<cdot>dq2} v1) \<^emph> \<upharpoonleft>(v1=v2))"
+lemma points_to_combine_same:"((l \<mapsto>{dq1} v)::('a,'v::discrete option,'c) heapCmra iprop) \<^emph> (l \<mapsto>{dq2} v) \<turnstile> (l \<mapsto>{dq1 \<cdot> dq2} v)"
+  apply (unfold points_to_def)
+  apply (unfold heap_op_val_eq[symmetric])
+  by (rule upred_entail_eqR[OF own_op, of "(Heap [l \<mapsto> (dq1, to_ag (Some v))],\<epsilon>::'c)" 
+    "(Heap [l \<mapsto> (dq2, to_ag (Some v))],\<epsilon>)", unfolded op_prod_def, simplified, unfolded \<epsilon>_left_id])
+
+lemma points_to_combine: "upred_holds ((l\<mapsto>{dq1} (v1::'v::discrete)) -\<^emph> 
+  ((l \<mapsto>{dq2} v2)::('a,'v option,'c::ucamera) heapCmra iprop) -\<^emph> (l\<mapsto>{dq1\<cdot>dq2} v1) \<^emph> \<upharpoonleft>(v1=v2))"
   apply (rule upred_wand_holds2I)
   apply (rule upred_sep_pure)
   apply (rule entails_pure_extend[OF upred_wandE[OF upred_wand_holdsE[OF points_to_agree]]])
   apply (unfold points_to_def)[1]
-  apply (metis (mono_tags, lifting) op_heap.simps upred_entail_eqR[OF own_op] heap_op_val_eq)
+  apply (metis points_to_def points_to_combine_same)
   by (rule upred_wandE[OF upred_wand_holdsE[OF points_to_agree]])
 
 lemma points_to_frac_ne: 
   assumes "\<not> (valid (dq1\<cdot>dq2))"
-  shows "upred_holds ((l1 \<mapsto>{dq1} (v1::'v::discrete)) -\<^emph> (l2 \<mapsto>{dq2} v2) -\<^emph> \<upharpoonleft>(l1\<noteq>l2))"
+  shows "upred_holds ((l1 \<mapsto>{dq1} (v1::'v::discrete)) -\<^emph> 
+    ((l2 \<mapsto>{dq2} v2)::('a,'v option,'c::ucamera) heapCmra iprop) -\<^emph> \<upharpoonleft>(l1\<noteq>l2))"
 proof -
-  from upred_wand_holds2I[OF upred_entails_trans[OF upred_wand_holds2E[OF own_valid2] 
-    upred_entail_eqL[OF discrete_valid]]]
-  have base: "upred_holds ((l1 \<mapsto>{dq1} v1) -\<^emph> (l2 \<mapsto>{dq2} v2) -\<^emph>
-    \<upharpoonleft>(valid ((Heap [l1\<mapsto>(dq1,to_ag (Some v1))]) \<cdot> (Heap [l2\<mapsto>(dq2,to_ag (Some v2))]))))"
-    by (metis points_to_def)
+  have valid_drop : 
+    "valid ((Heap [l1\<mapsto>(dq1,to_ag (Some v1))],\<epsilon>::'c) \<cdot> (Heap [l2\<mapsto>(dq2,to_ag (Some v2))],\<epsilon>::'c)) =
+      valid ((Heap [l1\<mapsto>(dq1,to_ag (Some v1))]) \<cdot> (Heap [l2\<mapsto>(dq2,to_ag (Some v2))]))"
+    by (auto simp: camera_valid_op prod_valid_def op_prod_def \<epsilon>_left_id \<epsilon>_valid)
+  have "\<V>(((Heap [l1\<mapsto>(dq1,to_ag (Some v1))],\<epsilon>::'c) \<cdot> (Heap [l2\<mapsto>(dq2,to_ag (Some v2))],\<epsilon>::'c))) \<turnstile>
+    \<upharpoonleft>(valid ((Heap [l1\<mapsto>(dq1,to_ag (Some v1))],\<epsilon>::'c) \<cdot> (Heap [l2\<mapsto>(dq2,to_ag (Some v2))],\<epsilon>::'c)))"
+    apply (auto simp: op_prod_def)
+    apply (auto simp: prod_valid_def \<epsilon>_left_id \<epsilon>_valid upred_valid_def)
+    apply (auto simp: valid_raw_prod_def sprop_conj.rep_eq \<epsilon>_n_valid)
+    by (rule upred_entail_eqL[OF discrete_valid[unfolded upred_valid_def], simplified])    
+  then have base: "upred_holds ((l1 \<mapsto>{dq1} v1) -\<^emph> 
+    ((l2 \<mapsto>{dq2} v2)::('a,'v option,'c::ucamera) heapCmra iprop) -\<^emph> 
+    \<upharpoonleft>(valid ((Heap [l1\<mapsto>(dq1,to_ag (Some v1))],\<epsilon>::'c) \<cdot> (Heap [l2\<mapsto>(dq2,to_ag (Some v2))],\<epsilon>::'c))))"
+    using upred_wand_holds2I[OF upred_entails_trans[OF upred_wand_holds2E[OF own_valid2]]]
+    by (smt (verit, del_insts) points_to_def)
   from assms have "\<not> (\<forall>n. heap_rel ([l1\<mapsto>(dq1,to_ag (Some v1))\<cdot>(dq2,to_ag (Some v2))]) n)"
     by (auto simp: op_fun_def valid_def op_prod_def)
   with heap_valid_op have "valid ((Heap [l1\<mapsto>(dq1,to_ag (Some v1))]) \<cdot> (Heap [l2\<mapsto>(dq2,to_ag (Some v2))])) =
@@ -336,10 +369,14 @@ proof -
     by metis
   then have "\<upharpoonleft>(valid ((Heap [l1\<mapsto>(dq1,to_ag (Some v1))]) \<cdot> (Heap [l2\<mapsto>(dq2,to_ag (Some v2))]))) \<turnstile>
     \<upharpoonleft>(l1\<noteq>l2)" using pure_entailsI by blast
-  from upred_entails_wand_holdsR2[OF this base] show ?thesis .
+  with valid_drop have 
+    "\<upharpoonleft>(valid ((Heap [l1\<mapsto>(dq1,to_ag (Some v1))],\<epsilon>::'c) \<cdot> (Heap [l2\<mapsto>(dq2,to_ag (Some v2))],\<epsilon>::'c))) \<turnstile>
+    \<upharpoonleft>(l1\<noteq>l2)" by simp
+    from upred_entails_wand_holdsR2[OF this base] show ?thesis .
 qed
 
-lemma points_to_ne: "upred_holds ((l1\<mapsto>\<^sub>u(v1::'a::discrete)) -\<^emph> (l2\<mapsto>{dq2} v2) -\<^emph> \<upharpoonleft>(l1\<noteq>l2))"
+lemma points_to_ne: "upred_holds ((l1\<mapsto>\<^sub>u(v1::'v::discrete)) -\<^emph> 
+  ((l2 \<mapsto>{dq2} v2)::('a,'v option,'c::ucamera) heapCmra iprop) -\<^emph> \<upharpoonleft>(l1\<noteq>l2))"
   by (rule points_to_frac_ne[OF dfrac_not_valid_own])
 end
 end

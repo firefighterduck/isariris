@@ -138,6 +138,9 @@ lemmas camera_props = camera_assoc camera_comm camera_pcore_id camera_pcore_idem
   camera_valid_op camera_extend valid_raw_ne pcore_ne op_ne
 end
 
+lemma n_incl_incl: "(\<forall>n. n_incl n (a::'a::{camera,discrete}) b) \<longleftrightarrow> incl a b"
+ by (auto simp: incl_def n_incl_def d_equiv)
+
 class total_camera = camera +
   assumes total_pcore: "\<exists>b. pcore a = Some b"
 begin
@@ -214,6 +217,15 @@ end
 
 lemma core_id: "core (a::'a::{core_id,total_camera}) = a"
   by (simp add: the_core_id core_def)
+
+definition pcore_id_pred :: "'a::total_camera \<Rightarrow> bool" where
+  "pcore_id_pred a \<equiv> pcore a = Some a"  
+
+lemma core_id_pred: "pcore_id_pred a \<longleftrightarrow> core a = a"
+  by (auto simp: pcore_id_pred_def core_def) (metis option.sel total_pcore)
+
+lemma \<epsilon>_pcore_id_def: "pcore_id_pred \<epsilon>"
+  by (auto simp: pcore_id_pred_def \<epsilon>_pcore)
   
 class dcamera = camera + discrete + assumes d_valid: "n_valid x 0 \<Longrightarrow> valid x"
 begin

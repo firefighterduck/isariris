@@ -80,7 +80,8 @@ qed
 
 lemma upred_ne: "\<lbrakk>upred_def f; n_equiv n x y\<rbrakk> \<Longrightarrow> n_equiv n (f x n) (f y n)"
   unfolding upred_equiv_upred_f by auto
-  
+
+subsubsection \<open>Unifrom predicate semantics\<close>
 text \<open> The semantic of uniform predicates is defined as a shallow embedding. \<close>
 
 lift_definition upred_pure :: "bool \<Rightarrow> 'a upred_f" ("\<upharpoonleft>_") is "\<lambda>b::bool. \<lambda>_::'a. \<lambda>_::nat. b" .
@@ -179,10 +180,10 @@ lift_definition upred_plain :: "'a upred_f \<Rightarrow> 'a upred_f" ("\<^item>_
 lift_definition upred_later :: "'a upred_f \<Rightarrow> 'a upred_f" ("\<triangleright>_") is "\<lambda>P (a::'a) n. n=0 \<or> P a (n-1)" 
   by (smt (verit, ccfv_SIG) n_incl_def diff_0_eq_0 diff_diff_cancel diff_is_0_eq diff_right_commute diff_self_eq_0 ofe_mono)
 
-lift_definition upred_bupd :: "'a upred_f \<Rightarrow> 'a upred_f" ("\<Rrightarrow>_") is
+lift_definition upred_bupd :: "'a upred_f \<Rightarrow> 'a upred_f" ("\<Rrightarrow>\<^sub>b_") is
   "\<lambda>P (a::'a) n. \<forall>m b. m\<le>n \<longrightarrow> n_valid (a \<cdot> b) m \<longrightarrow> (\<exists>c. n_valid (c \<cdot> b) m \<and> P c m)"
   by (meson dual_order.trans n_incl_def n_valid_incl_subst)
-
+  
 lift_definition upred_entails :: "'a upred_f \<Rightarrow> 'a upred_f \<Rightarrow> bool" (infix "\<turnstile>" 50) is
   "\<lambda>P Q. \<forall>(a::'a) n. n_valid a n \<longrightarrow> P a n \<longrightarrow> Q a n" .
 
@@ -190,7 +191,11 @@ definition upred_entail_eq :: "'a upred_f \<Rightarrow> 'a upred_f \<Rightarrow>
   "P \<stileturn>\<turnstile> Q \<equiv> (upred_entails P Q) \<and> (upred_entails Q P)"
 end
 
-text \<open> Basic properties of upred predicates: \<close>
+(* Basic view shift operator *)
+definition upred_bvs :: "('a::ucamera) upred_f \<Rightarrow> 'a upred_f \<Rightarrow> 'a upred_f" (infix "\<Rrightarrow>\<^sub>v" 60) where
+  "upred_bvs P Q \<equiv> \<box>(P -\<^emph> (\<Rrightarrow>\<^sub>b Q))"
+
+subsubsection \<open> Basic properties of upred predicates: \<close>
 
 lemma upred_entail_eq_simp: "P\<stileturn>\<turnstile>Q \<equiv> \<forall>a n. n_valid a n \<longrightarrow> Rep_upred_f P a n = Rep_upred_f Q a n"
   by (auto simp: upred_entail_eq_def upred_entails.rep_eq) (smt (verit, best))
@@ -288,9 +293,17 @@ lemma upred_wand_holds2E: "upred_holds (P -\<^emph> Q -\<^emph> R) \<Longrightar
 (* Simple definition of iprop due to the axiomatic character of our work. *)
 type_synonym 'a iprop = "'a upred_f"
 
-text \<open> Persistent predicates \<close>
+subsubsection \<open> Persistent predicates \<close>
 definition persistent :: "('a::ucamera) iprop \<Rightarrow> bool" where "persistent P \<equiv> P \<turnstile> \<box>P"
 
+lemma persistent_holds_sep: 
+  "\<lbrakk>persistent P; persistent Q\<rbrakk> \<Longrightarrow> upred_holds (P\<^emph>Q) \<longleftrightarrow> upred_holds P \<and> upred_holds Q"
+  unfolding persistent_def upred_holds.rep_eq upred_entails.rep_eq upred_persis.rep_eq upred_sep.rep_eq
+  apply auto
+  apply (metis le_refl n_incl_def upred_def_def upred_def_rep)
+  apply (metis camera_comm le_refl n_incl_def upred_def_def upred_def_rep)
+  by (metis camera_core_id ofe_eq_limit)
+  
 lemma persistent_persis: "persistent (\<box>P)"
   by (auto simp: persistent_def upred_persis.rep_eq upred_entails.rep_eq camera_core_idem)
 
@@ -301,5 +314,20 @@ lemma persistent_valid: "persistent (\<V>(a))"
   by (auto simp: persistent_def upred_persis.rep_eq upred_entails.rep_eq upred_valid.rep_eq)
 
 lemma persistent_core_own: "persistent (Own(a::'a::{core_id,ucamera}))"
-  by (auto simp: persistent_def upred_persis.rep_eq upred_entails.rep_eq upred_own.rep_eq core_id)  
+  by (auto simp: persistent_def upred_persis.rep_eq upred_entails.rep_eq upred_own.rep_eq core_id)
+
+lemma persistent_core_own2: "pcore_id_pred (a::'a::ucamera) \<Longrightarrow> persistent (Own a)"
+  apply (auto simp: persistent_def upred_persis.rep_eq upred_entails.rep_eq upred_own.rep_eq core_id_pred)
+  using camera_core_mono_n by fastforce
+
+lemma persistent_conj: "\<lbrakk>persistent P; persistent Q\<rbrakk> \<Longrightarrow> persistent (P \<and>\<^sub>u Q)"
+  by (auto simp: persistent_def upred_conj.rep_eq upred_entails.rep_eq upred_persis.rep_eq)
+  
+lemma persistent_exists: "\<forall>x. persistent (P x) \<Longrightarrow> persistent (\<exists>\<^sub>u P)"
+  by (auto simp: upred_exists.rep_eq persistent_def upred_persis.rep_eq upred_entails.rep_eq)
+
+subsubsection \<open> Timeless predicates \<close>
+definition except_zero :: "('a::ucamera) iprop \<Rightarrow> 'a iprop" ("\<diamondop>_") where 
+  "except_zero P \<equiv> P \<or>\<^sub>u \<triangleright>\<upharpoonleft>False"
+definition timeless :: "('a::ucamera) iprop \<Rightarrow> bool" where "timeless P \<equiv> (\<triangleright>P) \<turnstile> \<diamondop>P"
 end

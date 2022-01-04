@@ -1,9 +1,9 @@
 theory DerivedConstructions
-imports CoreStructures
+imports CoreStructures "HOL-Library.FSet"
 begin
-text \<open> A few basic camera constructions \<close>
+subsection \<open> Basic camera constructions \<close>
 
-text \<open> Tuple/Product type \<close>
+subsubsection \<open> Tuple/Product type \<close>
 instantiation prod :: (camera,camera) camera begin
   definition valid_raw_prod :: "'a \<times> 'b \<Rightarrow> sprop" where
     "valid_raw_prod \<equiv> \<lambda>(x::'a,y::'b). valid_raw x \<and>\<^sub>s valid_raw y"
@@ -65,6 +65,9 @@ lemma n_incl_prod[simp]: "n_incl n (a,b) (x,y) = (n_incl n a x \<and> n_incl n b
 lemma prod_valid_def: "valid (x,y) \<longleftrightarrow> valid x \<and> valid y"
   by (auto simp: valid_raw_prod_def valid_def sprop_conj.rep_eq)
 
+lemma prod_n_valid_def: "n_valid (x,y) n \<longleftrightarrow> n_valid x n \<and> n_valid y n"
+  by (auto simp: valid_raw_prod_def valid_def sprop_conj.rep_eq)
+  
 instance prod :: (core_id,core_id) core_id by standard (auto simp: pcore_prod_def pcore_id)
 
 instance prod :: (dcamera,dcamera) dcamera 
@@ -78,9 +81,13 @@ instance by standard
     \<epsilon>_left_id \<epsilon>_pcore \<epsilon>_valid[unfolded valid_def]) 
 end
 
+lemma prod_pcore_id_pred: 
+  "pcore_id_pred (a::'a::ucamera,b::'b::ucamera) \<longleftrightarrow> pcore_id_pred a \<and> pcore_id_pred b"
+  by (auto simp: pcore_id_pred_def pcore_prod_def split: option.splits)
+
 instance prod :: (ducamera,ducamera) ducamera ..
 
-text \<open> Sum type \<close>
+subsubsection \<open> Sum type \<close>
 datatype ('a::camera,'b::camera) sum_camera = Inl 'a | Inr 'b | Inv
 instantiation sum_camera :: (camera,camera) ofe begin
   fun ofe_eq_sum_camera :: "('a, 'b) sum_camera \<Rightarrow> ('a, 'b) sum_camera \<Rightarrow> bool" where
@@ -226,7 +233,7 @@ by (auto simp: valid_def fup_def valid_raw_sum_camera_def op_sum_camera_def spli
 lemma sum_swap_r: "\<lbrakk>\<forall>c n. \<not> Rep_sprop (valid_raw (op a c)) n; valid b\<rbrakk> \<Longrightarrow> (Inr a) \<leadsto> {Inl b}"
 by (auto simp: valid_def fup_def valid_raw_sum_camera_def op_sum_camera_def split: sum_camera.splits)
 
-text \<open> Option type \<close>
+subsubsection \<open> Option type \<close>
 fun option_op :: "('a::camera) option \<Rightarrow> 'a option \<Rightarrow> 'a option" where
   "option_op (Some a) (Some b) = Some (op a b)"
 | "option_op (Some a) (None) = Some a"
@@ -311,7 +318,7 @@ end
 
 instance option :: (dcamera) ducamera ..
 
-text \<open> Agreement camera functor \<close>
+subsubsection \<open> Agreement camera functor \<close>
 typedef 'a::ofe ag = "{a::'a set | a. finite a \<and> a\<noteq>{} }"
   by auto
 setup_lifting type_definition_ag  
@@ -383,7 +390,7 @@ ultimately show "\<exists>c1 c2. a = c1 \<cdot> c2 \<and> n_equiv n c1 b \<and> 
 qed
 end
 
-instance ag :: (dcamera) dcamera
+instance ag :: (discrete) dcamera
   by standard (auto simp: valid_raw_ag.rep_eq valid_def d_equiv split: option.splits)
   
 instance ag :: (ofe) core_id by standard (auto simp: pcore_ag_def)
@@ -399,8 +406,24 @@ proof -
   then have "Rep_ag b = {a}" "Rep_ag c = {a}" using Rep_ag by fast+
   then show "(b=to_ag a) \<and> (c=to_ag a)" by (metis Rep_ag_inverse to_ag.abs_eq)
 qed
-  
-text \<open> Exclusive camera functor\<close>
+
+lemma d_valid_ag: "valid (a::('a::discrete) ag) \<Longrightarrow> \<exists>b. a = to_ag b"
+  apply (auto simp: valid_def valid_raw_ag.rep_eq to_ag_def d_equiv )
+  apply (metis Rep_ag_inverse)
+  by (smt (verit, best) Rep_ag Rep_ag_inverse all_not_in_conv insertI1 insert_absorb mem_Collect_eq
+    singleton_insert_inj_eq' subset_iff)
+
+lemma ag_agree: "n_valid ((a::('a::ofe) ag) \<cdot> b) n \<Longrightarrow> n_equiv n a b"
+  apply (auto simp: valid_raw_ag.rep_eq op_ag.rep_eq n_equiv_ag.rep_eq)  
+  apply (metis Rep_ag_inject ofe_eq_limit op_ag.rep_eq to_ag.rep_eq to_ag_op)
+  apply (metis Rep_ag_inject ofe_eq_limit op_ag.rep_eq to_ag.rep_eq to_ag_op)
+  apply (metis (no_types, opaque_lifting) Rep_ag_inverse Un_singleton_iff insertI1 op_ag.rep_eq subsetI subset_singletonD to_ag.rep_eq to_ag_op)
+  by (metis (no_types, opaque_lifting) Rep_ag_inverse Un_singleton_iff insertI1 op_ag.rep_eq subsetI subset_singletonD to_ag.rep_eq to_ag_op)
+
+lemma d_ag_agree: "valid ((a::('a::discrete) ag) \<cdot> b) \<Longrightarrow> a=b"
+  by (auto simp: n_equiv_ag.rep_eq valid_def d_equiv) (metis ag_agree d_equiv)
+
+subsubsection \<open> Exclusive camera functor\<close>
 
 datatype 'a::ofe ex = Ex 'a | Inv
 instantiation ex :: (ofe) ofe begin
@@ -452,9 +475,9 @@ end
 
 instance ex :: (discrete) dcamera by (standard; auto simp: valid_raw_ex_def valid_def split: ex.splits)
 
-text \<open> Authoritative camera functor \<close>
+subsubsection \<open> Authoritative camera functor \<close>
 datatype 'm auth = Auth "('m ex option\<times>'m)"
-instantiation auth :: (ucamera) ofe begin
+instantiation auth :: (camera) ofe begin
 fun n_equiv_auth :: "nat \<Rightarrow> 'a auth \<Rightarrow> 'a auth \<Rightarrow> bool" where
   "n_equiv_auth n (Auth a) (Auth b) = n_equiv n a b"
 fun ofe_eq_auth :: "'a auth \<Rightarrow> 'a auth \<Rightarrow> bool" where
@@ -472,7 +495,7 @@ fix x y show "ofe_eq x y \<longleftrightarrow> (\<forall>n. n_equiv n x (y::'a a
 fix x y show " x = y \<Longrightarrow> ofe_eq x (y::'a auth)" by (cases x; cases y) (auto intro: ofe_eq_eq)
 qed
 end
-instance auth :: (ducamera) discrete
+instance auth :: (dcamera) discrete
 proof
 fix a b :: "'a auth" fix n
 show "n_equiv n a b = (a = b)" by (cases a; cases b) (auto simp: d_equiv)
@@ -634,10 +657,22 @@ abbreviation full :: "'m::ucamera \<Rightarrow> 'm auth" where "full \<equiv> \<
 abbreviation fragm :: "'m::ucamera \<Rightarrow> 'm auth" where "fragm \<equiv> \<lambda>a::'m. Auth (None, a)"
 abbreviation comb :: "'m::ucamera \<Rightarrow> 'm \<Rightarrow> 'm auth" where "comb \<equiv> \<lambda>(a::'m) b. Auth (Some (Ex a), b)"
 
+lemma fragm_core_id: "pcore_id_pred (fragm (a::'a::{ucamera,core_id}))"
+  by (auto simp: core_id_pred core_def pcore_auth_def core_id[unfolded core_def, simplified] 
+    split: auth.splits)
+
 lemma auth_frag_op: "fragm (a\<cdot>b) = fragm a \<cdot> fragm b"
   by (auto simp: op_auth_def op_prod_def op_option_def)
 
-lemma [simp]: "n_valid (Auth (a,b)::('m::ucamera) auth) n \<equiv> (a = None \<and> n_valid b n \<or> (\<exists>c. a = Some (ex.Ex c) \<and> n_incl n b c \<and> n_valid c n))"
+lemma auth_comb_opL:"(comb a b) \<cdot> (fragm c) = comb a (b\<cdot>c)"
+  by (auto simp: op_auth_def op_prod_def op_option_def)
+
+lemma auth_comb_opR:"(fragm c) \<cdot> (comb a b) = comb a (b\<cdot>c)"
+  by (auto simp: op_auth_def op_prod_def op_option_def camera_comm)  
+  
+lemma auth_valid_def [simp]: 
+  "n_valid (Auth (a,b)::('m::ucamera) auth) n \<equiv> (a = None \<and> n_valid b n \<or> (\<exists>c. a = Some (ex.Ex c) 
+    \<and> n_incl n b c \<and> n_valid c n))"
   by (auto simp: valid_raw_auth_def Abs_sprop_inverse[OF valid_raw_auth_aux2])
 
 lemma n_incl_fragm[simp]: "n_incl n (fragm a) (Auth (b,c)) = n_incl n a c"
@@ -660,7 +695,15 @@ next
   then show "\<exists>ca. n_equiv n (Auth (b, c)) (fragm a \<cdot> ca)" by blast
 qed
 
-text \<open> Map functors, based on a simple wrapper type \<close>
+definition lup :: "('a::ucamera)\<times>'a \<Rightarrow> 'a\<times>'a \<Rightarrow> bool" (infix "\<leadsto>\<^sub>L" 60) where
+  "lup \<equiv> \<lambda>(a,f) (a',f'). \<forall>n c. (n_valid a n \<and> n_equiv n a (f \<cdot> c)) \<longrightarrow> (n_valid a' n \<and> n_equiv n a' (f' \<cdot> c))"
+
+(* Axiomatized for now. *)
+lemma "(a,f)\<leadsto>\<^sub>L(a',f') \<Longrightarrow> (comb a f) \<leadsto> {comb a' f'}"
+apply (auto simp: lup_def fup_def valid_def op_auth_def op_prod_def split: auth.splits)
+sorry
+
+subsubsection \<open> Map functors, based on a simple wrapper type \<close>
 
 text \<open>
   As maps are only functions to options and thus can't directly be declared as class instances, 
@@ -769,6 +812,8 @@ instance "fun" :: (type,d_opt) dcamera
   using d_valid[simplified valid_def] by blast
 
 class opt_core_id = opt + core_id
+instance option :: (core_id) opt_core_id ..
+
 instance "fun" :: (type,opt_core_id) core_id by standard (auto simp: pcore_fun_def pcore_id)
 
 instantiation "fun" :: (type, opt) ucamera begin
@@ -782,7 +827,7 @@ end
 
 instance "fun" :: (type,d_opt) ducamera ..
 
-text \<open> Set type camera \<close>
+subsubsection \<open> Set type camera \<close>
 instantiation set :: (type) ofe begin
 definition n_equiv_set :: "nat \<Rightarrow> 'a set \<Rightarrow> 'a set \<Rightarrow> bool" where "n_equiv_set _ \<equiv> (=)"
 definition ofe_eq_set :: "'a set \<Rightarrow> 'a set \<Rightarrow> bool" where "ofe_eq_set \<equiv> (=)"
@@ -822,8 +867,49 @@ end
 
 instance set :: (type) ducamera ..
 
+subsubsection \<open> Disjoint set camera \<close>
+text \<open> Set with extra bottom element to encode non-disjoint unions \<close>
+datatype 'a dset = DSet "'a set" | DBot 
 
-text \<open> Unit type camera \<close>
+instantiation dset :: (type) ofe begin
+definition n_equiv_dset :: "nat \<Rightarrow> 'a dset \<Rightarrow> 'a dset \<Rightarrow> bool" where "n_equiv_dset \<equiv> \<lambda>_. (=)"
+definition ofe_eq_dset :: "'a dset \<Rightarrow> 'a dset \<Rightarrow> bool" where "ofe_eq_dset \<equiv> (=)"
+instance by standard (auto simp: n_equiv_dset_def ofe_eq_dset_def)
+end
+
+instance dset :: (type) discrete by standard (auto simp: n_equiv_dset_def ofe_eq_dset_def)
+
+instantiation dset :: (type) camera begin
+definition valid_raw_dset :: "'a dset \<Rightarrow> sprop" where 
+  "valid_raw_dset d \<equiv> case d of DSet _ \<Rightarrow> sTrue | DBot \<Rightarrow> sFalse"
+definition pcore_dset :: "'a dset \<Rightarrow> 'a dset option" where "pcore_dset d = Some (DSet {})"
+definition op_dset :: "'a dset \<Rightarrow> 'a dset \<Rightarrow> 'a dset" where 
+  "op_dset x y \<equiv> case (x,y) of (DSet x', DSet y') \<Rightarrow> if x' \<inter> y' = {} then DSet (x'\<union>y') else DBot
+    | _ \<Rightarrow> DBot"
+instance proof
+show "non_expansive (valid_raw::'a dset \<Rightarrow> sprop)"
+  by (rule non_expansiveI) (auto simp: d_equiv ofe_refl)
+next
+show "non_expansive (pcore::'a dset \<Rightarrow> 'a dset option)"
+  by (rule non_expansiveI) (auto simp: d_equiv)
+next
+show "non_expansive2 (op::'a dset \<Rightarrow> 'a dset \<Rightarrow> 'a dset)"
+  by (rule non_expansive2I) (auto simp: d_equiv)
+qed (auto simp: pcore_dset_def op_dset_def valid_raw_dset_def d_equiv split: dset.splits)
+end
+
+instance dset :: (type) dcamera 
+  by standard (auto simp: valid_def valid_raw_dset_def split: dset.splits)
+
+instantiation dset :: (type) ucamera begin
+definition \<epsilon>_dset :: "'a dset" where [simp]: "\<epsilon>_dset = DSet {}"
+instance 
+  by standard (auto simp: valid_def valid_raw_dset_def op_dset_def pcore_dset_def split:dset.splits)
+end
+
+instance dset :: (type) ducamera ..
+
+subsubsection \<open> Unit type camera \<close>
 instantiation unit :: camera begin
 definition valid_raw_unit :: "unit \<Rightarrow> sprop" where [simp]: "valid_raw_unit _ = sTrue"
 definition pcore_unit :: "unit \<Rightarrow> unit option" where [simp]: "pcore_unit = Some"
@@ -839,4 +925,85 @@ instance by standard (auto simp: valid_def)
 end
 
 instance unit :: ducamera ..
+
+subsubsection \<open>Finite set camera\<close>
+instantiation fset :: (type) ofe begin
+definition n_equiv_fset :: "nat \<Rightarrow> 'a fset \<Rightarrow> 'a fset \<Rightarrow> bool" where [simp]: "n_equiv_fset _ \<equiv> (=)"
+definition ofe_eq_fset :: "'a fset \<Rightarrow> 'a fset \<Rightarrow> bool" where [simp]: "ofe_eq_fset \<equiv> (=)"
+instance by (standard) auto
+end
+
+instance fset :: (type) discrete by standard auto
+
+instantiation fset :: (type) camera begin
+definition valid_raw_fset :: "'a fset \<Rightarrow> sprop" where "valid_raw_fset _ = sTrue"
+definition pcore_fset :: "'a fset \<Rightarrow> 'a fset option" where "pcore_fset \<equiv> Some"
+definition op_fset :: "'a fset \<Rightarrow> 'a fset \<Rightarrow> 'a fset" where "op_fset \<equiv> (|\<union>|)"
+instance proof
+show "non_expansive (valid_raw::'a fset \<Rightarrow> sprop)"
+  by (rule non_expansiveI) (auto simp: valid_raw_fset_def n_equiv_sprop_def)
+next
+show "non_expansive (pcore::'a fset \<Rightarrow> 'a fset option)"
+  by (rule non_expansiveI) (auto simp: pcore_fset_def n_equiv_option_def)
+next
+show "non_expansive2 (op::'a fset \<Rightarrow> 'a fset \<Rightarrow> 'a fset)"
+  by (rule non_expansive2I) (auto simp: op_fset_def)
+qed (auto simp: valid_raw_fset_def pcore_fset_def op_fset_def)
+end
+
+instance fset :: (type) dcamera by (standard; auto simp: valid_raw_fset_def valid_def)
+
+instance fset :: (type) core_id by (standard) (auto simp: pcore_fset_def)
+
+lemma n_incl_fset[simp]: "n_incl n a (b::'a fset) = (a|\<subseteq>|b)"
+  by (auto simp: n_incl_def op_fset_def)
+lemma n_incl_fsingle[simp]: "n_incl n {|x|} a = (x|\<in>|a)"
+  by auto
+  
+instantiation fset :: (type) ucamera begin
+definition \<epsilon>_fset :: "'a fset" where [simp]: "\<epsilon>_fset = {||}"
+instance by (standard) (auto simp: op_fset_def valid_def valid_raw_fset_def pcore_fset_def)
+end
+
+subsubsection \<open> Disjoint fset camera \<close>
+text \<open> Finite set with extra bottom element to encode non-disjoint unions \<close>
+datatype 'a dfset = DFSet "'a fset" | DFBot 
+
+instantiation dfset :: (type) ofe begin
+definition n_equiv_dfset :: "nat \<Rightarrow> 'a dfset \<Rightarrow> 'a dfset \<Rightarrow> bool" where "n_equiv_dfset \<equiv> \<lambda>_. (=)"
+definition ofe_eq_dfset :: "'a dfset \<Rightarrow> 'a dfset \<Rightarrow> bool" where "ofe_eq_dfset \<equiv> (=)"
+instance by standard (auto simp: n_equiv_dfset_def ofe_eq_dfset_def)
+end
+
+instance dfset :: (type) discrete by standard (auto simp: n_equiv_dfset_def ofe_eq_dfset_def)
+
+instantiation dfset :: (type) camera begin
+definition valid_raw_dfset :: "'a dfset \<Rightarrow> sprop" where 
+  "valid_raw_dfset d \<equiv> case d of DFSet _ \<Rightarrow> sTrue | DFBot \<Rightarrow> sFalse"
+definition pcore_dfset :: "'a dfset \<Rightarrow> 'a dfset option" where "pcore_dfset d = Some (DFSet {||})"
+definition op_dfset :: "'a dfset \<Rightarrow> 'a dfset \<Rightarrow> 'a dfset" where 
+  "op_dfset x y \<equiv> case (x,y) of (DFSet x', DFSet y') \<Rightarrow> if x' |\<inter>| y' = {||} then DFSet (x'|\<union>|y') 
+    else DFBot | _ \<Rightarrow> DFBot"
+instance proof
+show "non_expansive (valid_raw::'a dfset \<Rightarrow> sprop)"
+  by (rule non_expansiveI) (auto simp: d_equiv ofe_refl)
+next
+show "non_expansive (pcore::'a dfset \<Rightarrow> 'a dfset option)"
+  by (rule non_expansiveI) (auto simp: d_equiv)
+next
+show "non_expansive2 (op::'a dfset \<Rightarrow> 'a dfset \<Rightarrow> 'a dfset)"
+  by (rule non_expansive2I) (auto simp: d_equiv)
+qed (auto simp: pcore_dfset_def op_dfset_def valid_raw_dfset_def d_equiv split: dfset.splits)
+end
+
+instance dfset :: (type) dcamera 
+  by standard (auto simp: valid_def valid_raw_dfset_def split: dfset.splits)
+
+instantiation dfset :: (type) ucamera begin
+definition \<epsilon>_dfset :: "'a dfset" where [simp]: "\<epsilon>_dfset = DFSet {||}"
+instance 
+  by standard (auto simp: valid_def valid_raw_dfset_def op_dfset_def pcore_dfset_def split:dfset.splits)
+end
+
+instance dfset :: (type) ducamera ..
 end
