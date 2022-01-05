@@ -50,6 +50,9 @@ type_synonym ('l,'v,'c) heapCmra = "('l,'v) heap\<times>'c"
 abbreviation own_heap :: "('l,'v::ofe) heap \<Rightarrow> ('l,'v,'c::ucamera) heapCmra iprop" ("Own\<^sub>h _") where
    "own_heap \<equiv> \<lambda>h. Own(h,\<epsilon>)"
 
+abbreviation own_other :: "'c::ucamera \<Rightarrow> ('l,'v::ofe,'c::ucamera) heapCmra iprop" where
+  "own_other \<equiv> \<lambda>c. Own(\<epsilon>,c)"
+   
 definition points_to :: "'l \<Rightarrow> dfrac \<Rightarrow> 'v::ofe \<Rightarrow> ('l,'v option,'c::ucamera) heapCmra iprop" where
   "points_to l dq v = Own\<^sub>h(fragm [l\<mapsto>(dq, to_ag (Some v))])"
 abbreviation points_to_disc :: "'l \<Rightarrow> 'v::ofe \<Rightarrow> ('l,'v option,'c::ucamera) heapCmra iprop" where 
@@ -162,6 +165,9 @@ lemma points_to_ne: "upred_holds ((l1\<mapsto>\<^sub>u(v1::'v::discrete)) -\<^em
 
 definition to_heap :: "('l\<rightharpoonup>'v::ofe) \<Rightarrow> ('l\<rightharpoonup>(dfrac\<times>'v option ag))" where
   "to_heap h = (\<lambda>op. map_option (\<lambda>v::'v. (DfracOwn 1,to_ag (Some v))) op) \<circ> h"
+
+definition to_heap_op :: "('l\<rightharpoonup>('v::ofe option)) \<Rightarrow> ('l\<rightharpoonup>(dfrac\<times>'v option ag))" where
+  "to_heap_op h = (\<lambda>op. map_option (\<lambda>v::'v option. (DfracOwn 1,to_ag  v)) op) \<circ> h"
   
 definition heapInv :: "('l,('v::ofe) option,'c::ucamera) heapCmra iprop" where
   "heapInv \<equiv> \<exists>\<^sub>u(\<lambda>h. (Own\<^sub>h(full (to_heap h))) \<^emph> (sep_map_heap h (\<lambda>(l,v). l\<mapsto>\<^sub>uv)))"

@@ -289,6 +289,9 @@ lemma upred_wand_holds2E: "upred_holds (P -\<^emph> Q -\<^emph> R) \<Longrightar
   apply (rule upred_wandE)  
   apply (rule upred_wand_holdsE)
   by assumption
+
+lemma upred_own_nothing_true: "Own \<epsilon> \<stileturn>\<turnstile> \<upharpoonleft>True"
+  by (rule upred_entail_eqI) (auto simp: upred_pure.rep_eq upred_own.rep_eq)
   
 (* Simple definition of iprop due to the axiomatic character of our work. *)
 type_synonym 'a iprop = "'a upred_f"
