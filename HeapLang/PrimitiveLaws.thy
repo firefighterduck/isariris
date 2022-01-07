@@ -17,5 +17,5 @@ instance expr and val :: discrete by standard auto
 
 (* Simplified heap camera, does not contain the prophecy map. *)
 type_synonym heapGS = "(loc, val option) heap"
-
+type_synonym 'c heapGCmra = "(loc, val option,'c) heapCmra"
 end

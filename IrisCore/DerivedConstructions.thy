@@ -319,9 +319,85 @@ end
 instance option :: (dcamera) ducamera ..
 
 subsubsection \<open> Agreement camera functor \<close>
-typedef 'a::ofe ag = "{a::'a set | a. finite a \<and> a\<noteq>{} }"
+typedef 'a ag = "{a::'a set | a. finite a \<and> a\<noteq>{} }"
   by auto
-setup_lifting type_definition_ag  
+setup_lifting type_definition_ag
+
+lift_definition map_ag :: "('a\<Rightarrow>'b) \<Rightarrow> 'a ag \<Rightarrow> 'b ag" is "(`)" by simp
+lift_definition set_ag :: "'a ag \<Rightarrow> 'a set" is "\<lambda>x. x" .
+lift_definition pred_ag :: "('a \<Rightarrow> bool) \<Rightarrow> 'a ag \<Rightarrow> bool" is "\<lambda>P s. Ball s P" .
+
+lemma image_ag: "image f (Rep_ag s) \<in> {a |a. finite a \<and> a \<noteq> {}}"
+  apply (auto simp: image_def)
+  subgoal using finite_imageI[unfolded image_def] Rep_ag by auto
+  using Rep_ag by fast
+lemmas image_abs_ag = Abs_ag_inverse[OF image_ag] Abs_ag_inject[OF image_ag  image_ag]
+
+context includes cardinal_syntax begin
+bnf "'a ag"
+  map: map_ag
+  sets: set_ag
+  bd: "natLeq +c |UNIV :: 'a set|"
+proof -
+show "map_ag id = id" by (auto simp: map_ag_def Rep_ag_inverse)
+next
+fix f :: "'a \<Rightarrow> 'b" and g :: "'b \<Rightarrow> 'c"
+show "map_ag (g \<circ> f) = map_ag g \<circ> map_ag f" 
+  by (auto simp: comp_def image_def map_ag_def)
+  (metis Rep_ag_inverse image_def image_image map_ag.rep_eq map_fun_apply)
+next
+fix x :: "'a ag" and f g :: "'a \<Rightarrow> 'b"
+assume "\<And>z. z \<in> set_ag x \<Longrightarrow> f z = g z"
+then show "map_ag f x = map_ag g x" by transfer auto
+next
+fix f :: "'a\<Rightarrow>'b"
+have "{y. \<exists>x\<in>Rep_ag s. y = f x} = image f (Rep_ag s)" for s by auto
+then have "{y. \<exists>x\<in>Rep_ag s. y = f x} \<in> {a |a. finite a \<and> a \<noteq> {}}" for s
+  apply auto 
+  subgoal using finite_imageI Rep_ag by fast
+  using Rep_ag by blast
+from Abs_ag_inverse[OF this] show "set_ag \<circ> map_ag f = (`) f \<circ> set_ag" 
+  by (auto simp: map_ag_def image_def set_ag_def comp_def)
+next
+show "card_order (natLeq +c |UNIV::'a set| )"
+  using card_of_card_order_on card_order_csum natLeq_card_order by blast
+next
+show "cinfinite (natLeq +c |UNIV::'a set| )"
+  using cinfinite_csum natLeq_cinfinite by blast
+next
+fix s :: "'a ag"
+have "|set_ag s| \<le>o |UNIV::'a set|" (is "_ \<le>o ?U") by transfer (simp add: card_of_mono1)
+also have "?U \<le>o natLeq +c ?U" by (simp add: Cnotzero_UNIV ordLeq_csum2)  
+finally show "|set_ag s| \<le>o natLeq +c |UNIV::'a set|" .
+next
+fix R :: "'a\<Rightarrow>'b\<Rightarrow>bool" and S :: "'b\<Rightarrow>'c\<Rightarrow>bool"
+show "(\<lambda>x y. \<exists>z. set_ag z \<subseteq> {(x, y). R x y} \<and> map_ag fst z = x \<and> map_ag snd z = y) OO 
+  (\<lambda>x y. \<exists>z. set_ag z \<subseteq> {(x, y). S x y} \<and> map_ag fst z = x \<and> map_ag snd z = y)
+  \<le> (\<lambda>x y. \<exists>z. set_ag z \<subseteq> {(x, y). (R OO S) x y} \<and> map_ag fst z = x \<and> map_ag snd z = y)"
+apply (auto simp: set_ag.rep_eq map_ag_def rel_fun_def Rel_def pcr_ag_def rel_set_def cr_ag_def relcompp.simps image_abs_ag)
+proof -
+fix a :: "('a\<times>'b) ag" and b :: "('b\<times>'c) ag"
+assume assms: "Rep_ag a\<subseteq>{(x, y). R x y}" "Rep_ag b\<subseteq>{(x, y). S x y}" "fst`Rep_ag b=snd`Rep_ag a"
+define c where c: "c = (Rep_ag a) O (Rep_ag b)"
+with Rep_ag finite_relcomp have "finite c" by (metis mem_Collect_eq)
+moreover from c assms(3) Rep_ag have "c \<noteq> {}" apply (auto simp: relcomp_def relcompp.simps)
+  by (smt (verit, best) Rep_ag all_not_in_conv empty_is_image imageE mem_Collect_eq prod.collapse)
+ultimately have c_ag: "c \<in> {a |a. finite a \<and> a \<noteq> {}}" by simp
+from assms have "Rep_ag (Abs_ag c) \<subseteq> {(x, y). \<exists>b. R x b \<and> S b y}" 
+  apply (auto simp: Abs_ag_inverse[OF c_ag]) using c by blast
+moreover from c assms(3) have "fst ` Rep_ag (Abs_ag c) = fst ` Rep_ag a"
+  apply (auto simp: Abs_ag_inverse[OF c_ag] relcomp_def relcompp.simps image_def)
+  apply (smt (verit, del_insts) Abs_ag_inverse c_ag case_prodD fst_conv mem_Collect_eq)
+  by (smt (verit, ccfv_SIG) Abs_ag_inverse c_ag case_prodI eq_fst_iff mem_Collect_eq snd_eqD)
+moreover from c assms(3) have "snd ` Rep_ag (Abs_ag c) = snd ` Rep_ag b"
+  apply (auto simp: Abs_ag_inverse[OF c_ag] relcomp_def relcompp.simps image_def)
+  apply (smt (verit, del_insts) Abs_ag_inverse c_ag case_prodD snd_conv mem_Collect_eq)
+  by (smt (verit, ccfv_SIG) Abs_ag_inverse c_ag case_prodI eq_snd_iff mem_Collect_eq fst_eqD)
+ultimately show "\<exists>zb. Rep_ag zb \<subseteq> {(x, y). \<exists>b. R x b \<and> S b y} \<and> fst ` Rep_ag zb = fst ` Rep_ag a \<and> snd ` Rep_ag zb = snd ` Rep_ag b"
+  by auto
+qed
+qed
+end
 
 instantiation ag :: (ofe) ofe begin
 lift_definition n_equiv_ag :: "nat \<Rightarrow> ('a::ofe) ag \<Rightarrow> 'a ag \<Rightarrow> bool" is

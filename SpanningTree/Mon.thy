@@ -2,6 +2,7 @@ theory Mon
 imports SpanningTreeCameras
   "../IrisCore/DerivedConstructions"
   "../HeapLang/Notation"
+  "../IrisCore/Misc"
 begin
 
 subsection \<open> The underlying structures of the spanning tree \<close>
@@ -18,9 +19,9 @@ lemma is_marked_split: "Own\<^sub>m(fragm {l}) = Own\<^sub>m(fragm {l} \<cdot> f
 
 lemma dup_marked: "is_marked l \<stileturn>\<turnstile> is_marked l \<^emph> is_marked l"
 proof -
-from own_op have "Own((\<epsilon>, fragm {l},\<epsilon>)\<cdot>(\<epsilon>, fragm {l},\<epsilon>))
-  \<stileturn>\<turnstile> Own\<^sub>m(fragm {l}) \<^emph> Own\<^sub>m(fragm {l})" by auto
-then have "Own(\<epsilon>\<cdot>\<epsilon>, fragm {l}\<cdot>fragm {l},\<epsilon>\<cdot>\<epsilon>) \<stileturn>\<turnstile> Own\<^sub>m(fragm {l}) \<^emph> Own\<^sub>m(fragm {l})" 
+from own_op have "Own ((\<epsilon>, (\<epsilon>, fragm {l})) \<cdot> (\<epsilon>, (\<epsilon>, fragm {l})))
+  \<stileturn>\<turnstile> (Own\<^sub>m(fragm {l})) \<^emph> Own\<^sub>m(fragm {l})" by auto
+then have "Own(\<epsilon>\<cdot>\<epsilon>,(\<epsilon>\<cdot>\<epsilon>, fragm {l}\<cdot>fragm {l})) \<stileturn>\<turnstile> Own\<^sub>m(fragm {l}) \<^emph> Own\<^sub>m(fragm {l})" 
   by (auto simp: op_prod_def)
 then show ?thesis by (auto simp: is_marked_def is_marked_split[symmetric] \<epsilon>_left_id) 
 qed
@@ -55,14 +56,12 @@ definition of_graph :: "loc graph \<Rightarrow> gmon \<Rightarrow> marked_graph"
 definition own_graphUR :: "frac \<Rightarrow> gmon \<Rightarrow> graphG iprop" where
   "own_graphUR q G = Own\<^sub>g(fragm (Some (G,q)))"
 
-context includes graphG_syntax begin
+context includes points_to_syntax begin
 definition heap_owns :: "marked_graph \<Rightarrow> (loc\<rightharpoonup>loc) \<Rightarrow> graphG iprop" where
   "heap_owns M markings = 
-  folding_on.F 
-  (\<lambda>(l,(b,cl)) pred. (\<exists>\<^sub>u(\<lambda>m. (\<upharpoonleft>(markings l = Some m))
-    \<^emph> (l\<mapsto>\<^sub>u#[(m, children_to_val cl)]) 
-    \<^emph> (m\<mapsto>\<^sub>u#[b]))) \<^emph> pred)
-  \<upharpoonleft>True
+  sep_map_set (\<lambda>(l,(b,cl)). (\<exists>\<^sub>u m. ((\<upharpoonleft>(markings l = Some m))
+    \<^emph> (l\<mapsto>\<^sub>u#[(m, children_to_val cl)])
+    \<^emph> (m\<mapsto>\<^sub>u#[b]))))
   {(l,node) | l node. M l = Some node}"
 end
 end

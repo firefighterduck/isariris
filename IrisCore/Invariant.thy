@@ -22,7 +22,7 @@ lemma distinct_names: "\<lbrakk>\<not>subnamespace N1 N2; \<not>subnamespace N2 
 subsection \<open> Invariants \<close>
 text \<open>The underlying invariant camera, contains the invariants and enabled/disabled names.\<close>
 (* The Coq formalization uses positive integers instead of naturals. *)
-type_synonym 'a invGS = "(name\<rightharpoonup>'a iprop later ag) auth \<times> name dset \<times> name dfset"
+datatype invGS = Inv "(name\<rightharpoonup>invGS iprop later ag) auth" "name dset" "name dfset"
 
 text \<open>The modular invariant camera based on the heap camera\<close>
 type_synonym ('l,'v,'a,'c) invCmra = "('l,'v,'a invGS\<times>'c) heapCmra"
@@ -37,7 +37,7 @@ definition ownI :: "name \<Rightarrow> 'a::ucamera iprop \<Rightarrow> ('l,'v,'a
   "ownI \<iota> P = Own\<^sub>i (fragm [\<iota>\<mapsto>to_ag (Next P)],\<epsilon>,\<epsilon>)"
 
 definition inv :: "namespace \<Rightarrow> 'a::ucamera iprop \<Rightarrow> ('l,'v,'a,'c) invCmra iprop" where
-  "inv N P = \<exists>\<^sub>u(\<lambda>\<iota>. (\<upharpoonleft>(\<iota>\<in>names N)) \<and>\<^sub>u ownI \<iota> P)"
+  "inv N P = \<exists>\<^sub>u \<iota>. ((\<upharpoonleft>(\<iota>\<in>names N)) \<and>\<^sub>u ownI \<iota> P)"
   
 text \<open>Allocate new enabled invariant map\<close>
 definition ownE :: "name dset \<Rightarrow> ('l,'v,'a::ucamera,'c) invCmra iprop" where
@@ -52,11 +52,21 @@ definition lift_inv_map :: "(name\<rightharpoonup>('a::ucamera) iprop) \<Rightar
   
 text \<open>World satisfaction, i.e. the invariant that holds all invariants\<close>
 (* Doesn't type check *)  
-(* definition wsat :: "('l,'v,'a::ucamera,'c) invCmra iprop" where
-  "wsat \<equiv> \<exists>\<^sub>u(\<lambda>I::nat\<rightharpoonup>'a iprop. 
-    (Own\<^sub>i(full(lift_inv_map I),\<epsilon>,\<epsilon>))
+definition wsat :: "('l,'v,'a::ucamera,'c) invCmra iprop" where
+  "wsat \<equiv> \<exists>\<^sub>u (I::name\<rightharpoonup>'a iprop).
+    ((Own\<^sub>i(full(lift_inv_map I),\<epsilon>,\<epsilon>))
     \<^emph> (sep_map_set (\<lambda>\<iota>. ((\<triangleright>((the \<circ> I) \<iota>)) \<^emph> ownD (DFSet {|\<iota>|})) \<or>\<^sub>u (ownE (DSet {\<iota>}))) (dom I))
-  )" *)
+  )"
+\<comment> \<open> The problem here:
+  - Own\<^sub>i(full(lift_inv_map I),\<epsilon>,\<epsilon>) is of type ('l,'v,'a,'c) invCmra iprop, i.e. an iprop which 
+    talks about has resources in the heap ('l\<rightharpoonup>'v), in invariants (based on 'a) and the camera 'c
+
+  - \<triangleright>((the \<circ> I) \<iota> is of type 'a iprop, i.e. only talks about resources of camera 'a
+
+  - 'a would need to be the same as ('l,'v,'a,'c) invCmra, which is a cyclic type definition and only
+    possible if we find a fixed point type
+\<close>
+  
 end
 
 lemma persistent_ownI: "persistent (ownI \<iota> P)"

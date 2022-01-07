@@ -4,7 +4,7 @@ begin
 
 subsection \<open> Uniform Predicates \<close>
 text \<open> A  upred formalization as a semantic subtype of functions, shallow embedding \<close>
-typedef (overloaded) 'm upred_f = "{f::('m::ucamera \<Rightarrow> nat \<Rightarrow> bool). 
+typedef (overloaded) 'm::ucamera upred_f = "{f::('m \<Rightarrow> nat \<Rightarrow> bool). 
   \<forall>n m x y. f x n \<longrightarrow> n_incl m x y \<longrightarrow> m\<le>n \<longrightarrow> f y m}"
   proof
   define uTrue where "uTrue \<equiv> \<lambda>x::'m. \<lambda>n::nat. True"
@@ -15,6 +15,19 @@ qed
 setup_lifting type_definition_upred_f
 lemmas [simp] = Rep_upred_f_inverse Rep_upred_f_inject
 lemmas [simp, intro!] = Rep_upred_f[unfolded mem_Collect_eq]
+
+\<comment> \<open>Problem lies here, upred can not be a BNF:\<close>
+(* lift_bnf (dead 'm::ucamera) upred_f
+
+lift_definition map_upred :: "(('b::ucamera) \<Rightarrow> ('a::ucamera)) \<Rightarrow> 'a upred_f \<Rightarrow> 'b upred_f" is 
+  "\<lambda>f (x::'a\<Rightarrow>nat\<Rightarrow>bool) (c::'b) (n::nat). x (f c) n" apply (auto simp: n_incl_def)
+  sorry
+
+context includes cardinal_syntax begin
+bnf "('m::ucamera) upred_f"
+  map: map_upred
+  bd: "natLeq +c |UNIV :: 'm set|"
+end *)
 
 instantiation upred_f :: (ucamera) ofe begin
   lift_definition n_equiv_upred_f :: "nat \<Rightarrow> 'a upred_f \<Rightarrow> 'a upred_f \<Rightarrow> bool" is
@@ -120,10 +133,10 @@ proof -
   show "y c m".
 qed
 
-lift_definition upred_forall :: "('c \<Rightarrow> 'a upred_f) \<Rightarrow> 'a upred_f" ("\<forall>\<^sub>u _") is 
+lift_definition upred_forall :: "('c \<Rightarrow> 'a upred_f) \<Rightarrow> 'a upred_f" (binder "\<forall>\<^sub>u" 60) is 
   "\<lambda>P (a::'a) (n::nat). \<forall>x::'c. P x a n" by (rule meta_allE)
 
-lift_definition upred_exists :: "('c \<Rightarrow> 'a upred_f) \<Rightarrow> 'a upred_f" ("\<exists>\<^sub>u _") is 
+lift_definition upred_exists :: "('c \<Rightarrow> 'a upred_f) \<Rightarrow> 'a upred_f" (binder "\<exists>\<^sub>u" 60) is 
   "\<lambda>P (a::'a) (n::nat). \<exists>x::'c. P x a n" by (rule ex_forward)
 
 lift_definition upred_sep :: "'a upred_f \<Rightarrow> 'a upred_f \<Rightarrow> 'a upred_f" (infixl "\<^emph>" 80) is
@@ -326,7 +339,7 @@ lemma persistent_core_own2: "pcore_id_pred (a::'a::ucamera) \<Longrightarrow> pe
 lemma persistent_conj: "\<lbrakk>persistent P; persistent Q\<rbrakk> \<Longrightarrow> persistent (P \<and>\<^sub>u Q)"
   by (auto simp: persistent_def upred_conj.rep_eq upred_entails.rep_eq upred_persis.rep_eq)
   
-lemma persistent_exists: "\<forall>x. persistent (P x) \<Longrightarrow> persistent (\<exists>\<^sub>u P)"
+lemma persistent_exists: "\<forall>x. persistent (P x) \<Longrightarrow> persistent (\<exists>\<^sub>u x. P x)"
   by (auto simp: upred_exists.rep_eq persistent_def upred_persis.rep_eq upred_entails.rep_eq)
 
 subsubsection \<open> Timeless predicates \<close>

@@ -170,6 +170,6 @@ definition to_heap_op :: "('l\<rightharpoonup>('v::ofe option)) \<Rightarrow> ('
   "to_heap_op h = (\<lambda>op. map_option (\<lambda>v::'v option. (DfracOwn 1,to_ag  v)) op) \<circ> h"
   
 definition heapInv :: "('l,('v::ofe) option,'c::ucamera) heapCmra iprop" where
-  "heapInv \<equiv> \<exists>\<^sub>u(\<lambda>h. (Own\<^sub>h(full (to_heap h))) \<^emph> (sep_map_heap h (\<lambda>(l,v). l\<mapsto>\<^sub>uv)))"
+  "heapInv \<equiv> \<exists>\<^sub>u h. (Own\<^sub>h(full (to_heap h))) \<^emph> (sep_map_heap h (\<lambda>(l,v). l\<mapsto>\<^sub>uv))"
 end
 end
