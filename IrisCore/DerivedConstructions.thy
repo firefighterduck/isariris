@@ -4,6 +4,26 @@ begin
 subsection \<open> Basic camera constructions \<close>
 
 subsubsection \<open> Tuple/Product type \<close>
+lift_definition chain_map :: "('a::ofe -n> 'b::ofe) \<Rightarrow> 'a chain \<Rightarrow> 'b chain" is
+  "\<lambda>f c n. f (Rep_chain c n)" by transfer (simp add: non_expansive_def)
+
+lift_definition ne_fst :: "('a::ofe\<times>'b::ofe)-n>'a" is "\<lambda>(a,_). a" by (rule non_expansiveI) auto
+lift_definition ne_snd :: "('a::ofe\<times>'b::ofe)-n>'b" is "\<lambda>(_,b). b" by (rule non_expansiveI) auto
+
+instantiation prod :: (cofe,cofe) cofe begin
+definition lim_prod :: "('a \<times> 'b) chain \<Rightarrow> 'a \<times> 'b" where 
+  "lim_prod c = (lim (chain_map ne_fst c), lim (chain_map ne_snd c))"
+instance proof 
+  fix c :: "('a\<times>'b) chain" and n
+  have "n_equiv n (lim (chain_map ne_fst c)) (Rep_chain (chain_map ne_fst c) n)" 
+    "n_equiv n (lim (chain_map ne_snd c)) (Rep_chain (chain_map ne_snd c) n)" 
+    using core_compl by auto  
+  then show "n_equiv n (lim c) (Rep_chain c n)"
+  apply (auto simp: lim_prod_def ne_fst.rep_eq ne_snd.rep_eq chain_map_def)
+  by (smt (z3) Abs_chain_inverse Rep_chain case_prod_conv mem_Collect_eq n_equiv_prod.elims(2) n_equiv_prod.elims(3))
+qed
+end
+
 instantiation prod :: (camera,camera) camera begin
   definition valid_raw_prod :: "'a \<times> 'b \<Rightarrow> sprop" where
     "valid_raw_prod \<equiv> \<lambda>(x::'a,y::'b). valid_raw x \<and>\<^sub>s valid_raw y"

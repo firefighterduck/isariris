@@ -1,4 +1,4 @@
 theory IsarIris
-imports Main
+imports "SpanningTree/Spanning"
 begin
 end

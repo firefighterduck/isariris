@@ -22,6 +22,9 @@ end
 
 class discrete = ofe + assumes d_equiv: "n_equiv n a b = (a=b)" and d_eq: "ofe_eq a b = (a=b)"
 
+lemma ofe_down_contr: "n_equiv n x y \<longleftrightarrow> (\<forall>m\<le>n. n_equiv m x y)"
+  by (auto simp: ofe_trans ofe_sym intro: ofe_mono)
+
 subsection \<open> Simple OFE instances \<close>
 subsubsection \<open> Step indexed propositions \<close> 
 text \<open>They are defined to hold for all steps below a maximum. \<close>
@@ -137,32 +140,32 @@ instance unit :: discrete by standard (auto simp: n_equiv_unit_def)
 
 subsubsection \<open>later type OFE\<close>
 text \<open>This type encodes the later modality on a type level.\<close>
-datatype ('a::ofe) later = Next 'a
+datatype ('a::ofe) later = Next (later_car: 'a)
 instantiation later :: (ofe) ofe begin
-  fun n_equiv_later :: "nat \<Rightarrow> 'a later \<Rightarrow> 'a later \<Rightarrow> bool" where
-    "n_equiv_later n (Next x) (Next y) = (n=0 \<or> n_equiv (n-1) x y)"
+  definition n_equiv_later :: "nat \<Rightarrow> 'a later \<Rightarrow> 'a later \<Rightarrow> bool" where
+    "n_equiv_later n x y = (n=0 \<or> n_equiv (n-1) (later_car x) (later_car y))"
   fun ofe_eq_later :: "'a later \<Rightarrow> 'a later \<Rightarrow> bool" where 
     "ofe_eq_later (Next a) (Next b) = ofe_eq a b"
 instance proof (standard)
   fix x n
   show "n_equiv n (x::'a later) x" 
-    by (cases n; cases x) (auto simp: ofe_refl)
+    by (cases n; cases x) (auto simp: ofe_refl n_equiv_later_def)
 next  
   fix x y n
   show "(n_equiv n (x::'a later) y) \<longleftrightarrow> (n_equiv n y x)"
-    by (cases n; cases x; cases y) (auto simp: ofe_limit ofe_sym)
+    by (cases n; cases x; cases y) (auto simp: ofe_limit ofe_sym n_equiv_later_def)
 next
   fix x y n z
   show "n_equiv n (x::'a later) y \<Longrightarrow> n_equiv n y z \<Longrightarrow> n_equiv n x z"
-    by (cases n; cases x; cases y; cases z) (auto intro: ofe_trans)
+    by (cases n; cases x; cases y; cases z) (auto simp: n_equiv_later_def intro: ofe_trans)
 next
   fix m n x y
   show "m \<le> n \<Longrightarrow> (n_equiv::nat\<Rightarrow>'a later\<Rightarrow>'a later\<Rightarrow>bool) n x y \<Longrightarrow> n_equiv m x y"
-    by (cases m; cases n; cases x; cases y) (auto simp: ofe_mono)
+    by (cases m; cases n; cases x; cases y) (auto simp: ofe_mono n_equiv_later_def)
 next
   fix x y :: "'a later"
   show "(ofe_eq x y) \<longleftrightarrow> (\<forall>n. n_equiv n x y)"
-  apply (cases x; cases y) apply (auto simp: ofe_refl)
+  apply (cases x; cases y) apply (auto simp: ofe_refl n_equiv_later_def)
   using ofe_limit apply blast using ofe_limit by (metis diff_Suc_Suc diff_zero nat.discI)
 next
 fix x y :: "'a later"
@@ -171,10 +174,58 @@ qed
 end
 
 subsection \<open> COFE \<close>
-definition is_chain :: "(nat \<Rightarrow> ('t::ofe)) \<Rightarrow> bool" where
-  "is_chain c \<equiv> (\<forall>n m. n\<le>m \<longrightarrow> n_equiv n (c m) (c n))"
+typedef (overloaded) 't chain = "{c::(nat \<Rightarrow> 't::ofe). \<forall>n m. n\<le>m \<longrightarrow> n_equiv n (c m) (c n)}"
+  using ofe_eq_limit by force
+setup_lifting type_definition_chain
+lemmas [simp] = Rep_chain_inverse Rep_chain_inject
+lemmas [simp, intro!] = Rep_chain[unfolded mem_Collect_eq]
 
 class cofe = ofe +
-  fixes lim :: "(nat \<Rightarrow> ('a::ofe)) \<Rightarrow> 'a"
-  assumes core_compl: "is_chain (c::(nat\<Rightarrow>'a)) \<Longrightarrow> n_equiv n (lim c) (c n)"
+  fixes lim :: "('a::ofe) chain \<Rightarrow> 'a"
+  assumes core_compl: "n_equiv n (lim c) (Rep_chain c n)"
+
+instantiation unit :: cofe begin
+definition lim_unit :: "unit chain \<Rightarrow> unit" where [simp]: "lim_unit _ = ()"
+instance by standard (simp add: n_equiv_unit_def)
+end
+
+lift_definition option_chain :: "'a::ofe option chain \<Rightarrow> 'a \<Rightarrow> 'a chain" is
+  "\<lambda>c x n. case c n of Some y \<Rightarrow> y | None \<Rightarrow> x" 
+  by (auto simp: ofe_refl n_equiv_option_def split: option.splits) fastforce+
+
+instantiation option :: (cofe) cofe begin
+definition lim_option :: "'a option chain \<Rightarrow> 'a option" where
+  "lim_option c \<equiv> case (Rep_chain c 0) of Some x \<Rightarrow> Some (lim (option_chain c x)) | None \<Rightarrow> None"
+instance proof
+  fix c :: "'a option chain" and n
+  have base: "n_equiv 0 (Rep_chain c n) (Rep_chain c 0)" by transfer auto
+  from core_compl have step: "n_equiv n (lim (option_chain c x)) (Rep_chain (option_chain c x) n)" for x .
+  show "n_equiv n (lim c) (Rep_chain c n)" unfolding lim_option_def
+  apply (cases "Rep_chain c 0")
+  apply auto
+  apply (metis base n_equiv_option_def option.distinct(1))
+  by (smt (verit) base step n_equiv_option_def option.simps(5) option_chain.rep_eq)
+qed
+end
+
+lift_definition later_chain :: "'a::ofe later chain \<Rightarrow> 'a chain" is
+  "\<lambda>c n. later_car (Rep_chain c (Suc n))" 
+  by transfer (metis Suc_le_mono add_diff_cancel_left' n_equiv_later_def nat.discI plus_1_eq_Suc)
+
+instantiation later :: (cofe) cofe begin
+definition lim_later :: "'a later chain \<Rightarrow> 'a later" where
+  "lim_later c = Next (lim (later_chain c))"
+instance proof
+  fix c :: "'a later chain" and n
+  from core_compl[of n] show "n_equiv n (lim c) (Rep_chain c n)" 
+    apply (auto simp: n_equiv_later_def lim_later_def)
+    by (smt (verit, best) One_nat_def Suc_pred' core_compl later_chain.rep_eq not_gr0)
+qed
+end
+
+definition discrete_lim :: "('a::discrete chain) \<Rightarrow> 'a" where
+  "discrete_lim c = Rep_chain c 0"
+
+lemma discrete_cofe: "n_equiv n (discrete_lim c) (Rep_chain c n)"
+  unfolding discrete_lim_def by transfer (metis d_equiv nat_le_linear)
 end

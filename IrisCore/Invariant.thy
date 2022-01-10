@@ -22,7 +22,7 @@ lemma distinct_names: "\<lbrakk>\<not>subnamespace N1 N2; \<not>subnamespace N2 
 subsection \<open> Invariants \<close>
 text \<open>The underlying invariant camera, contains the invariants and enabled/disabled names.\<close>
 (* The Coq formalization uses positive integers instead of naturals. *)
-datatype invGS = Inv "(name\<rightharpoonup>invGS iprop later ag) auth" "name dset" "name dfset"
+codatatype invGS = Inv "(name\<rightharpoonup>invGS iprop later ag) auth" "name dset" "name dfset"
 
 text \<open>The modular invariant camera based on the heap camera\<close>
 type_synonym ('l,'v,'a,'c) invCmra = "('l,'v,'a invGS\<times>'c) heapCmra"

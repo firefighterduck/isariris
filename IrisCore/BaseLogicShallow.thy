@@ -37,17 +37,84 @@ instantiation upred_f :: (ucamera) ofe begin
 instance by (standard) (auto simp: n_equiv_upred_f.rep_eq ofe_eq_upred_f.rep_eq)
 end
 instantiation upred_f :: (ucamera) cofe begin
-  lift_definition lim_upred_f :: "(nat \<Rightarrow> 'a upred_f) \<Rightarrow> 'a upred_f" is
-    "\<lambda>c a n. \<forall>m\<le>n. n_valid a m \<longrightarrow> c m a m" 
-    by (meson n_incl_def camera_valid_op dual_order.trans ne_sprop_weaken ofe_mono order_refl valid_raw_non_expansive)
-instance by (standard; auto simp: is_chain_def; transfer; auto)
-  (meson le_refl ne_sprop_weaken ofe_refl total_n_inclI valid_raw_non_expansive)
+  lift_definition lim_upred_f :: "'a upred_f chain \<Rightarrow> 'a upred_f" is
+    "\<lambda>(c::'a upred_f chain) (a::'a) n. \<forall>m\<le>n. n_valid a m \<longrightarrow> Rep_upred_f (Rep_chain c m) a m"
+    by (smt (verit, ccfv_SIG) Rep_upred_f camera_n_incl_le camera_valid_op le_refl mem_Collect_eq 
+      n_incl_def n_valid_ne order_trans)
+instance apply (standard; auto simp: lim_upred_f.rep_eq n_equiv_upred_f_def; transfer)
+  apply (metis (mono_tags, lifting) cr_upred_f_def n_equiv_upred_f.rep_eq nle_le rel_funD2 upred_f.pcr_cr_eq)
+  by (smt (z3) Rep_upred_f cr_upred_f_def le_cases3 mem_Collect_eq n_equiv_upred_f.rep_eq 
+    ne_sprop_weaken ofe_refl rel_funD2 total_n_inclI upred_f.pcr_cr_eq valid_raw_non_expansive)
 end
 
 lemma upred_f_ne: "\<lbrakk>n_equiv m (P::('a::ucamera) upred_f) Q; m\<le>n; n_valid x m; Rep_upred_f Q x n\<rbrakk> 
   \<Longrightarrow> Rep_upred_f Q x m"
   by (transfer; auto simp: n_incl_def) (metis \<epsilon>_left_id camera_comm ofe_refl) 
 
+subsubsection \<open>upred Functor\<close>
+context begin
+text \<open>This is the contravariant functor for uniform predicates.\<close> 
+lift_definition upred_map :: "('a::ucamera,'b::ucamera) cmra_morph \<Rightarrow> 'b upred_f \<Rightarrow> 'a upred_f" is 
+  "\<lambda>f P x. Rep_upred_f P (Rep_cmra_morph f x)"
+  by (transfer; auto simp: n_incl_def) (metis (no_types, lifting) camera_morphism_def non_expansive_def)
+
+lemma upred_map_ne2: "non_expansive2 upred_map"
+  by (rule non_expansive2I; transfer)
+  (smt (verit, del_insts) Rep_cmra_morph Rep_upred_f camera_morphism.morphism_valid le_cases3 
+    mem_Collect_eq n_equiv_cmra_morph.rep_eq n_equiv_upred_f.rep_eq ofe_sym total_n_inclI)
+  
+lemma upred_map_ne: "non_expansive (upred_map f)"
+  by (rule non_expansive2_ne[OF upred_map_ne2])
+
+lemma upred_morph_ne: "non_expansive (\<lambda>f. upred_map f x)"
+  by (rule non_expansiveI; transfer) (auto simp: ofe_sym total_n_inclI n_equiv_cmra_morph_def)
+
+private lemma upred_morphism: 
+  "\<lbrakk>(\<And>n m x y. P x n \<Longrightarrow> n_incl m x y \<Longrightarrow> m \<le> n \<Longrightarrow> P y m); camera_morphism f\<rbrakk> \<Longrightarrow>
+   (\<And>n m x y. (\<lambda>x. P (f x)) x n \<Longrightarrow> n_incl m x y \<Longrightarrow> m \<le> n \<Longrightarrow> (\<lambda>x. P (f x)) y m)"
+proof -
+  fix n m x y   
+  assume assms1: "(\<And>n m x y. P x n \<Longrightarrow> n_incl m x y \<Longrightarrow> m \<le> n \<Longrightarrow> P y m)" "camera_morphism f"
+  assume assms2: "(\<lambda>x. P (f x)) x n" "n_incl m x y" "m \<le> n"
+  then have P: "P (f x) n" by simp
+  from assms2(2) n_incl_morph[OF assms1(2)] have "n_incl m (f x) (f y)" by simp
+  from assms1(1)[OF P this assms2(3)] show "(\<lambda>x. P (f x)) y m" by simp
+qed
+
+lemma Abs_morphism_inverse: "\<lbrakk>\<forall>n m x y. P x n \<longrightarrow> n_incl m x y \<longrightarrow> m \<le> n \<longrightarrow> P y m; camera_morphism f\<rbrakk> 
+  \<Longrightarrow> Rep_upred_f (Abs_upred_f (\<lambda>x. P (f x))) = (\<lambda>x. P (f x))"
+  by (smt (verit, best) mem_Collect_eq upred_morphism Abs_upred_f_inverse)
+  
+lemma upred_map_id: "upred_map id_morph P = P"
+  by (auto simp: upred_map_def id_morph.rep_eq)
+
+lemma upred_map_compose: "ofe_eq (upred_map (morph_comp g f) P) (upred_map f (upred_map g P))"
+proof (auto simp: upred_map_def morph_comp.rep_eq ofe_eq_upred_f.rep_eq; transfer)
+  fix a :: 'a and n and P :: "'b \<Rightarrow> nat \<Rightarrow> bool" and f :: "'a\<Rightarrow>'c" and g ::"'c\<Rightarrow>'b"
+  assume assms: "n_valid a n" "\<forall>n m x y. P x n \<longrightarrow> n_incl m x y \<longrightarrow> m \<le> n \<longrightarrow> P y m"
+    "camera_morphism g" "camera_morphism f" "Rep_upred_f (Abs_upred_f (\<lambda>x. P (g (f x)))) a n"
+  from this (5) show "Rep_upred_f (Abs_upred_f (\<lambda>x. Rep_upred_f (Abs_upred_f (\<lambda>x. P (g x))) (f x))) a n"
+    unfolding Abs_morphism_inverse[OF assms(2) assms(3)] .
+next
+  fix a :: 'a and n and P :: "'b \<Rightarrow> nat \<Rightarrow> bool" and f :: "'a\<Rightarrow>'c" and g ::"'c\<Rightarrow>'b"
+  assume assms: "n_valid a n" "\<forall>n m x y. P x n \<longrightarrow> n_incl m x y \<longrightarrow> m \<le> n \<longrightarrow> P y m"
+    "camera_morphism g" "camera_morphism f" 
+    "Rep_upred_f (Abs_upred_f (\<lambda>x. Rep_upred_f (Abs_upred_f (\<lambda>x. P (g x))) (f x))) a n"
+  from this(5)[unfolded Abs_morphism_inverse[OF this(2) this(3)]] 
+  show "Rep_upred_f (Abs_upred_f (\<lambda>x. P (g (f x)))) a n" .
+qed
+
+lemma upred_map_ext: "(\<forall>x. ofe_eq (Rep_cmra_morph f x) (Rep_cmra_morph g x)) \<Longrightarrow> 
+  ofe_eq (upred_map f x) (upred_map g x)"
+  using upred_morph_ne[unfolded non_expansive_def n_equiv_cmra_morph.rep_eq] by (metis ofe_limit)  
+
+lift_definition upred_map_ne :: "('a::ucamera,'b::ucamera) cmra_morph \<Rightarrow> 'b upred_f -n> 'a upred_f" is
+  "\<lambda>f. upred_map f" by (rule upred_map_ne)
+
+lemma upred_map_ne_ne: "non_expansive upred_map_ne"
+  by (rule non_expansiveI) 
+  (smt (verit, best) n_equiv_ne.rep_eq non_expansive_def upred_map_ne.rep_eq upred_morph_ne)
+end
 
 text \<open> Basic predicates and predicate connectives: \<close>
 (* Arcane Isabelle magic, presented to you by Manuel Eberl *)
