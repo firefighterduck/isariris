@@ -16,18 +16,16 @@ setup_lifting type_definition_upred_f
 lemmas [simp] = Rep_upred_f_inverse Rep_upred_f_inject
 lemmas [simp, intro!] = Rep_upred_f[unfolded mem_Collect_eq]
 
-\<comment> \<open>Problem lies here, upred can not be a BNF:\<close>
-(* lift_bnf (dead 'm::ucamera) upred_f
+definition map_upred :: "(('b::ucamera) \<Rightarrow> ('a::ucamera)) \<Rightarrow> 'a upred_f \<Rightarrow> 'b upred_f" where
+  "map_upred f x = Abs_upred_f (\<lambda>c n. Rep_upred_f x (f c) n)"
 
-lift_definition map_upred :: "(('b::ucamera) \<Rightarrow> ('a::ucamera)) \<Rightarrow> 'a upred_f \<Rightarrow> 'b upred_f" is 
-  "\<lambda>f (x::'a\<Rightarrow>nat\<Rightarrow>bool) (c::'b) (n::nat). x (f c) n" apply (auto simp: n_incl_def)
-  sorry
+(* lift_bnf (dead 'a::ucamera) upred_f *) \<comment> \<open>Doesn't work\<close>
 
 context includes cardinal_syntax begin
-bnf "('m::ucamera) upred_f"
+bnf "('m::ucamera) upred_f" \<comment> \<open>exception UnequalLengths raised (line 541 of "library.ML")\<close>
   map: map_upred
   bd: "natLeq +c |UNIV :: 'm set|"
-end *)
+end
 
 instantiation upred_f :: (ucamera) ofe begin
   lift_definition n_equiv_upred_f :: "nat \<Rightarrow> 'a upred_f \<Rightarrow> 'a upred_f \<Rightarrow> bool" is
@@ -47,16 +45,20 @@ instance apply (standard; auto simp: lim_upred_f.rep_eq n_equiv_upred_f_def; tra
     ne_sprop_weaken ofe_refl rel_funD2 total_n_inclI upred_f.pcr_cr_eq valid_raw_non_expansive)
 end
 
+definition map_upred_ne :: "(('b::ucamera) -n> ('a::ucamera)) \<Rightarrow> (('a upred_f) -n> ('b upred_f))" where
+  "map_upred_ne (f::'b-n>'a) = Abs_ne (\<lambda>(x::'a upred_f). Abs_upred_f (\<lambda>(c::'b) n. Rep_upred_f x (Rep_ne f c) n))"
+
 lemma upred_f_ne: "\<lbrakk>n_equiv m (P::('a::ucamera) upred_f) Q; m\<le>n; n_valid x m; Rep_upred_f Q x n\<rbrakk> 
   \<Longrightarrow> Rep_upred_f Q x m"
   by (transfer; auto simp: n_incl_def) (metis \<epsilon>_left_id camera_comm ofe_refl) 
 
 subsubsection \<open>upred Functor\<close>
+text \<open>A functor for upred_f based on sound camera morphisms.\<close>
 context begin
-text \<open>This is the contravariant functor for uniform predicates.\<close> 
+text \<open>This is the map of the contravariant functor for uniform predicates.\<close> 
 lift_definition upred_map :: "('a::ucamera,'b::ucamera) cmra_morph \<Rightarrow> 'b upred_f \<Rightarrow> 'a upred_f" is 
   "\<lambda>f P x. Rep_upred_f P (Rep_cmra_morph f x)"
-  by (transfer; auto simp: n_incl_def) (metis (no_types, lifting) camera_morphism_def non_expansive_def)
+  by (transfer; auto simp: n_incl_def camera_morphism_def non_expansive_def) metis
 
 lemma upred_map_ne2: "non_expansive2 upred_map"
   by (rule non_expansive2I; transfer)
@@ -89,20 +91,7 @@ lemma upred_map_id: "upred_map id_morph P = P"
   by (auto simp: upred_map_def id_morph.rep_eq)
 
 lemma upred_map_compose: "ofe_eq (upred_map (morph_comp g f) P) (upred_map f (upred_map g P))"
-proof (auto simp: upred_map_def morph_comp.rep_eq ofe_eq_upred_f.rep_eq; transfer)
-  fix a :: 'a and n and P :: "'b \<Rightarrow> nat \<Rightarrow> bool" and f :: "'a\<Rightarrow>'c" and g ::"'c\<Rightarrow>'b"
-  assume assms: "n_valid a n" "\<forall>n m x y. P x n \<longrightarrow> n_incl m x y \<longrightarrow> m \<le> n \<longrightarrow> P y m"
-    "camera_morphism g" "camera_morphism f" "Rep_upred_f (Abs_upred_f (\<lambda>x. P (g (f x)))) a n"
-  from this (5) show "Rep_upred_f (Abs_upred_f (\<lambda>x. Rep_upred_f (Abs_upred_f (\<lambda>x. P (g x))) (f x))) a n"
-    unfolding Abs_morphism_inverse[OF assms(2) assms(3)] .
-next
-  fix a :: 'a and n and P :: "'b \<Rightarrow> nat \<Rightarrow> bool" and f :: "'a\<Rightarrow>'c" and g ::"'c\<Rightarrow>'b"
-  assume assms: "n_valid a n" "\<forall>n m x y. P x n \<longrightarrow> n_incl m x y \<longrightarrow> m \<le> n \<longrightarrow> P y m"
-    "camera_morphism g" "camera_morphism f" 
-    "Rep_upred_f (Abs_upred_f (\<lambda>x. Rep_upred_f (Abs_upred_f (\<lambda>x. P (g x))) (f x))) a n"
-  from this(5)[unfolded Abs_morphism_inverse[OF this(2) this(3)]] 
-  show "Rep_upred_f (Abs_upred_f (\<lambda>x. P (g (f x)))) a n" .
-qed
+  by (simp add: morph_comp.rep_eq ofe_eq_upred_f.rep_eq upred_map.rep_eq) 
 
 lemma upred_map_ext: "(\<forall>x. ofe_eq (Rep_cmra_morph f x) (Rep_cmra_morph g x)) \<Longrightarrow> 
   ofe_eq (upred_map f x) (upred_map g x)"
@@ -149,13 +138,12 @@ theorem upred_equiv_upred_f:
 (is "?u f \<longleftrightarrow> (?sprop f \<and> ?ne f \<and> ?mon f)")
 proof
 assume assm: "?u f"
-then show "?sprop f \<and> ?ne f \<and> ?mon f" apply auto
-  using total_n_inclI apply blast
-  apply (meson total_n_inclI ofe_sym order_refl)
-  by (meson camera_n_incl_le order_refl total_n_inclI)
+then show "?sprop f \<and> ?ne f \<and> ?mon f"
+  by (smt (verit, best) camera_n_incl_le ofe_mono ofe_sym order_refl upred_def_def upred_weaken 
+    upred_weaken_simple)
 next
 assume assm: "?sprop f \<and> ?ne f \<and> ?mon f"
-show "?u f" by (simp add: assm)
+then show "?u f" by simp
 qed
 
 lemma upred_ne: "\<lbrakk>upred_def f; n_equiv n x y\<rbrakk> \<Longrightarrow> n_equiv n (f x n) (f y n)"
@@ -208,19 +196,20 @@ lift_definition upred_exists :: "('c \<Rightarrow> 'a upred_f) \<Rightarrow> 'a 
 
 lift_definition upred_sep :: "'a upred_f \<Rightarrow> 'a upred_f \<Rightarrow> 'a upred_f" (infixl "\<^emph>" 80) is
   "\<lambda>P Q (a::'a) n. \<exists>b1 b2. n_equiv n a (b1 \<cdot> b2) \<and> P b1 n \<and> Q b2 n"
-proof auto
+proof (erule exE;erule exE)
   fix P Q n m a b c1 c2
   assume assms: "n_incl m a (b::'a)" "m\<le>n"
-  assume I: "n_equiv n a (op c1 c2)" "P c1 n" "Q c2 n"
+  assume I: "n_equiv n a (op c1 c2)\<and>P c1 n\<and>Q c2 n"
   assume Q: "(\<And>n m x y. Q x n \<Longrightarrow> n_incl m x y \<Longrightarrow> m \<le> n \<Longrightarrow> Q y m)"
   assume "(\<And>n m x y. P x n \<Longrightarrow> n_incl m x y \<Longrightarrow> m \<le> n \<Longrightarrow> P y m)"
   then have P: "upred_def P" by auto
+  from I have I': "n_equiv n a (op c1 c2)" "P c1 n" "Q c2 n" by simp_all
   from assms obtain c where c:"n_equiv m b (op a c)" using n_incl_def by blast
-  from op_equiv_subst[OF this I(1) assms(2)] have "n_equiv m b (op (op c1 c2) c)" .
+  from op_equiv_subst[OF this I'(1) assms(2)] have "n_equiv m b (op (op c1 c2) c)" .
   then have bc: "n_equiv m b (op c1 (op c2 c))" 
     by (metis camera_class.camera_assoc)
-  from upred_weaken_simple[OF P I(2) assms(2)] have c1: "P c1 m" .
-  from Q[OF I(3), of m, OF n_incl_op_extend assms(2), of c] have "Q (op c2 c) m" .
+  from upred_weaken_simple[OF P I'(2) assms(2)] have c1: "P c1 m" .
+  from Q[OF I'(3), of m, OF n_incl_op_extend assms(2), of c] have "Q (op c2 c) m" .
   with bc c1 show "\<exists>b1 b2. n_equiv m b (op b1 b2) \<and> P b1 m \<and> Q b2 m" by blast
 qed
 
@@ -243,7 +232,7 @@ lift_definition upred_valid :: "'b::camera \<Rightarrow> 'a upred_f" ("\<V>(_)")
   using Rep_sprop n_incl_def by blast
   
 lift_definition upred_persis :: "'a upred_f \<Rightarrow> 'a upred_f" ("\<box>_") is "\<lambda>P (a::'a) n. (P (core a) n)::bool"
-proof (auto simp: n_incl_def)
+proof (unfold n_incl_def; erule exE)
   fix f n m 
   fix a b c :: 'a
   assume I: "\<And>n m x y. f (x::'a) n \<Longrightarrow> \<exists>c. n_equiv m y (op x c) \<Longrightarrow> m \<le> n \<Longrightarrow> f y m"
@@ -296,7 +285,7 @@ lemma upred_entails_trans: "\<lbrakk>P\<turnstile>Q; Q\<turnstile>R\<rbrakk> \<L
 lemma upred_entails_refl [simp]: "P\<turnstile>P" by (auto simp: upred_entails_def)
 
 lemma own_valid: "Own(a) \<turnstile> \<V>(a)"
-  apply (auto simp: upred_entails.rep_eq upred_own.rep_eq upred_valid.rep_eq n_incl_def)
+  unfolding upred_entails.rep_eq upred_own.rep_eq upred_valid.rep_eq n_incl_def
   using camera_valid_op n_valid_ne by blast
 
 lemma upred_holds_entails: "upred_holds P \<longleftrightarrow> ((\<upharpoonleft>True) \<turnstile> P)"
@@ -306,7 +295,7 @@ lemma upred_entailsE: "P \<turnstile> Q \<Longrightarrow> (\<And>a n. \<lbrakk>n
   by (auto simp: upred_entails.rep_eq)
 
 lemma upred_wandI: "(P \<^emph> Q) \<turnstile> R \<Longrightarrow> P \<turnstile> (Q-\<^emph>R)"
-  apply (auto simp: upred_entails.rep_eq upred_sep.rep_eq upred_wand.rep_eq)
+  unfolding upred_entails.rep_eq upred_sep.rep_eq upred_wand.rep_eq
   using ofe_refl upred_def_rep upred_weaken_simple by blast
 lemma upred_wandE: "P \<turnstile> (Q-\<^emph>R) \<Longrightarrow> (P \<^emph> Q) \<turnstile> R"
   by transfer (meson camera_valid_op dual_order.refl n_valid_ne ofe_sym total_n_inclI)
@@ -349,8 +338,10 @@ lemma discrete_valid: "\<V>(a::'a::dcamera) \<stileturn>\<turnstile> \<upharpoon
 
 lemma own_op: "Own(a\<cdot>b) \<stileturn>\<turnstile> Own(a) \<^emph> Own(b)"
   apply (rule upred_entail_eqI)
-  apply (auto simp: upred_own.rep_eq upred_sep.rep_eq)
+  unfolding upred_own.rep_eq upred_sep.rep_eq
+  apply (rule iffI)
   apply (metis camera_assoc n_incl_def n_incl_op_extend n_incl_refl)
+  apply (erule exE)+
   by (smt (z3) camera_assoc camera_comm n_incl_def ofe_trans op_equiv)
 
 lemma own_valid2: "upred_holds (Own(a1) -\<^emph> Own (a2) -\<^emph> \<V>(a1\<cdot>a2))"
@@ -382,10 +373,7 @@ definition persistent :: "('a::ucamera) iprop \<Rightarrow> bool" where "persist
 lemma persistent_holds_sep: 
   "\<lbrakk>persistent P; persistent Q\<rbrakk> \<Longrightarrow> upred_holds (P\<^emph>Q) \<longleftrightarrow> upred_holds P \<and> upred_holds Q"
   unfolding persistent_def upred_holds.rep_eq upred_entails.rep_eq upred_persis.rep_eq upred_sep.rep_eq
-  apply auto
-  apply (metis le_refl n_incl_def upred_def_def upred_def_rep)
-  apply (metis camera_comm le_refl n_incl_def upred_def_def upred_def_rep)
-  by (metis camera_core_id ofe_eq_limit)
+  by (smt (verit, ccfv_threshold) camera_comm camera_core_id le_cases3 n_incl_def ofe_refl upred_def_def upred_def_rep)
   
 lemma persistent_persis: "persistent (\<box>P)"
   by (auto simp: persistent_def upred_persis.rep_eq upred_entails.rep_eq camera_core_idem)
@@ -400,7 +388,7 @@ lemma persistent_core_own: "persistent (Own(a::'a::{core_id,ucamera}))"
   by (auto simp: persistent_def upred_persis.rep_eq upred_entails.rep_eq upred_own.rep_eq core_id)
 
 lemma persistent_core_own2: "pcore_id_pred (a::'a::ucamera) \<Longrightarrow> persistent (Own a)"
-  apply (auto simp: persistent_def upred_persis.rep_eq upred_entails.rep_eq upred_own.rep_eq core_id_pred)
+  unfolding persistent_def upred_persis.rep_eq upred_entails.rep_eq upred_own.rep_eq core_id_pred
   using camera_core_mono_n by fastforce
 
 lemma persistent_conj: "\<lbrakk>persistent P; persistent Q\<rbrakk> \<Longrightarrow> persistent (P \<and>\<^sub>u Q)"

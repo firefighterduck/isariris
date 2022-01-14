@@ -117,14 +117,14 @@ lemma heap_closed_alloc: "\<lbrakk>0 < n; is_closed_val w;
   map_forall (\<lambda>_ v. option_map_or is_closed_val True v) (heap \<sigma>);
   (\<forall> i::int. (0 \<le> i) \<longrightarrow> (i < n) \<longrightarrow> heap \<sigma> (l +\<^sub>\<iota> i) = None)\<rbrakk> \<Longrightarrow>
   map_forall (\<lambda>_ v. option_map_or is_closed_val True v) (heap \<sigma> ++ heap_array l (replicate (nat n) w))"
-  apply (auto simp: map_forall_def option_map_or_def loc_add_def split: option.splits)
-proof -
+proof (auto simp: map_forall_def option_map_or_def loc_add_def split: option.splits)
   have "(heap_array l (replicate (nat n) w) k = Some (Some v)) \<Longrightarrow> w=v" for k v
     using heap_array_lookup[of l "(replicate (nat n) w)" k v]
     by (metis heap_array_elements in_set_replicate)
   then show "\<And>k x2.
     \<forall>k v. heap \<sigma> k = Some v \<longrightarrow> (\<forall>x2. v = Some x2 \<longrightarrow> is_closed_val x2) \<Longrightarrow>
-    \<forall>i\<ge>0. i < n \<longrightarrow> heap \<sigma> (Loc (loc_car l + i)) = None \<Longrightarrow> 0 < n \<Longrightarrow> is_closed_val w \<Longrightarrow> heap_array l (replicate (nat n) w) k = Some (Some x2) \<Longrightarrow> is_closed_val x2"
+    \<forall>i\<ge>0. i < n \<longrightarrow> heap \<sigma> (Loc (loc_car l + i)) = None \<Longrightarrow> 0 < n \<Longrightarrow> is_closed_val w \<Longrightarrow> 
+      heap_array l (replicate (nat n) w) k = Some (Some x2) \<Longrightarrow> is_closed_val x2"
     by blast
 qed
 
@@ -144,7 +144,7 @@ next
 next
   case (AllocNS n \<sigma> l v)
   then show ?case
-    apply (auto simp: state_init_heap_def state_upd_heap_def split: option.splits)
+    apply (simp add: state_init_heap_def state_upd_heap_def split: option.splits)
     apply (rule heap_closed_alloc[of n v \<sigma> l, OF AllocNS(1)])
     by (auto simp: loc_add_def)
 next
@@ -218,7 +218,7 @@ next
   next
     case (Some b)
     then show ?thesis apply (cases "a=b") 
-    apply (auto simp: binder_delete_def binder_insert_def subst'_def subst_map_insert split: option.splits)
+    apply (simp_all add: binder_delete_def binder_insert_def subst'_def subst_map_insert split: option.splits)
     apply (metis fun_upd_twist fun_upd_upd subst_map_insert subst_subst subst_subst_ne)
     by (metis fun_upd_twist fun_upd_upd subst_map_insert subst_subst)
   qed    

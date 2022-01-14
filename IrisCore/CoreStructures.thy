@@ -41,10 +41,13 @@ lemma ne_sprop_weaken2:
 
 lemma ne_comp: "\<lbrakk>non_expansive f; non_expansive g\<rbrakk> \<Longrightarrow> non_expansive (f \<circ> g)"
   by (auto simp: non_expansive_def)
+
+lemma discrete_ne: "non_expansive (f::'a::discrete\<Rightarrow>'b::discrete)"
+  by (rule non_expansiveI) (simp add: d_equiv)
   
 text \<open>The corresponding subtype of non-expansive functions.\<close>
 typedef (overloaded) ('a, 'b) ne = "{f::'a::ofe\<Rightarrow>'b::ofe. non_expansive f}"
-  using sprop_ne[of sTrue] apply auto
+  using sprop_ne[of sTrue] apply simp
   by (metis non_expansiveI ofe_refl)
 type_notation ne (infix "-n>" 60)
 setup_lifting type_definition_ne
@@ -67,7 +70,7 @@ lift_definition lim_ne :: "('a, 'b) ne chain \<Rightarrow> ('a, 'b) ne" is
   "\<lambda>c x. lim (ne_chain c x)"
   by (metis (no_types, lifting) Rep_ne core_compl mem_Collect_eq ne_chain.rep_eq non_expansive_def 
     ofe_sym ofe_trans)
-instance apply standard apply (auto simp: n_equiv_ne_def lim_ne.rep_eq ne_chain_def)
+instance apply standard apply (simp add: n_equiv_ne_def lim_ne.rep_eq ne_chain_def)
   by (smt (verit, best) Abs_chain_inverse Rep_chain core_compl mem_Collect_eq ne_chain.rep_eq)
 end
 
@@ -75,10 +78,27 @@ lift_definition ne_id :: "'a::ofe -n> 'a" is "id" by (rule non_expansiveI) simp
 lift_definition ne_const :: "'b::ofe \<Rightarrow> 'a::ofe -n> 'b" is "\<lambda>b _. b" 
   by (rule non_expansiveI) (rule ofe_refl)
 
+lift_definition ne_comp :: "'b::ofe -n> 'c::ofe \<Rightarrow> 'a::ofe -n> 'b \<Rightarrow> 'a-n>'c" is
+  "\<lambda>f g. f \<circ> g" by (rule ne_comp)
+
+definition ne_map :: "('a2::ofe-n>'a1::ofe) \<Rightarrow> ('b1::ofe-n>'b2::ofe) \<Rightarrow> ('a1-n>'b1) \<Rightarrow> ('a2-n>'b2)" where
+  "ne_map f g h = ne_comp g (ne_comp h f)"
+
+lift_definition ne_map_ne :: "('a2::ofe-n>'a1::ofe) \<Rightarrow> ('b1::ofe-n>'b2::ofe) \<Rightarrow> (('a1-n>'b1)-n>('a2-n>'b2))" is
+  "\<lambda>f g. ne_map f g" unfolding ne_map_def ne_comp_def apply simp using ne_comp Rep_ne_inverse
+  by (smt (verit) Rep_ne mem_Collect_eq n_equiv_ne.rep_eq ne_comp.rep_eq non_expansive_def o_def)
+  
 subsection \<open>Contractive functions\<close>
 definition contractive :: "('a::ofe \<Rightarrow> 'b::ofe) \<Rightarrow> bool" where
   "contractive con \<equiv> \<forall>n x y. (\<forall>m<n. n_equiv m x y) \<longrightarrow> n_equiv n (con x) (con y)"  
-  
+
+definition contractive_alt :: "('a::ofe \<Rightarrow> 'b::ofe) \<Rightarrow> bool" where
+  "contractive_alt f \<equiv> \<forall>n x y. (case n of 0 \<Rightarrow> True | Suc n' \<Rightarrow> n_equiv n' x y) \<longrightarrow> n_equiv n (f x) (f y)"
+
+lemma contr_contr_alt: "contractive f \<longleftrightarrow> contractive_alt f"
+  apply (simp add: contractive_def contractive_alt_def split: nat.splits)
+  by (smt (verit, ccfv_SIG) bot_nat_0.extremum_strict ex_least_nat_less less_Suc_eq_le nat_less_le ofe_down_contr order.refl)
+
 lemma contractiveI: "(\<And>n x y. (\<forall>m<n. n_equiv m x y) \<Longrightarrow> n_equiv n (f x) (f y)) \<Longrightarrow> contractive f"
   by (auto simp: contractive_def)
 
@@ -90,7 +110,7 @@ lemma contractive_non_expansive: "contractive f \<Longrightarrow> non_expansive 
 
 lemma next_contr: "contractive Next"
   apply (rule contractiveI) 
-  apply (auto simp: n_equiv_later_def)
+  apply (simp add: n_equiv_later_def)
   using diff_Suc_less by blast
   
 text \<open>The corresponding subtype of contractive functions.\<close>
@@ -215,18 +235,13 @@ definition core :: "'a \<Rightarrow> 'a" where
   "core = the \<circ> pcore"
 
 lemma core_ne: "non_expansive core"
-proof (auto simp: non_expansive_def core_def)
-  fix x y n
-  assume assm: "n_equiv n x y"
-  from total_pcore obtain x' y' where "pcore x = Some x'" "pcore y = Some y'" by blast
-  with pcore_ne[OF assm this, unfolded n_equiv_option_def]
-  show "n_equiv n (the (pcore x)) (the (pcore y))" by simp
-qed
+  unfolding non_expansive_def core_def 
+  by (smt (verit, del_insts) comp_apply local.pcore_ne n_equiv_option_def ofe_class.ofe_refl option.sel)
 
 lemma camera_core_id: "(core a) \<cdot> a = a"
   and camera_core_idem: "core (core a) = core a"
   and camera_core_mono: "incl a b \<Longrightarrow> incl (core a) (core b)"
-  apply (auto simp: core_def camera_pcore_id camera_pcore_idem total_pcore incl_def)
+  apply (simp_all add: core_def incl_def comp_def camera_pcore_id total_pcore camera_pcore_idem)
   using camera_pcore_mono total_pcore by fastforce
 
 lemma camera_core_mono_n: "n_incl n a b \<Longrightarrow> n_incl n (core a) (core b)"

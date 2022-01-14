@@ -1,6 +1,6 @@
 theory Mon
 imports SpanningTreeCameras
-  "../IrisCore/DerivedConstructions"
+  "../IrisCore/Invariant"
   "../HeapLang/Notation"
   "../IrisCore/Misc"
 begin
@@ -12,7 +12,7 @@ lemma n_incl_fragm_l: "n_incl n (fragm {l}) a = (case a of Auth (b,c) \<Rightarr
   by (auto split: auth.splits)
 
 text \<open> Marking Definitions \<close>
-definition is_marked ::"loc \<Rightarrow> graphG iprop" where "is_marked l = Own\<^sub>m(fragm {l})"
+definition is_marked ::"loc \<Rightarrow> ipropT" where "is_marked l = Own\<^sub>m(fragm {l})"
 
 lemma is_marked_split: "Own\<^sub>m(fragm {l}) = Own\<^sub>m(fragm {l} \<cdot> fragm {l})"
   by (auto simp: auth_frag_op[symmetric] op_set_def)
@@ -53,11 +53,11 @@ definition of_graph_elem :: "gmon \<Rightarrow> loc \<Rightarrow> chl \<Rightarr
 definition of_graph :: "loc graph \<Rightarrow> gmon \<Rightarrow> marked_graph" where
   "of_graph g G l = Option.bind (g l) (\<lambda>chl. of_graph_elem G l chl)"
 
-definition own_graphUR :: "frac \<Rightarrow> gmon \<Rightarrow> graphG iprop" where
+definition own_graphUR :: "frac \<Rightarrow> gmon \<Rightarrow> ipropT" where
   "own_graphUR q G = Own\<^sub>g(fragm (Some (G,q)))"
 
 context includes points_to_syntax begin
-definition heap_owns :: "marked_graph \<Rightarrow> (loc\<rightharpoonup>loc) \<Rightarrow> graphG iprop" where
+definition heap_owns :: "marked_graph \<Rightarrow> (loc\<rightharpoonup>loc) \<Rightarrow> ipropT" where
   "heap_owns M markings = 
   sep_map_set (\<lambda>(l,(b,cl)). (\<exists>\<^sub>u m. ((\<upharpoonleft>(markings l = Some m))
     \<^emph> (l\<mapsto>\<^sub>u#[(m, children_to_val cl)])

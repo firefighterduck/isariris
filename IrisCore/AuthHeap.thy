@@ -21,7 +21,7 @@ proof -
     with f' have al: "a l = (f l) \<cdot> Some x" by (auto simp: op_fun_def)
     with f' Some assms(2) have al_valid: "valid ((f l) \<cdot> Some x)" 
       by (auto simp: valid_def op_fun_def) (metis valid_raw_fun.rep_eq)
-    from f' assms(2) have "valid f'" apply (auto simp: valid_def) 
+    from f' assms(2) have "valid f'" apply (simp add: valid_def) 
       by (metis camera_comm camera_valid_op)
     with Some obtain d' v' where x: "x = (d', v')" "valid v'" 
       by (auto simp: valid_def valid_raw_fun.rep_eq valid_raw_option_def valid_raw_prod_def 
@@ -91,7 +91,7 @@ lemma points_to_agree: "upred_holds ((l \<mapsto>{dq1} (v1::'v::discrete)) -\<^e
 proof -
   have "upred_holds ((l \<mapsto>{dq1} v1) -\<^emph> ((l \<mapsto>{dq2} v2)::('a,'v option,'c::ucamera) heapCmra iprop) -\<^emph> 
     \<V>((fragm [l\<mapsto>(dq1, to_ag (Some v1))],\<epsilon>::'c)\<cdot>(fragm [l\<mapsto>(dq2, to_ag (Some v2))],\<epsilon>)))"
-    apply (auto simp: points_to_def) using own_valid2 by blast
+    apply (simp add: points_to_def) using own_valid2 by blast
   then have "upred_holds ((l \<mapsto>{dq1} v1) -\<^emph> ((l \<mapsto>{dq2} v2)::('a,'v option,'c::ucamera) heapCmra iprop) -\<^emph> 
     \<V>((fragm ([l\<mapsto>(dq1, to_ag (Some v1))\<cdot>(dq2, to_ag (Some v2))]),\<epsilon>::'c)))"
     by (auto simp: heap_op \<epsilon>_left_id op_prod_def op_auth_def op_option_def)    
@@ -137,9 +137,9 @@ proof -
     by (auto simp: camera_valid_op prod_valid_def op_prod_def \<epsilon>_left_id \<epsilon>_valid)
   have "\<V>(((fragm [l1\<mapsto>(dq1,to_ag (Some v1))],\<epsilon>::'c) \<cdot> (fragm [l2\<mapsto>(dq2,to_ag (Some v2))],\<epsilon>::'c))) \<turnstile>
     \<upharpoonleft>(valid ((fragm [l1\<mapsto>(dq1,to_ag (Some v1))],\<epsilon>::'c) \<cdot> (fragm [l2\<mapsto>(dq2,to_ag (Some v2))],\<epsilon>::'c)))"
-    apply (auto simp: op_prod_def)
-    apply (auto simp: prod_valid_def \<epsilon>_left_id \<epsilon>_valid upred_valid_def)
-    apply (auto simp: valid_raw_prod_def sprop_conj.rep_eq \<epsilon>_n_valid)
+    apply (simp add: op_prod_def)
+    apply (simp add: prod_valid_def \<epsilon>_left_id \<epsilon>_valid upred_valid_def)
+    apply (simp add: valid_raw_prod_def sprop_conj.rep_eq \<epsilon>_n_valid)
     by (rule upred_entail_eqL[OF discrete_valid[unfolded upred_valid_def], simplified])    
   then have base: "upred_holds ((l1 \<mapsto>{dq1} v1) -\<^emph> 
     ((l2 \<mapsto>{dq2} v2)::('a,'v option,'c::ucamera) heapCmra iprop) -\<^emph> 
@@ -148,9 +148,11 @@ proof -
     by (smt (verit, del_insts) points_to_def)
   from assms have "valid ((fragm [l1\<mapsto>(dq1,to_ag (Some v1))]) \<cdot> (fragm [l2\<mapsto>(dq2,to_ag (Some v2))])) 
     \<Longrightarrow> l1\<noteq>l2"
-    apply (auto simp: valid_def auth_frag_op[symmetric] heap_op op_prod_def)
-    apply (auto simp: valid_raw_prod_def Abs_ag_inverse valid_raw_fun.rep_eq valid_raw_option_def  split: option.splits)
-    by (metis sprop_conj.rep_eq)    
+    apply (simp add: valid_def)
+    apply (rule notI)
+    apply (simp add: auth_frag_op[symmetric] heap_op op_prod_def valid_raw_fun.rep_eq valid_raw_option_def)
+    apply (simp add: valid_raw_prod_def Abs_ag_inverse sprop_conj.rep_eq split: option.splits)
+    by metis
   then have "\<upharpoonleft>(valid ((fragm [l1\<mapsto>(dq1,to_ag (Some v1))]) \<cdot> (fragm [l2\<mapsto>(dq2,to_ag (Some v2))]))) \<turnstile>
     \<upharpoonleft>(l1\<noteq>l2)" using pure_entailsI by blast
   with valid_drop have 

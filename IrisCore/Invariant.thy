@@ -1,5 +1,5 @@
 theory Invariant
-imports DerivedConstructions BaseLogicShallow Frac AuthHeap Misc
+imports DerivedConstructions BaseLogicShallow Frac AuthHeap Misc "../SpanningTree/SpanningTreeCameras"
 begin
 
 subsection \<open> Namespaces \<close>
@@ -10,8 +10,8 @@ text \<open>
 type_synonym namespace = "nat list"
 type_synonym name = "nat list"
 definition names :: "namespace \<Rightarrow> name set" where
-  "names N = {n. \<exists>p. n=N@p}" \<comment> \<open> A namespace is used as the prefix for other names. \<close>
-
+  "names N = {n. \<exists>p. n=N@p}" \<comment> \<open> A namespace is used as the prefix for other names. \<close> 
+  
 definition subnamespace :: "namespace \<Rightarrow> namespace \<Rightarrow> bool" where
   "subnamespace N1 N2 \<equiv> \<exists>p. N1=N2@p"
 lemma sub_names: "subnamespace N1 N2 \<longleftrightarrow> N1 \<in> names N2"
@@ -22,7 +22,8 @@ lemma distinct_names: "\<lbrakk>\<not>subnamespace N1 N2; \<not>subnamespace N2 
 subsection \<open> Invariants \<close>
 text \<open>The underlying invariant camera, contains the invariants and enabled/disabled names.\<close>
 (* The Coq formalization uses positive integers instead of naturals. *)
-codatatype invGS = Inv "(name\<rightharpoonup>invGS iprop later ag) auth" "name dset" "name dfset"
+codatatype invGS = Inv "(name\<rightharpoonup>iprop later ag) auth" "name dset" "name dfset"
+  and iprop = iProp "(spanningG \<times> invGS) heapGCmra upred_f" \<comment> \<open>This is the central recursive definition for iprop.\<close>
 
 text \<open>The modular invariant camera based on the heap camera\<close>
 type_synonym ('l,'v,'a,'c) invCmra = "('l,'v,'a invGS\<times>'c) heapCmra"

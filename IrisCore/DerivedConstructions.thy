@@ -19,7 +19,7 @@ instance proof
     "n_equiv n (lim (chain_map ne_snd c)) (Rep_chain (chain_map ne_snd c) n)" 
     using core_compl by auto  
   then show "n_equiv n (lim c) (Rep_chain c n)"
-  apply (auto simp: lim_prod_def ne_fst.rep_eq ne_snd.rep_eq chain_map_def)
+  apply (simp add: lim_prod_def ne_fst.rep_eq ne_snd.rep_eq chain_map_def)
   by (smt (z3) Abs_chain_inverse Rep_chain case_prod_conv mem_Collect_eq n_equiv_prod.elims(2) n_equiv_prod.elims(3))
 qed
 end
@@ -109,6 +109,10 @@ instance prod :: (ducamera,ducamera) ducamera ..
 
 subsubsection \<open> Sum type \<close>
 datatype ('a::camera,'b::camera) sum_camera = Inl 'a | Inr 'b | Inv
+lemmas sum_ex2 = sum_camera.exhaust[case_product sum_camera.exhaust]
+lemmas sum_ex3 = sum_camera.exhaust[case_product sum_ex2]
+lemmas sum_ex4 = sum_camera.exhaust[case_product sum_ex3]
+
 instantiation sum_camera :: (camera,camera) ofe begin
   fun ofe_eq_sum_camera :: "('a, 'b) sum_camera \<Rightarrow> ('a, 'b) sum_camera \<Rightarrow> bool" where
     "ofe_eq_sum_camera (Inl a) (Inl b) = ofe_eq a b"
@@ -126,32 +130,33 @@ instance proof
 next
   fix n x y
   show "n_equiv n x y = n_equiv n y (x::('a,'b) sum_camera)" 
-    by (cases x; cases y) (auto simp: ofe_sym)
+    by (cases x y rule: sum_ex2) (auto simp: ofe_sym)
 next
   fix n x y z 
   show "n_equiv n x y \<Longrightarrow> n_equiv n y z \<Longrightarrow> n_equiv n x (z::('a,'b) sum_camera)"
-    by (cases x; cases y; cases z) (auto intro: ofe_trans)
+    by (cases x y z rule: sum_ex3) (auto intro: ofe_trans)
 next
   fix m n x y
   show "m \<le> n \<Longrightarrow> n_equiv n x y \<Longrightarrow> n_equiv m x (y::('a,'b) sum_camera)"
-  by (cases x; cases y) (auto intro: ofe_mono)
+  by (cases x y rule: sum_ex2) (auto intro: ofe_mono)
 next
   fix x y :: "('a,'b) sum_camera"
   show "ofe_eq x y \<longleftrightarrow> (\<forall>n. n_equiv n x y)"
-  apply (cases x; cases y) apply (auto intro: ofe_limit)
+  apply (cases x; cases y) 
+  apply simp_all
   using ofe_limit by blast+
 next
   fix x y :: "('a,'b) sum_camera" 
-  show "(x=y) \<Longrightarrow> ofe_eq x y" by (cases x; cases y) (auto intro: ofe_eq_eq)
+  show "(x=y) \<Longrightarrow> ofe_eq x y" by (cases x y rule: sum_ex2) (auto intro: ofe_eq_eq)
 qed
 end
 instance sum_camera :: (dcamera,dcamera) discrete 
 proof
 fix a b :: "('a,'b) sum_camera" fix n
-show "n_equiv n a b = (a = b)" by (cases a; cases b) (auto simp: d_equiv)
+show "n_equiv n a b = (a = b)" by (cases a b rule: sum_ex2) (auto simp: d_equiv)
 next
 fix a b :: "('a,'b) sum_camera"
-show "ofe_eq a b = (a = b)" by (cases a; cases b) (auto simp: d_eq)
+show "ofe_eq a b = (a = b)" by (cases a b rule: sum_ex2) (auto simp: d_eq)
 qed
 
 fun sum_pcore :: "('a::camera,'b::camera) sum_camera \<Rightarrow> ('a,'b) sum_camera option" where
@@ -164,7 +169,7 @@ proof (rule non_expansiveI)
 fix n x y
 assume "n_equiv n x (y::('a,'b) sum_camera)"
 then show "n_equiv n (sum_pcore x) (sum_pcore y)" 
-  by (cases x; cases y; auto simp: ofe_refl ofe_sym n_equiv_option_def split: option.splits)
+  by (cases x y rule: sum_ex2; auto simp: ofe_refl ofe_sym n_equiv_option_def split: option.splits)
   (metis option.distinct(1) option.sel pcore_ne n_equiv_option_def)+
 qed
 
@@ -189,32 +194,32 @@ fix x y a b :: "('a,'b) sum_camera"
 fix n
 assume " n_equiv n x y" "n_equiv n a b"
 then show "n_equiv n (x \<cdot> a) (y \<cdot> b)"
-  by (cases x; cases y; cases a; cases b) (auto simp: ofe_refl ofe_sym op_sum_camera_def)
+  by (cases x y a b rule: sum_ex4) (auto simp: ofe_refl ofe_sym op_sum_camera_def)
 qed
 next
 fix a b c :: "('a,'b) sum_camera"
 show "a \<cdot> b \<cdot> c = a \<cdot> (b \<cdot> c)" 
-  by (cases a; cases b; cases c) (auto simp: op_sum_camera_def camera_assoc)
+  by (cases a b c rule: sum_ex3) (auto simp: op_sum_camera_def camera_assoc)
 next
 fix a b :: "('a,'b) sum_camera"
-show "a \<cdot> b = b \<cdot> a" by (cases a; cases b) (auto simp: op_sum_camera_def camera_comm)
+show "a \<cdot> b = b \<cdot> a" by (cases a b rule: sum_ex2) (auto simp: op_sum_camera_def camera_comm)
 next
 fix a a' :: "('a,'b) sum_camera"
-show "pcore a = Some a' \<Longrightarrow> a' \<cdot> a = a" by (cases a; cases a') 
+show "pcore a = Some a' \<Longrightarrow> a' \<cdot> a = a" by (cases a a' rule: sum_ex2) 
   (auto simp: pcore_sum_camera_def op_sum_camera_def camera_pcore_id split: option.splits)
 next
 fix a a' :: "('a,'b) sum_camera"
-show "pcore a = Some a' \<Longrightarrow> pcore a' = pcore a" by (cases a; cases a')
+show "pcore a = Some a' \<Longrightarrow> pcore a' = pcore a" by (cases a a' rule: sum_ex2)
   (auto simp: pcore_sum_camera_def camera_pcore_idem split: option.splits)
 next
 fix a a' b :: "('a,'b) sum_camera"
 show "pcore a = Some a' \<Longrightarrow> \<exists>c. b = a \<cdot> c \<Longrightarrow> \<exists>b'. pcore b = Some b' \<and> (\<exists>c. b' = a' \<cdot> c)"
-  apply (cases a; cases a'; cases b) 
-  apply (auto simp: pcore_sum_camera_def op_sum_camera_def split: option.splits sum_camera.splits)
-  using camera_pcore_mono apply blast
+  apply (cases a a' b rule: sum_ex3) 
+  apply (simp_all add: pcore_sum_camera_def op_sum_camera_def split: option.splits sum_camera.splits)
   apply (metis camera_pcore_mono option.inject sum_camera.inject(1) sum_camera.simps(4) sum_camera.simps(6))
-  using camera_pcore_mono apply blast
-  by (metis  camera_pcore_mono option.inject sum_camera.distinct(1) sum_camera.inject(2) sum_camera.simps(8))
+  apply blast+
+  apply (metis camera_pcore_mono option.inject sum_camera.distinct(5) sum_camera.inject(2) sum_camera.simps(4))
+  by blast+
 next
 fix a b :: "('a,'b) sum_camera"
 fix n
@@ -224,8 +229,8 @@ next
 fix a b c :: "('a,'b) sum_camera"
 fix n
 show "Rep_sprop (valid_raw a) n \<Longrightarrow> n_equiv n a (b \<cdot> c) \<Longrightarrow> 
-  \<exists>c1 c2. a = c1 \<cdot> c2 \<and> n_equiv n c1 b \<and> n_equiv n c2 c" apply (cases a; cases b; cases c) 
-  apply (auto simp: valid_raw_sum_camera_def op_sum_camera_def split: sum_camera.splits)
+  \<exists>c1 c2. a = c1 \<cdot> c2 \<and> n_equiv n c1 b \<and> n_equiv n c2 c" apply (cases a b c rule: sum_ex3) 
+  apply (simp_all add: valid_raw_sum_camera_def op_sum_camera_def split: sum_camera.splits)
   using camera_extend by fast+
 qed
 end
@@ -260,12 +265,16 @@ fun option_op :: "('a::camera) option \<Rightarrow> 'a option \<Rightarrow> 'a o
 | "option_op (None) (Some a) = Some a"  
 | "option_op _ _ = None"
 
+lemmas op_ex2 = option.exhaust[case_product option.exhaust]
+lemmas op_ex3 = option.exhaust[case_product op_ex2]
+lemmas op_ex4 = op_ex3[case_product option.exhaust]
+
 lemma option_op_ne: "non_expansive2 option_op"
 proof (rule non_expansive2I)
 fix x y a b :: "'a option"
 fix n
 show "n_equiv n x y \<Longrightarrow> n_equiv n a b \<Longrightarrow> n_equiv n (option_op x a) (option_op y b)"
-  by (cases x; cases y; cases a; cases b) (auto simp: n_equiv_option_def split: option.splits)
+  by (cases x y a b rule: op_ex4) (auto simp: n_equiv_option_def split: option.splits)
 qed
 
 instantiation option :: (camera) camera begin
@@ -302,7 +311,7 @@ next
 fix a a' b :: "'a option"
 show "pcore a = Some a' \<Longrightarrow> \<exists>c. b = a \<cdot> c \<Longrightarrow> \<exists>b'. pcore b = Some b' \<and> (\<exists>c. b' = a' \<cdot> c)"
   apply (cases a; cases a'; cases b)
-  apply (auto simp: pcore_option_def op_option_def)
+  apply (simp_all add: pcore_option_def op_option_def)
   apply (metis option.exhaust option_op.simps(3) option_op.simps(4))
   apply (metis option_op.simps(4))
   apply (metis option.exhaust option_op.simps(3) option_op.simps(4))
@@ -318,7 +327,7 @@ fix a b c :: "'a option"
 fix n
 show "Rep_sprop (valid_raw a) n \<Longrightarrow> n_equiv n a (b \<cdot> c) \<Longrightarrow> 
   \<exists>c1 c2. a = c1 \<cdot> c2 \<and> n_equiv n c1 b \<and> n_equiv n c2 c"
-  apply (cases a; cases b; cases c; auto simp: valid_raw_option_def op_option_def n_equiv_option_def)
+  apply (cases a b c rule: op_ex3; auto simp: valid_raw_option_def op_option_def n_equiv_option_def)
   using camera_extend by force+
 qed
 end
@@ -348,7 +357,8 @@ lift_definition set_ag :: "'a ag \<Rightarrow> 'a set" is "\<lambda>x. x" .
 lift_definition pred_ag :: "('a \<Rightarrow> bool) \<Rightarrow> 'a ag \<Rightarrow> bool" is "\<lambda>P s. Ball s P" .
 
 lemma image_ag: "image f (Rep_ag s) \<in> {a |a. finite a \<and> a \<noteq> {}}"
-  apply (auto simp: image_def)
+  apply (simp_all add: image_def)
+  apply (rule conjI)
   subgoal using finite_imageI[unfolded image_def] Rep_ag by auto
   using Rep_ag by fast
 lemmas image_abs_ag = Abs_ag_inverse[OF image_ag] Abs_ag_inject[OF image_ag  image_ag]
@@ -373,7 +383,8 @@ next
 fix f :: "'a\<Rightarrow>'b"
 have "{y. \<exists>x\<in>Rep_ag s. y = f x} = image f (Rep_ag s)" for s by auto
 then have "{y. \<exists>x\<in>Rep_ag s. y = f x} \<in> {a |a. finite a \<and> a \<noteq> {}}" for s
-  apply auto 
+  apply simp_all
+  apply (rule conjI)
   subgoal using finite_imageI Rep_ag by fast
   using Rep_ag by blast
 from Abs_ag_inverse[OF this] show "set_ag \<circ> map_ag f = (`) f \<circ> set_ag" 
@@ -394,25 +405,28 @@ fix R :: "'a\<Rightarrow>'b\<Rightarrow>bool" and S :: "'b\<Rightarrow>'c\<Right
 show "(\<lambda>x y. \<exists>z. set_ag z \<subseteq> {(x, y). R x y} \<and> map_ag fst z = x \<and> map_ag snd z = y) OO 
   (\<lambda>x y. \<exists>z. set_ag z \<subseteq> {(x, y). S x y} \<and> map_ag fst z = x \<and> map_ag snd z = y)
   \<le> (\<lambda>x y. \<exists>z. set_ag z \<subseteq> {(x, y). (R OO S) x y} \<and> map_ag fst z = x \<and> map_ag snd z = y)"
-apply (auto simp: set_ag.rep_eq map_ag_def rel_fun_def Rel_def pcr_ag_def rel_set_def cr_ag_def relcompp.simps image_abs_ag)
-proof -
+proof (auto simp: set_ag.rep_eq map_ag_def rel_fun_def Rel_def pcr_ag_def rel_set_def cr_ag_def relcompp.simps image_abs_ag)
 fix a :: "('a\<times>'b) ag" and b :: "('b\<times>'c) ag"
 assume assms: "Rep_ag a\<subseteq>{(x, y). R x y}" "Rep_ag b\<subseteq>{(x, y). S x y}" "fst`Rep_ag b=snd`Rep_ag a"
 define c where c: "c = (Rep_ag a) O (Rep_ag b)"
 with Rep_ag finite_relcomp have "finite c" by (metis mem_Collect_eq)
-moreover from c assms(3) Rep_ag have "c \<noteq> {}" apply (auto simp: relcomp_def relcompp.simps)
+moreover from c assms(3) Rep_ag have "c \<noteq> {}" apply (simp_all add: relcomp_def relcompp.simps)
   by (smt (verit, best) Rep_ag all_not_in_conv empty_is_image imageE mem_Collect_eq prod.collapse)
 ultimately have c_ag: "c \<in> {a |a. finite a \<and> a \<noteq> {}}" by simp
 from assms have "Rep_ag (Abs_ag c) \<subseteq> {(x, y). \<exists>b. R x b \<and> S b y}" 
-  apply (auto simp: Abs_ag_inverse[OF c_ag]) using c by blast
+  apply (simp_all add: Abs_ag_inverse[OF c_ag]) using c by blast
 moreover from c assms(3) have "fst ` Rep_ag (Abs_ag c) = fst ` Rep_ag a"
-  apply (auto simp: Abs_ag_inverse[OF c_ag] relcomp_def relcompp.simps image_def)
-  apply (smt (verit, del_insts) Abs_ag_inverse c_ag case_prodD fst_conv mem_Collect_eq)
-  by (smt (verit, ccfv_SIG) Abs_ag_inverse c_ag case_prodI eq_fst_iff mem_Collect_eq snd_eqD)
+  apply (simp add: Abs_ag_inverse[OF c_ag] relcomp_def relcompp.simps image_def)
+  apply (rule Collect_cong)
+  apply (rule iffI)
+  apply (smt (z3) Abs_ag_inverse c c_ag fst_conv relcompE)
+  by (smt (z3) Abs_ag_inverse c_ag case_prodI fst_conv mem_Collect_eq prod.collapse)
 moreover from c assms(3) have "snd ` Rep_ag (Abs_ag c) = snd ` Rep_ag b"
-  apply (auto simp: Abs_ag_inverse[OF c_ag] relcomp_def relcompp.simps image_def)
-  apply (smt (verit, del_insts) Abs_ag_inverse c_ag case_prodD snd_conv mem_Collect_eq)
-  by (smt (verit, ccfv_SIG) Abs_ag_inverse c_ag case_prodI eq_snd_iff mem_Collect_eq fst_eqD)
+  apply (simp add: Abs_ag_inverse[OF c_ag] relcomp_def relcompp.simps image_def)
+  apply (rule Collect_cong)
+  apply (rule iffI)
+  apply (smt (z3) Abs_ag_inverse c_ag case_prod_beta mem_Collect_eq snd_conv)
+  by (smt (z3) Abs_ag_inverse c_ag case_prodI mem_Collect_eq snd_conv surjective_pairing)
 ultimately show "\<exists>zb. Rep_ag zb \<subseteq> {(x, y). \<exists>b. R x b \<and> S b y} \<and> fst ` Rep_ag zb = fst ` Rep_ag a \<and> snd ` Rep_ag zb = snd ` Rep_ag b"
   by auto
 qed
@@ -428,7 +442,7 @@ lemmas defs = n_equiv_ag.rep_eq ofe_eq_ag_def
 instance by (standard) (auto 4 4 simp: defs ofe_sym intro: ofe_refl ofe_trans ofe_mono)
 end
 instance ag :: (discrete) discrete apply standard
-  apply (auto simp: n_equiv_ag.rep_eq d_equiv ofe_eq_ag_def)
+  apply (simp_all add: n_equiv_ag.rep_eq d_equiv ofe_eq_ag_def)
   using Rep_ag_inject by blast+
 
 instantiation ag :: (ofe) camera begin
@@ -473,9 +487,8 @@ fix n
 assume assms: "n_equiv n a (b \<cdot> c)" "Rep_sprop (valid_raw a) n"
 have valid_equiv: "Rep_sprop (valid_raw (x\<cdot>y)) n \<Longrightarrow> n_equiv n x (y::'a ag)" for x y
   apply transfer
-  apply auto
-  apply (metis equals0D ofe_refl singleton_Un_iff)
-  by (metis equals0D ofe_refl singleton_Un_iff)
+  apply simp_all
+  by (metis equals0I ofe_refl singleton_Un_iff)
 from assms have "Rep_sprop (valid_raw (b\<cdot>c)) n"
   by transfer (metis empty_iff insert_iff ofe_sym ofe_trans)
 from assms have "n_equiv n a b" by (transfer;auto;meson UnI1 ofe_trans)
@@ -504,17 +517,15 @@ proof -
 qed
 
 lemma d_valid_ag: "valid (a::('a::discrete) ag) \<Longrightarrow> \<exists>b. a = to_ag b"
-  apply (auto simp: valid_def valid_raw_ag.rep_eq to_ag_def d_equiv )
-  apply (metis Rep_ag_inverse)
-  by (smt (verit, best) Rep_ag Rep_ag_inverse all_not_in_conv insertI1 insert_absorb mem_Collect_eq
-    singleton_insert_inj_eq' subset_iff)
+  apply (simp add: valid_def valid_raw_ag.rep_eq to_ag_def d_equiv )
+  by (metis (mono_tags, lifting) Rep_ag_inverse image_ag image_empty is_singletonE is_singletonI' 
+    mem_Collect_eq)
 
 lemma ag_agree: "n_valid ((a::('a::ofe) ag) \<cdot> b) n \<Longrightarrow> n_equiv n a b"
-  apply (auto simp: valid_raw_ag.rep_eq op_ag.rep_eq n_equiv_ag.rep_eq)  
-  apply (metis Rep_ag_inject ofe_eq_limit op_ag.rep_eq to_ag.rep_eq to_ag_op)
-  apply (metis Rep_ag_inject ofe_eq_limit op_ag.rep_eq to_ag.rep_eq to_ag_op)
-  apply (metis (no_types, opaque_lifting) Rep_ag_inverse Un_singleton_iff insertI1 op_ag.rep_eq subsetI subset_singletonD to_ag.rep_eq to_ag_op)
-  by (metis (no_types, opaque_lifting) Rep_ag_inverse Un_singleton_iff insertI1 op_ag.rep_eq subsetI subset_singletonD to_ag.rep_eq to_ag_op)
+  apply (simp add: valid_raw_ag.rep_eq op_ag.rep_eq n_equiv_ag.rep_eq)
+  apply (rule conjI)
+  apply (smt (verit, del_insts) Rep_ag Rep_ag_inverse all_not_in_conv mem_Collect_eq ofe_eq_limit op_ag.rep_eq to_ag.abs_eq to_ag_op)
+  by (smt (verit, del_insts) Rep_ag Rep_ag_inject ex_in_conv mem_Collect_eq ofe_eq_limit op_ag.rep_eq to_ag.rep_eq to_ag_op)
 
 lemma d_ag_agree: "valid ((a::('a::discrete) ag) \<cdot> b) \<Longrightarrow> a=b"
   by (auto simp: n_equiv_ag.rep_eq valid_def d_equiv) (metis ag_agree d_equiv)
@@ -539,7 +550,7 @@ next fix n x y z show "n_equiv n x y \<Longrightarrow> n_equiv n y z \<Longright
 next fix m n x y show "m \<le> n \<Longrightarrow> n_equiv n x y \<Longrightarrow> n_equiv m x (y::'a ex)" 
   by (cases x; cases y) (auto intro: ofe_mono)
 next fix x y show "ofe_eq x y \<longleftrightarrow> (\<forall>n. n_equiv n x (y::'a ex))" 
-  apply (cases x; cases y) apply (auto) using ofe_limit by blast+
+  apply (cases x; cases y) apply simp_all using ofe_limit by blast+
 next fix x y show "x = y \<Longrightarrow> ofe_eq x (y::'a ex)" by (cases x; cases y) (auto intro: ofe_eq_eq)
 qed
 end
@@ -601,7 +612,7 @@ show "ofe_eq a b = (a = b)" by (cases a; cases b) (auto simp: d_eq)
 qed
 
 lemma valid_raw_auth_aux: "(\<lambda>n. \<exists>c. x = ex.Ex c \<and> n_incl n (y::'a::ucamera) c \<and> n_valid c n) \<in> 
-  {s. \<forall>n m. m \<le> n \<longrightarrow> s n \<longrightarrow> s m}" apply (auto simp: n_incl_def) using ofe_mono by blast
+  {s. \<forall>n m. m \<le> n \<longrightarrow> s n \<longrightarrow> s m}" apply (simp add: n_incl_def) using ofe_mono by fastforce
 
 lemma valid_raw_auth_aux2: "(\<lambda>n. a = None \<and> n_valid b n \<or> (\<exists>c. a = Some (ex.Ex c) \<and> n_incl n b c \<and> n_valid c n))
   \<in> {s. \<forall>n m. m \<le> n \<longrightarrow> s n \<longrightarrow> s m}"
@@ -624,7 +635,7 @@ assume assms: "m\<le>n" "Rep_sprop (Abs_sprop (\<lambda>n. \<exists>c. a = ex.Ex
   "n_equiv n b b'" "n_equiv n a a'"
 from Abs_sprop_inverse[OF valid_raw_auth_aux, of a b] assms(2) have "\<exists>c. a = ex.Ex c \<and> n_incl m b c \<and> n_valid c m" by simp
 with assms (1,3,4) have "\<exists>c. a' = ex.Ex c \<and> n_incl m b' c \<and> n_valid c m" 
-apply (auto simp: n_incl_def)
+apply (simp add: n_incl_def)
 by (smt (verit, ccfv_threshold) dual_order.eq_iff n_equiv_ex.elims(1) n_equiv_ex.simps(1) ne_sprop_weaken ofe_mono ofe_sym ofe_trans op_equiv_subst valid_raw_non_expansive)
 then show "Rep_sprop (Abs_sprop (\<lambda>n. \<exists>c. a' = ex.Ex c \<and> n_incl n b' c \<and> n_valid c n)) m"
 using Abs_sprop_inverse[OF valid_raw_auth_aux, of a' b'] by simp qed
@@ -646,19 +657,18 @@ show "a \<cdot> b = b \<cdot> a" by (auto simp: op_auth_def camera_comm split: a
 next
 fix a a' :: "'a auth"
 show "pcore a = Some a' \<Longrightarrow> a' \<cdot> a = a" 
-  apply (auto simp: pcore_auth_def op_auth_def op_prod_def split: auth.splits)
-  apply (metis \<epsilon>_left_id \<epsilon>_option_def)
-  using camera_core_id by auto
+  apply (simp add: pcore_auth_def op_auth_def op_prod_def split: auth.splits prod.splits)
+  by (metis Pair_inject \<epsilon>_left_id \<epsilon>_option_def auth.inject camera_core_id)
 next
 fix a a' :: "'a auth"
 show "pcore a = Some a' \<Longrightarrow> pcore a' = pcore a"
-by (auto simp: pcore_auth_def camera_pcore_idem core_def total_pcore split: auth.splits)
+  by (auto simp: pcore_auth_def camera_pcore_idem core_def total_pcore split: auth.splits)
 next
 fix a a' b :: "'a auth"
 assume assms: "pcore a = Some a'" "\<exists>c. b = a \<cdot> c"
 obtain c d where a:"a = Auth (c,d)" using auth.exhaust by auto
 then have a': "a' = Auth (None, core d)" using assms(1) pcore_auth_def by force
-from assms(2) a obtain x y where c: "b = Auth ((c,d)\<cdot>(x,y))" apply (auto simp: op_auth_def split: auth.splits)
+from assms(2) a obtain x y where c: "b = Auth ((c,d)\<cdot>(x,y))" apply (simp add: op_auth_def split: auth.splits)
   by (metis auth.exhaust surj_pair)
 then have b': "pcore b = Some (Auth (None, core (d\<cdot>y)))"
   by (auto simp: pcore_auth_def core_def op_prod_def split: prod.splits)
@@ -693,8 +703,7 @@ from assms(1) a have a_val: "(a1=None\<and>Rep_sprop (valid_raw a2) n) \<or>
     using camera_extend n(2) by blast
   then obtain d2 e2 where "a1=None \<Longrightarrow> (a2=d2\<cdot>e2 \<and> n_equiv n d2 b2 \<and> n_equiv n e2 c2)" by blast
   then have "a1=None \<Longrightarrow> a=Auth(a1,d2)\<cdot>Auth(a1,e2) \<and> n_equiv n (Auth(a1,d2)) b \<and> n_equiv n (Auth(a1,e2)) c"
-    using a b c n apply (auto simp: op_auth_def op_prod_def op_option_def)
-    apply (metis n_equiv_option_def not_Some_eq option_op.elims)
+    using a b c n apply (simp add: op_auth_def op_prod_def op_option_def)
     by (metis n_equiv_option_def not_Some_eq option_op.elims)
   then have "a1=None \<Longrightarrow> \<exists>c1 c2. a = c1 \<cdot> c2 \<and> n_equiv n c1 b \<and> n_equiv n c2 c" by blast
 }
@@ -723,7 +732,7 @@ end
 
 instance auth :: (ducamera) dcamera 
   apply standard 
-  apply (auto simp: valid_raw_auth_def Abs_sprop_inverse[OF valid_raw_auth_aux2] valid_def n_incl_def 
+  apply (simp add: valid_raw_auth_def Abs_sprop_inverse[OF valid_raw_auth_aux2] valid_def n_incl_def 
     split: auth.splits)
   by (auto simp: d_equiv dcamera_valid_iff[symmetric])
 
@@ -740,7 +749,7 @@ also have "... = True" using \<epsilon>_valid by simp
 finally show "valid (\<epsilon>::'a auth)" by simp
 next
 fix a :: "'a auth"
-show "op \<epsilon> a = a" apply (auto simp: op_auth_def \<epsilon>_auth_def op_prod_def split: auth.splits)
+show "op \<epsilon> a = a" apply (simp add: op_auth_def \<epsilon>_auth_def op_prod_def split: auth.splits)
   using \<epsilon>_left_id[simplified ] \<epsilon>_option_def by metis+
 next
 show "pcore (\<epsilon>::'a auth) = Some \<epsilon>" by (auto simp: \<epsilon>_auth_def pcore_auth_def \<epsilon>_core split: auth.splits)
@@ -826,7 +835,7 @@ instance "fun" :: (type,discrete) discrete
 
 lemma pcore_op_opt[simp]: "(case pcore x of None \<Rightarrow> none | Some a \<Rightarrow> a) \<cdot> (x::'b::opt) = x"
   apply (cases "pcore x")
-  apply (auto simp: camera_pcore_id)
+  apply (simp_all add: camera_pcore_id)
   using \<epsilon>_left_id none_\<epsilon> by metis
   
 instantiation "fun" :: (type, opt) camera begin
@@ -843,7 +852,7 @@ show "non_expansive (valid_raw::('a\<Rightarrow>'b) \<Rightarrow> sprop)"
 next
 show "non_expansive (pcore::('a\<Rightarrow>'b) \<Rightarrow> ('a\<Rightarrow>'b) option)"
   apply (rule non_expansiveI)
-  apply (auto simp: pcore_fun_def n_equiv_fun_def split: option.splits)
+  apply (simp add: pcore_fun_def n_equiv_fun_def split: option.splits)
   using valid_raw_ne
   by (smt (verit, del_insts) comp_def n_equiv_fun_def n_equiv_option_def non_expansive_def ofe_eq_limit option.sel option.simps(5) pcore_ne)
 next
@@ -883,7 +892,7 @@ next
 fix a b :: "'a\<Rightarrow>'b"
 fix n
 show "Rep_sprop (valid_raw (a \<cdot> b)) n \<Longrightarrow> Rep_sprop (valid_raw a) n"
-  apply (auto simp: valid_raw_fun_def op_fun_def)
+  apply (simp add: valid_raw_fun_def op_fun_def)
   using Abs_sprop_inverse camera_valid_op by fastforce
 next
 fix a b c :: "'a\<Rightarrow>'b"
@@ -915,7 +924,7 @@ instance "fun" :: (type,opt_core_id) core_id by standard (auto simp: pcore_fun_d
 instantiation "fun" :: (type, opt) ucamera begin
 definition \<epsilon>_fun :: "'a\<Rightarrow>'b" where [simp]: "\<epsilon>_fun \<equiv> (\<lambda>_. \<epsilon>)"
 instance apply (standard)
-apply (auto simp: valid_def valid_raw_fun_def Abs_sprop_inverse valid_raw_option_def)
+apply (simp_all add: valid_def valid_raw_fun_def Abs_sprop_inverse valid_raw_option_def)
 subgoal using Rep_sprop_inverse \<epsilon>_valid valid_def by auto
 subgoal by (auto simp: op_fun_def \<epsilon>_left_id)
 by (auto simp: pcore_fun_def \<epsilon>_pcore split: option.splits)

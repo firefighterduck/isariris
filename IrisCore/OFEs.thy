@@ -141,6 +141,9 @@ instance unit :: discrete by standard (auto simp: n_equiv_unit_def)
 subsubsection \<open>later type OFE\<close>
 text \<open>This type encodes the later modality on a type level.\<close>
 datatype ('a::ofe) later = Next (later_car: 'a)
+lemmas later2_ex = later.exhaust[case_product later.exhaust]
+lemmas later3_ex = later.exhaust[case_product later2_ex]
+
 instantiation later :: (ofe) ofe begin
   definition n_equiv_later :: "nat \<Rightarrow> 'a later \<Rightarrow> 'a later \<Rightarrow> bool" where
     "n_equiv_later n x y = (n=0 \<or> n_equiv (n-1) (later_car x) (later_car y))"
@@ -153,20 +156,20 @@ instance proof (standard)
 next  
   fix x y n
   show "(n_equiv n (x::'a later) y) \<longleftrightarrow> (n_equiv n y x)"
-    by (cases n; cases x; cases y) (auto simp: ofe_limit ofe_sym n_equiv_later_def)
+    by (cases n; cases x y rule: later2_ex) (auto simp: ofe_limit ofe_sym n_equiv_later_def)
 next
   fix x y n z
   show "n_equiv n (x::'a later) y \<Longrightarrow> n_equiv n y z \<Longrightarrow> n_equiv n x z"
-    by (cases n; cases x; cases y; cases z) (auto simp: n_equiv_later_def intro: ofe_trans)
+    by (cases n; cases x y z rule: later3_ex) (auto simp: n_equiv_later_def intro: ofe_trans)
 next
   fix m n x y
   show "m \<le> n \<Longrightarrow> (n_equiv::nat\<Rightarrow>'a later\<Rightarrow>'a later\<Rightarrow>bool) n x y \<Longrightarrow> n_equiv m x y"
-    by (cases m; cases n; cases x; cases y) (auto simp: ofe_mono n_equiv_later_def)
+    by (cases m; cases n; cases x y rule: later2_ex) (auto simp: ofe_mono n_equiv_later_def)
 next
   fix x y :: "'a later"
   show "(ofe_eq x y) \<longleftrightarrow> (\<forall>n. n_equiv n x y)"
-  apply (cases x; cases y) apply (auto simp: ofe_refl n_equiv_later_def)
-  using ofe_limit apply blast using ofe_limit by (metis diff_Suc_Suc diff_zero nat.discI)
+  by (cases x y rule: later2_ex)
+    (metis Zero_not_Suc diff_Suc_1 later.sel n_equiv_later_def ofe_eq_later.simps ofe_limit)
 next
 fix x y :: "'a later"
 show "(x=y) \<Longrightarrow> ofe_eq x y" using OFEs.ofe_eq_later.elims(3) ofe_eq_eq by auto
@@ -202,7 +205,7 @@ instance proof
   from core_compl have step: "n_equiv n (lim (option_chain c x)) (Rep_chain (option_chain c x) n)" for x .
   show "n_equiv n (lim c) (Rep_chain c n)" unfolding lim_option_def
   apply (cases "Rep_chain c 0")
-  apply auto
+  apply simp_all
   apply (metis base n_equiv_option_def option.distinct(1))
   by (smt (verit) base step n_equiv_option_def option.simps(5) option_chain.rep_eq)
 qed
@@ -218,8 +221,8 @@ definition lim_later :: "'a later chain \<Rightarrow> 'a later" where
 instance proof
   fix c :: "'a later chain" and n
   from core_compl[of n] show "n_equiv n (lim c) (Rep_chain c n)" 
-    apply (auto simp: n_equiv_later_def lim_later_def)
-    by (smt (verit, best) One_nat_def Suc_pred' core_compl later_chain.rep_eq not_gr0)
+    apply (simp add: n_equiv_later_def lim_later_def)
+    by (smt (verit, ccfv_threshold) Suc_pred bot_nat_0.not_eq_extremum core_compl later_chain.rep_eq)
 qed
 end
 

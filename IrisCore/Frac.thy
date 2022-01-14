@@ -86,6 +86,9 @@ text \<open> This models fractional ownership which can be given up on.  \<close
 
 datatype dfrac = DfracOwn frac | DfracDiscarded | DfracBoth frac
 
+lemmas dfrac_ex2 = dfrac.exhaust[case_product dfrac.exhaust]
+lemmas dfrac_ex3 = dfrac.exhaust[case_product dfrac_ex2]
+
 instantiation dfrac :: ofe begin
 definition n_equiv_dfrac :: "nat \<Rightarrow> dfrac \<Rightarrow> dfrac \<Rightarrow> bool" where [simp]: "n_equiv_dfrac _ \<equiv> (=)"
 definition ofe_eq_dfrac :: "dfrac \<Rightarrow> dfrac \<Rightarrow> bool" where [simp]: "ofe_eq_dfrac \<equiv> (=)"
@@ -121,7 +124,7 @@ show "non_expansive2 (op::dfrac \<Rightarrow> dfrac \<Rightarrow> dfrac)"
   by (rule non_expansive2I) (auto simp: op_dfrac_def)
 next
 fix a b c :: dfrac
-show "a \<cdot> b \<cdot> c = a \<cdot> (b \<cdot> c)" by (cases a; cases b; cases c) (auto simp: op_dfrac_def camera_assoc)
+show "a \<cdot> b \<cdot> c = a \<cdot> (b \<cdot> c)" by (cases a b c rule: dfrac_ex3) (auto simp: op_dfrac_def camera_assoc)
 next
 fix a b :: dfrac
 show "a \<cdot> b = b \<cdot> a" by (cases a; cases b) (auto simp: op_dfrac_def camera_comm)
@@ -134,7 +137,7 @@ show "pcore a = Some a' \<Longrightarrow> pcore a' = pcore a" by (cases a; cases
 next
 fix a a' b :: dfrac
 show "pcore a = Some a' \<Longrightarrow> \<exists>c. b = a \<cdot> c \<Longrightarrow> \<exists>b'. pcore b = Some b' \<and> (\<exists>c. b' = a' \<cdot> c)"
-  by (cases a; cases a'; cases b; auto simp: pcore_dfrac_def op_dfrac_def)
+  by (cases a a' b rule: dfrac_ex3; auto simp: pcore_dfrac_def op_dfrac_def)
   (metis dfrac.exhaust dfrac.simps(6) dfrac_add.simps(4-9) dfrac.distinct(3))+
 next
 fix a b :: dfrac
@@ -170,11 +173,11 @@ next
 qed
 
 lemma valid_dfrac: "valid (q::dfrac) = n_valid q n"
-  apply (auto simp: valid_def valid_raw_dfrac_def split: dfrac.splits) 
-  using valid_frac by simp
+  apply (simp add: valid_def valid_raw_dfrac_def split: dfrac.splits) 
+  using valid_frac by auto
 
 lemma dfrac_valid_own_r: "valid (dq \<cdot> DfracOwn q) \<Longrightarrow> (q < 1)"
-apply (cases dq) apply (auto simp: op_dfrac_def valid_raw_dfrac_def valid_def split: dfrac.splits)
+apply (cases dq) apply (simp_all add: op_dfrac_def valid_raw_dfrac_def valid_def split: dfrac.splits)
 apply (metis camera_comm frac_valid one_frac_def valid_frac)
 unfolding op_frac_def
 by (metis Rep_frac dual_order.strict_trans less_add_same_cancel2 less_frac.rep_eq mem_Collect_eq op_frac.rep_eq op_frac_def)
@@ -183,7 +186,7 @@ lemma dfrac_valid_own_l: "valid (DfracOwn q \<cdot> dq) \<Longrightarrow> (q < 1
   using dfrac_valid_own_r camera_comm by metis
 
 lemma dfrac_not_valid_own: "\<not> valid (DfracOwn 1 \<cdot> dq)"
-apply (cases dq) apply (auto simp: valid_def valid_raw_dfrac.rep_eq op_dfrac_def split: dfrac.splits)
+apply (cases dq) apply (simp_all add: valid_def valid_raw_dfrac.rep_eq op_dfrac_def split: dfrac.splits)
 apply (metis frac_not_valid one_frac_def valid_frac)
 by (meson dual_order.asym frac_own_incl incl_def)
   

@@ -18,7 +18,7 @@ definition unmark_snd :: val where "unmark_snd \<equiv>
 
 definition span :: val where "span \<equiv>
   RecV (Some ''span'') (Some ''x'')
-  match: (V ''x'') with
+  match: (V ''x'') with                     
   NoneCase \<Rightarrow> FalseE
   | SomeCase (Some ''y'') \<Rightarrow> 
     if: App (Val try_mark) (V ''y'') then

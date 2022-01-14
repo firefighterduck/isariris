@@ -15,10 +15,12 @@ type_synonym graphUR = "((loc\<rightharpoonup>(chl ex))\<times>frac) option"
 (* A camera for duplicatable markings *)
 type_synonym markingUR = "loc set"
 
+type_synonym spanningG = "(graphUR auth \<times> markingUR auth)"
+
 (* 
   This would normally be a list of camera functors to allow for modular reasoning.
   Isabelle does not support type lists and thus we use a tuple for this simple example.  
-*)
+
 type_synonym graphG = "(graphUR auth \<times> markingUR auth) heapGCmra"
 
 abbreviation own_graph :: "graphUR auth \<Rightarrow> graphG iprop" ("Own\<^sub>g _") where
@@ -29,5 +31,5 @@ abbreviation own_marking :: "markingUR auth \<Rightarrow> graphG iprop" ("Own\<^
 
 context includes points_to_syntax begin
 lemma  "upred_holds (((l \<mapsto>{dq} v)::graphG iprop) -\<^emph> \<upharpoonleft>(valid dq))" by (rule points_to_valid)
-end
+end*)
 end

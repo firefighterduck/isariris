@@ -42,8 +42,9 @@ qed (simp add: loc_add_0)
 lemma heap_array_shift: "heap_array l vs k = heap_array (l+\<^sub>\<iota>n) vs (k+\<^sub>\<iota>n)"
 proof (induction vs arbitrary: l k)
   case (Cons a vs)
-  show ?case apply auto using loc_add_def apply (simp add: loc.expand) using Cons using loc_add_def
-  by (metis add.commute loc_add_assoc)
+  show ?case apply (simp; rule impI; rule conjI) using loc_add_def apply (simp_all add: loc.expand) 
+    using Cons using loc_add_def loc.expand apply blast
+    by (metis add.assoc add.left_commute loc_add_assoc local.Cons)
 qed (simp)
 
 lemma heap_array_cons_shift: "(heap_array l vs k = Some w) \<Longrightarrow> (heap_array l (v#vs) (k+\<^sub>\<iota>1) = Some w)"
@@ -51,7 +52,7 @@ proof -
   assume assm: "heap_array l vs k = Some w"
   hence "k \<in> dom (heap_array l vs)" by blast
   with heap_array_dom[of l vs] have "l\<noteq>k+\<^sub>\<iota>1" using loc_add_def less_eq_loc_def by auto
-  with assm show "heap_array l (v#vs) (k+\<^sub>\<iota>1) = Some w" unfolding loc_add_def apply auto 
+  with assm show "heap_array l (v#vs) (k+\<^sub>\<iota>1) = Some w" unfolding loc_add_def apply simp 
   using heap_array_shift loc_add_def by fastforce
 qed
 
