@@ -3,7 +3,6 @@ imports Graph
   "../IrisCore/Frac"
   "../HeapLang/HeapLang"
   "../HeapLang/PrimitiveLaws"
-  "../IrisCore/BaseLogicShallow"
 begin
 
 (* Children locations, in Coq it's a leibniz0 structure*)

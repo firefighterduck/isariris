@@ -1,14 +1,15 @@
-theory LogicSyntax
-imports Main
+theory LogicSyntaxDeep
+imports CoreStructures
 begin
 (* The Coq formalization also used the empty type but I have no idea why 
-  or whether HOL has such a type. M is the carrier type of the underlying camera. *)
-datatype logic_type = PropT | M |EmptyT | UnitT | SumT logic_type logic_type
-  | ProdT "logic_type\<times>logic_type" | FunT logic_type logic_type
+  or whether HOL has such a type. Cmra is the carrier type of the underlying camera. *)
+datatype logic_type = PropT | Cmra | UnitT | SumT logic_type logic_type
+  | ProdT "logic_type\<times>logic_type" | FunT logic_type logic_type 
+  (* These types are relevant for arguing about HeapLang programs*)
+  | Expr | State | Observation | List logic_type
 
-datatype 'x logic_term = 
+datatype 'x::ucamera logic_term = 
   Var string
-| Abort "'x logic_term"
 | Unit
 | Prod "'x logic_term\<times>'x logic_term"
 | Fst "'x logic_term"
@@ -40,7 +41,7 @@ datatype 'x logic_term =
 | Upd "'x logic_term"
 
 (* Concurrent variable-for-variable substitution in logic terms *)
-fun var_subst :: "(string \<Rightarrow> string) \<Rightarrow> 'x logic_term \<Rightarrow> 'x logic_term" where
+fun var_subst :: "(string \<Rightarrow> string) \<Rightarrow> 'x::ucamera logic_term \<Rightarrow> 'x logic_term" where
   "var_subst f (Var x) = Var (f x)"
 | "var_subst f (Prod (x,y)) = Prod (var_subst f x, var_subst f y)"
 | "var_subst f (Fst t) = Fst (var_subst f t)"
@@ -71,7 +72,7 @@ fun var_subst :: "(string \<Rightarrow> string) \<Rightarrow> 'x logic_term \<Ri
 | "var_subst _ t = t"
 
 (* Variable substitution with terms in logic terms *)
-fun term_subst :: "'x logic_term \<Rightarrow> string \<Rightarrow> 'x logic_term \<Rightarrow> 'x logic_term" where
+fun term_subst :: "'x::ucamera logic_term \<Rightarrow> string \<Rightarrow> 'x logic_term \<Rightarrow> 'x logic_term" where
   "term_subst f v (Var x) = (if v=x then f else Var x)"
 | "term_subst f v (Prod (x,y)) = Prod (term_subst f v x, term_subst f v y)"
 | "term_subst f v (Fst t) = Fst (term_subst f v t)"
@@ -103,9 +104,8 @@ fun term_subst :: "'x logic_term \<Rightarrow> string \<Rightarrow> 'x logic_ter
 | "term_subst _ _ t = t"
 
 (* The variable x can only appear under the later modality. *)
-fun guarded :: "string \<Rightarrow> 'x logic_term \<Rightarrow> bool" where
+fun guarded :: "string \<Rightarrow> 'x::ucamera logic_term \<Rightarrow> bool" where
   "guarded _ (Later (Var _)) = True"
-| "guarded x (Abort t) = guarded x t"
 | "guarded x (Prod (t1,t2)) = (guarded x t1 \<and> guarded x t2)"
 | "guarded x (Fst t) = guarded x t"
 | "guarded x (Snd t) = guarded x t"

@@ -1,5 +1,5 @@
 theory PrimitiveLaws
-imports State "../IrisCore/BaseLogicShallow" "../IrisCore/AuthHeap"
+imports State "../IrisCore/Frac" "../IrisCore/DerivedConstructions"
 begin
 
 section \<open> Basic laws for HeapLang programs \<close>
@@ -16,6 +16,6 @@ end
 instance expr and val :: discrete by standard auto
 
 (* Simplified heap camera, does not contain the prophecy map. *)
+type_synonym ('l,'v) heap = "('l\<rightharpoonup>(dfrac\<times>'v ag)) auth"
 type_synonym heapGS = "(loc, val option) heap"
-type_synonym 'c heapGCmra = "(loc, val option,'c) heapCmra"
 end

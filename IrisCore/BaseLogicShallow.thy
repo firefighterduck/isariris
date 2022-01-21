@@ -16,17 +16,6 @@ setup_lifting type_definition_upred_f
 lemmas [simp] = Rep_upred_f_inverse Rep_upred_f_inject
 lemmas [simp, intro!] = Rep_upred_f[unfolded mem_Collect_eq]
 
-definition map_upred :: "(('b::ucamera) \<Rightarrow> ('a::ucamera)) \<Rightarrow> 'a upred_f \<Rightarrow> 'b upred_f" where
-  "map_upred f x = Abs_upred_f (\<lambda>c n. Rep_upred_f x (f c) n)"
-
-(* lift_bnf (dead 'a::ucamera) upred_f *) \<comment> \<open>Doesn't work\<close>
-
-context includes cardinal_syntax begin
-bnf "('m::ucamera) upred_f" \<comment> \<open>exception UnequalLengths raised (line 541 of "library.ML")\<close>
-  map: map_upred
-  bd: "natLeq +c |UNIV :: 'm set|"
-end
-
 instantiation upred_f :: (ucamera) ofe begin
   lift_definition n_equiv_upred_f :: "nat \<Rightarrow> 'a upred_f \<Rightarrow> 'a upred_f \<Rightarrow> bool" is
     "\<lambda>n P Q. \<forall>a m. m\<le>n \<longrightarrow> n_valid a m \<longrightarrow> (P a m \<longleftrightarrow> Q a m)" .
@@ -364,11 +353,9 @@ lemma upred_wand_holds2E: "upred_holds (P -\<^emph> Q -\<^emph> R) \<Longrightar
 lemma upred_own_nothing_true: "Own \<epsilon> \<stileturn>\<turnstile> \<upharpoonleft>True"
   by (rule upred_entail_eqI) (auto simp: upred_pure.rep_eq upred_own.rep_eq)
   
-(* Simple definition of iprop due to the axiomatic character of our work. *)
-type_synonym 'a iprop = "'a upred_f"
 
 subsubsection \<open> Persistent predicates \<close>
-definition persistent :: "('a::ucamera) iprop \<Rightarrow> bool" where "persistent P \<equiv> P \<turnstile> \<box>P"
+definition persistent :: "('a::ucamera) upred_f \<Rightarrow> bool" where "persistent P \<equiv> P \<turnstile> \<box>P"
 
 lemma persistent_holds_sep: 
   "\<lbrakk>persistent P; persistent Q\<rbrakk> \<Longrightarrow> upred_holds (P\<^emph>Q) \<longleftrightarrow> upred_holds P \<and> upred_holds Q"
@@ -398,7 +385,7 @@ lemma persistent_exists: "\<forall>x. persistent (P x) \<Longrightarrow> persist
   by (auto simp: upred_exists.rep_eq persistent_def upred_persis.rep_eq upred_entails.rep_eq)
 
 subsubsection \<open> Timeless predicates \<close>
-definition except_zero :: "('a::ucamera) iprop \<Rightarrow> 'a iprop" ("\<diamondop>_") where 
+definition except_zero :: "'a::ucamera upred_f \<Rightarrow> 'a upred_f" ("\<diamondop>_") where 
   "except_zero P \<equiv> P \<or>\<^sub>u \<triangleright>\<upharpoonleft>False"
-definition timeless :: "('a::ucamera) iprop \<Rightarrow> bool" where "timeless P \<equiv> (\<triangleright>P) \<turnstile> \<diamondop>P"
+definition timeless :: "'a::ucamera upred_f \<Rightarrow> bool" where "timeless P \<equiv> (\<triangleright>P) \<turnstile> \<diamondop>P"
 end

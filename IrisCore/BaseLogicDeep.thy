@@ -1,24 +1,16 @@
-theory BaseLogic
-imports CoreStructures LogicSyntax
+theory BaseLogicDeep
+imports CoreStructures LogicSyntaxDeep
 begin
 
 section \<open> Base Logic \<close>
 text \<open> The axiomatized and simplified Iris base logic_term \<close>
 
-(* This would normally include a signature, but I have no idea how to formalize it. *)
-(* It seems to me that the signature is also not explicitly stated in the Coq implementation. *)
-locale base_logic =
-  total_camera
-
-context base_logic
-begin
-inductive well_typed :: "(string\<times>logic_type) list \<Rightarrow> 'a logic_term \<Rightarrow> logic_type \<Rightarrow> bool" 
+inductive well_typed :: "(string\<times>logic_type) list \<Rightarrow> 'a::ucamera logic_term \<Rightarrow> logic_type \<Rightarrow> bool" 
   ("_\<turnstile>_:_" 60) where
   ReflT: "[(x,\<tau>)] \<turnstile> Var x:\<tau>"
 | WeakenT: "\<Gamma>\<turnstile>t:\<tau> \<Longrightarrow> (x,\<tau>')#\<Gamma>\<turnstile>t:\<tau>"
-| SubstT: "(y,\<tau>')#(x,\<tau>')#\<Gamma>\<turnstile>t:\<tau> \<Longrightarrow> (x,\<tau>')#\<Gamma>\<turnstile>(logic_subst (id(y:=x)) t):\<tau>"
+| SubstT: "(y,\<tau>')#(x,\<tau>')#\<Gamma>\<turnstile>t:\<tau> \<Longrightarrow> (x,\<tau>')#\<Gamma>\<turnstile>(var_subst (id(y:=x)) t):\<tau>"
 | SwitchT: "\<Gamma>2@(x,\<tau>1)#(y,\<tau>2)#\<Gamma>1\<turnstile>t:\<tau> \<Longrightarrow> \<Gamma>2@(x,\<tau>2)#(y,\<tau>1)#\<Gamma>1\<turnstile>(var_subst (id(y:=x,x:=y)) t):\<tau>"
-| AbortT: "\<Gamma>\<turnstile>t:EmptyT \<Longrightarrow> \<Gamma>\<turnstile>Abort t:\<tau>"
 | UnitT: "\<Gamma>\<turnstile>Unit:UnitT"
 | ProdT: "\<lbrakk>\<Gamma>\<turnstile>t:\<tau>1;\<Gamma>\<turnstile>u:\<tau>2\<rbrakk> \<Longrightarrow> \<Gamma>\<turnstile>Prod(t,u):ProdT(\<tau>1,\<tau>2)"
 | FstT: "\<Gamma>\<turnstile>t:ProdT(\<tau>,\<tau>') \<Longrightarrow> \<Gamma>\<turnstile>Fst t:\<tau>"
@@ -52,7 +44,7 @@ inductive well_typed :: "(string\<times>logic_type) list \<Rightarrow> 'a logic_
 | UpdT: "\<Gamma>\<turnstile>P:PropT \<Longrightarrow> \<Gamma>\<turnstile>Upd P:PropT"
 
 (* Irrelevant contexts that were left out in the description are called I instead of \<Gamma>.  *)
-inductive judgement :: "(string\<times>logic_type) list \<Rightarrow> 'a logic_term \<Rightarrow> 'a logic_term \<Rightarrow> bool" 
+inductive judgement :: "(string\<times>logic_type) list \<Rightarrow> 'a::ucamera logic_term \<Rightarrow> 'a logic_term \<Rightarrow> bool" 
   ("_ | _ \<turnstile> _" 60)  where
   Asm: "I|P\<turnstile>P"
 | Cut: "\<lbrakk>I|P\<turnstile>Q; I|Q\<turnstile>R\<rbrakk> \<Longrightarrow> I|P\<turnstile>Q"
@@ -74,5 +66,4 @@ inductive judgement :: "(string\<times>logic_type) list \<Rightarrow> 'a logic_t
 | ExistsE: "(x,\<tau>)#\<Gamma>|P\<turnstile>Q \<Longrightarrow> \<Gamma>|Exists x \<tau> P\<turnstile>Q"
 | EtaRed: "I|P\<turnstile>Q \<Longrightarrow> I|P\<turnstile>Abs x \<tau> (App Q (Var x))"
 
-end
 end

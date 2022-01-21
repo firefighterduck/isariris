@@ -38,7 +38,7 @@ lemma upred_f_ne: "\<lbrakk>n_equiv m (P::('a::ucamera) upred_f) Q; m\<le>n; n_v
   \<Longrightarrow> Rep_upred_f Q x m"
   by (transfer; auto simp: n_incl_def) (metis \<epsilon>_left_id camera_comm ofe_refl) 
 
-text \<open>For BNF reasons, we need to bundle the actual uniform predicates with a ghost variable.\<close>
+text \<open>For BNF reasons, we need to bundle the actual uniform predicates with a shadow variable.\<close>
 declare [[typedef_overloaded=true]]
 datatype ('a,'b) upred_t = Upred (pred: "'a upred_f") (ghost: 'b)
 type_synonym 'a upred = "('a,'a) upred_t"
