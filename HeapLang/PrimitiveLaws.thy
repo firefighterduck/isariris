@@ -1,9 +1,9 @@
 theory PrimitiveLaws
-imports State "../IrisCore/Frac" "../IrisCore/DerivedConstructions"
+imports HeapLang "../IrisCore/Frac"
 begin
 
 section \<open> Basic laws for HeapLang programs \<close>
-text \<open> Based on https://gitlab.mpi-sws.org/iris/iris/-/blob/master/iris_heap_lang/primitive_laws.v \<close>
+text \<open> Based on \<^url>\<open>https://gitlab.mpi-sws.org/iris/iris/-/blob/master/iris_heap_lang/primitive_laws.v\<close> \<close>
 
 instantiation expr and val :: ofe begin
 definition n_equiv_expr :: "nat \<Rightarrow> expr \<Rightarrow> expr \<Rightarrow> bool" where [simp]: "n_equiv_expr \<equiv> \<lambda>_. (=)"
@@ -17,5 +17,5 @@ instance expr and val :: discrete by standard auto
 
 (* Simplified heap camera, does not contain the prophecy map. *)
 type_synonym ('l,'v) heap = "('l\<rightharpoonup>(dfrac\<times>'v ag)) auth"
-type_synonym heapGS = "(loc, val option) heap"
+type_synonym heap_lang_heap = "(loc, val option) heap"
 end

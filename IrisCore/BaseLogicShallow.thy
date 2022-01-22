@@ -3,7 +3,7 @@ imports CoreStructures
 begin
 
 subsection \<open> Uniform Predicates \<close>
-text \<open> A  upred formalization as a semantic subtype of functions, shallow embedding \<close>
+text \<open> A upred formalization as a semantic subtype of functions, shallow embedding \<close>
 typedef (overloaded) 'm::ucamera upred_f = "{f::('m \<Rightarrow> nat \<Rightarrow> bool). 
   \<forall>n m x y. f x n \<longrightarrow> n_incl m x y \<longrightarrow> m\<le>n \<longrightarrow> f y m}"
   proof
@@ -42,7 +42,7 @@ lemma upred_f_ne: "\<lbrakk>n_equiv m (P::('a::ucamera) upred_f) Q; m\<le>n; n_v
   by (transfer; auto simp: n_incl_def) (metis \<epsilon>_left_id camera_comm ofe_refl) 
 
 subsubsection \<open>upred Functor\<close>
-text \<open>A functor for upred_f based on sound camera morphisms.\<close>
+text \<open>A functor for \<^typ>\<open>'a upred_f\<close> based on sound camera morphisms.\<close>
 context begin
 text \<open>This is the map of the contravariant functor for uniform predicates.\<close> 
 lift_definition upred_map :: "('a::ucamera,'b::ucamera) cmra_morph \<Rightarrow> 'b upred_f \<Rightarrow> 'a upred_f" is 
@@ -352,7 +352,6 @@ lemma upred_wand_holds2E: "upred_holds (P -\<^emph> Q -\<^emph> R) \<Longrightar
 
 lemma upred_own_nothing_true: "Own \<epsilon> \<stileturn>\<turnstile> \<upharpoonleft>True"
   by (rule upred_entail_eqI) (auto simp: upred_pure.rep_eq upred_own.rep_eq)
-  
 
 subsubsection \<open> Persistent predicates \<close>
 definition persistent :: "('a::ucamera) upred_f \<Rightarrow> bool" where "persistent P \<equiv> P \<turnstile> \<box>P"

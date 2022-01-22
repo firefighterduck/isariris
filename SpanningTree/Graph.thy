@@ -4,7 +4,7 @@ begin
 
 section \<open> Spanning Tree example\<close>
 text \<open> A simple example application of the Iris base logic;
-  based on https://gitlab.mpi-sws.org/iris/examples/-/blob/master/theories/spanning_tree/graph.v\<close>
+  based on \<^url>\<open>https://gitlab.mpi-sws.org/iris/examples/-/blob/master/theories/spanning_tree/graph.v\<close>\<close>
 
 subsection \<open> Graph definition \<close>
 

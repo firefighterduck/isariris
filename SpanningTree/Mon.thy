@@ -6,24 +6,30 @@ imports SpanningTreeCameras
 begin
 
 subsection \<open> The underlying structures of the spanning tree \<close>
-text \<open> Based on https://gitlab.mpi-sws.org/iris/examples/-/blob/master/theories/spanning_tree/mon.v \<close>
+text \<open> Based on \<^url>\<open>https://gitlab.mpi-sws.org/iris/examples/-/blob/master/theories/spanning_tree/mon.v\<close> \<close>
+
+
+abbreviation own_graph :: "graphUR auth \<Rightarrow> iprop" ("Own\<^sub>g _") where
+  "own_graph g \<equiv> Own(g, \<epsilon>)"
+abbreviation own_marking :: "markingUR auth \<Rightarrow> iprop" ("Own\<^sub>m _") where
+  "own_marking m \<equiv> Own(\<epsilon>, m,\<epsilon>)"
 
 lemma n_incl_fragm_l: "n_incl n (fragm {l}) a = (case a of Auth (b,c) \<Rightarrow> l\<in>c)"
   by (auto split: auth.splits)
 
 text \<open> Marking Definitions \<close>
-definition is_marked ::"loc \<Rightarrow> ipropT" where "is_marked l = Own\<^sub>m(fragm {l})"
+definition is_marked ::"loc \<Rightarrow> iprop" where "is_marked l = Own\<^sub>m(fragm {l})"
 
 lemma is_marked_split: "Own\<^sub>m(fragm {l}) = Own\<^sub>m(fragm {l} \<cdot> fragm {l})"
   by (auto simp: auth_frag_op[symmetric] op_set_def)
 
 lemma dup_marked: "is_marked l \<stileturn>\<turnstile> is_marked l \<^emph> is_marked l"
 proof -
-from own_op have "Own ((\<epsilon>, (\<epsilon>, fragm {l})) \<cdot> (\<epsilon>, (\<epsilon>, fragm {l})))
-  \<stileturn>\<turnstile> (Own\<^sub>m(fragm {l})) \<^emph> Own\<^sub>m(fragm {l})" by auto
-then have "Own(\<epsilon>\<cdot>\<epsilon>,(\<epsilon>\<cdot>\<epsilon>, fragm {l}\<cdot>fragm {l})) \<stileturn>\<turnstile> Own\<^sub>m(fragm {l}) \<^emph> Own\<^sub>m(fragm {l})" 
-  by (auto simp: op_prod_def)
-then show ?thesis by (auto simp: is_marked_def is_marked_split[symmetric] \<epsilon>_left_id) 
+from own_op have "Own ((\<epsilon>,fragm {l},\<epsilon>) \<cdot> (\<epsilon>,fragm {l},\<epsilon>)) \<stileturn>\<turnstile> (Own\<^sub>m(fragm {l})) \<^emph> Own\<^sub>m(fragm {l})" 
+  by auto
+then have "Own(\<epsilon>,fragm {l}\<cdot>fragm {l},\<epsilon>) \<stileturn>\<turnstile> Own\<^sub>m(fragm {l}) \<^emph> Own\<^sub>m(fragm {l})" 
+  by (auto simp add: op_prod_def \<epsilon>_left_id simp del: \<epsilon>_dset_def \<epsilon>_dfset_def)
+  then show ?thesis unfolding is_marked_split[symmetric] by (simp add: is_marked_def)
 qed
 
 type_synonym gmon = "loc\<rightharpoonup>(chl ex)"
@@ -53,11 +59,11 @@ definition of_graph_elem :: "gmon \<Rightarrow> loc \<Rightarrow> chl \<Rightarr
 definition of_graph :: "loc graph \<Rightarrow> gmon \<Rightarrow> marked_graph" where
   "of_graph g G l = Option.bind (g l) (\<lambda>chl. of_graph_elem G l chl)"
 
-definition own_graphUR :: "frac \<Rightarrow> gmon \<Rightarrow> ipropT" where
+definition own_graphUR :: "frac \<Rightarrow> gmon \<Rightarrow> iprop" where
   "own_graphUR q G = Own\<^sub>g(fragm (Some (G,q)))"
 
 context includes points_to_syntax begin
-definition heap_owns :: "marked_graph \<Rightarrow> (loc\<rightharpoonup>loc) \<Rightarrow> ipropT" where
+definition heap_owns :: "marked_graph \<Rightarrow> (loc\<rightharpoonup>loc) \<Rightarrow> iprop" where
   "heap_owns M markings = 
   sep_map_set (\<lambda>(l,(b,cl)). (\<exists>\<^sub>u m. ((\<upharpoonleft>(markings l = Some m))
     \<^emph> (l\<mapsto>\<^sub>u#[(m, children_to_val cl)])

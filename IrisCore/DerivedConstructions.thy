@@ -1,29 +1,9 @@
 theory DerivedConstructions
-imports CoreStructures "HOL-Library.FSet"
+imports CoreStructures
 begin
 subsection \<open> Basic camera constructions \<close>
 
 subsubsection \<open> Tuple/Product type \<close>
-lift_definition chain_map :: "('a::ofe -n> 'b::ofe) \<Rightarrow> 'a chain \<Rightarrow> 'b chain" is
-  "\<lambda>f c n. f (Rep_chain c n)" by transfer (simp add: non_expansive_def)
-
-lift_definition ne_fst :: "('a::ofe\<times>'b::ofe)-n>'a" is "\<lambda>(a,_). a" by (rule non_expansiveI) auto
-lift_definition ne_snd :: "('a::ofe\<times>'b::ofe)-n>'b" is "\<lambda>(_,b). b" by (rule non_expansiveI) auto
-
-instantiation prod :: (cofe,cofe) cofe begin
-definition lim_prod :: "('a \<times> 'b) chain \<Rightarrow> 'a \<times> 'b" where 
-  "lim_prod c = (lim (chain_map ne_fst c), lim (chain_map ne_snd c))"
-instance proof 
-  fix c :: "('a\<times>'b) chain" and n
-  have "n_equiv n (lim (chain_map ne_fst c)) (Rep_chain (chain_map ne_fst c) n)" 
-    "n_equiv n (lim (chain_map ne_snd c)) (Rep_chain (chain_map ne_snd c) n)" 
-    using core_compl by auto  
-  then show "n_equiv n (lim c) (Rep_chain c n)"
-  apply (simp add: lim_prod_def ne_fst.rep_eq ne_snd.rep_eq chain_map_def)
-  by (smt (z3) Abs_chain_inverse Rep_chain case_prod_conv mem_Collect_eq n_equiv_prod.elims(2) n_equiv_prod.elims(3))
-qed
-end
-
 instantiation prod :: (camera,camera) camera begin
   definition valid_raw_prod :: "'a \<times> 'b \<Rightarrow> sprop" where
     "valid_raw_prod \<equiv> \<lambda>(x::'a,y::'b). valid_raw x \<and>\<^sub>s valid_raw y"
@@ -87,7 +67,13 @@ lemma prod_valid_def: "valid (x,y) \<longleftrightarrow> valid x \<and> valid y"
 
 lemma prod_n_valid_def: "n_valid (x,y) n \<longleftrightarrow> n_valid x n \<and> n_valid y n"
   by (auto simp: valid_raw_prod_def valid_def sprop_conj.rep_eq)
-  
+
+lemma prod_n_valid_fun_def: "n_valid (x,y) = (\<lambda>n. n_valid x n \<and> n_valid y n)"
+  using prod_n_valid_def by auto
+
+lemma prod_n_valid_snd: "n_valid (x,y) n \<Longrightarrow> n_valid y n"
+  using prod_n_valid_fun_def by metis
+
 instance prod :: (core_id,core_id) core_id by standard (auto simp: pcore_prod_def pcore_id)
 
 instance prod :: (dcamera,dcamera) dcamera 
@@ -107,156 +93,105 @@ lemma prod_pcore_id_pred:
 
 instance prod :: (ducamera,ducamera) ducamera ..
 
-subsubsection \<open> Sum type \<close>
-datatype ('a::camera,'b::camera) sum_camera = Inl 'a | Inr 'b | Inv
-lemmas sum_ex2 = sum_camera.exhaust[case_product sum_camera.exhaust]
-lemmas sum_ex3 = sum_camera.exhaust[case_product sum_ex2]
-lemmas sum_ex4 = sum_camera.exhaust[case_product sum_ex3]
-
-instantiation sum_camera :: (camera,camera) ofe begin
-  fun ofe_eq_sum_camera :: "('a, 'b) sum_camera \<Rightarrow> ('a, 'b) sum_camera \<Rightarrow> bool" where
-    "ofe_eq_sum_camera (Inl a) (Inl b) = ofe_eq a b"
-  | "ofe_eq_sum_camera (Inr a) (Inr b) = ofe_eq a b"
-  | "ofe_eq_sum_camera Inv Inv = True"
-  | "ofe_eq_sum_camera _ _ = False"
-  fun n_equiv_sum_camera :: "nat \<Rightarrow> ('a,'b) sum_camera \<Rightarrow> ('a,'b) sum_camera \<Rightarrow> bool" where
-    "n_equiv_sum_camera n (Inl x) (Inl y) = n_equiv n x y"
-  | "n_equiv_sum_camera n (Inr x) (Inr y) =  n_equiv n x y"
-  | "n_equiv_sum_camera _ Inv Inv = True"
-  | "n_equiv_sum_camera _ _ _ = False"
-instance proof
-  fix n x
-  show "n_equiv n x (x::('a,'b) sum_camera)" by (cases x) (auto simp: ofe_refl)
-next
-  fix n x y
-  show "n_equiv n x y = n_equiv n y (x::('a,'b) sum_camera)" 
-    by (cases x y rule: sum_ex2) (auto simp: ofe_sym)
-next
-  fix n x y z 
-  show "n_equiv n x y \<Longrightarrow> n_equiv n y z \<Longrightarrow> n_equiv n x (z::('a,'b) sum_camera)"
-    by (cases x y z rule: sum_ex3) (auto intro: ofe_trans)
-next
-  fix m n x y
-  show "m \<le> n \<Longrightarrow> n_equiv n x y \<Longrightarrow> n_equiv m x (y::('a,'b) sum_camera)"
-  by (cases x y rule: sum_ex2) (auto intro: ofe_mono)
-next
-  fix x y :: "('a,'b) sum_camera"
-  show "ofe_eq x y \<longleftrightarrow> (\<forall>n. n_equiv n x y)"
-  apply (cases x; cases y) 
-  apply simp_all
-  using ofe_limit by blast+
-next
-  fix x y :: "('a,'b) sum_camera" 
-  show "(x=y) \<Longrightarrow> ofe_eq x y" by (cases x y rule: sum_ex2) (auto intro: ofe_eq_eq)
-qed
-end
-instance sum_camera :: (dcamera,dcamera) discrete 
-proof
-fix a b :: "('a,'b) sum_camera" fix n
-show "n_equiv n a b = (a = b)" by (cases a b rule: sum_ex2) (auto simp: d_equiv)
-next
-fix a b :: "('a,'b) sum_camera"
-show "ofe_eq a b = (a = b)" by (cases a b rule: sum_ex2) (auto simp: d_eq)
-qed
-
-fun sum_pcore :: "('a::camera,'b::camera) sum_camera \<Rightarrow> ('a,'b) sum_camera option" where
+subsubsection \<open> Extended sum type \<close>
+fun sum_pcore :: "'a::camera+\<^sub>e'b::camera \<Rightarrow> ('a+\<^sub>e'b) option" where
   "sum_pcore (Inl x) = (case pcore x of Some x' \<Rightarrow> Some (Inl x') | None \<Rightarrow> None)"
 | "sum_pcore (Inr x) = (case pcore x of Some x' \<Rightarrow> Some (Inr x') | None \<Rightarrow> None)"
-| "sum_pcore Inv = Some Inv"  
+| "sum_pcore sum_ext.Inv = Some sum_ext.Inv"  
 
 lemma sum_pcore_ne: "non_expansive sum_pcore"
 proof (rule non_expansiveI)
 fix n x y
-assume "n_equiv n x (y::('a,'b) sum_camera)"
+assume "n_equiv n x (y::('a,'b) sum_ext)"
 then show "n_equiv n (sum_pcore x) (sum_pcore y)" 
   by (cases x y rule: sum_ex2; auto simp: ofe_refl ofe_sym n_equiv_option_def split: option.splits)
   (metis option.distinct(1) option.sel pcore_ne n_equiv_option_def)+
 qed
 
-instantiation sum_camera :: (camera,camera) camera begin
-  definition valid_raw_sum_camera :: "('a,'b) sum_camera \<Rightarrow> sprop" where
-    "valid_raw_sum_camera s \<equiv> case s of (Inl a) \<Rightarrow> valid_raw a | Inr b \<Rightarrow> valid_raw b | Inv \<Rightarrow> sFalse"
-  definition "pcore_sum_camera \<equiv> sum_pcore"
-  definition op_sum_camera :: "('a,'b) sum_camera \<Rightarrow> ('a,'b) sum_camera \<Rightarrow> ('a,'b) sum_camera" where
-    "op_sum_camera x y = (case (x,y) of (Inl x', Inl y') \<Rightarrow> Inl (x' \<cdot> y') 
-    | (Inr x', Inr y') \<Rightarrow> Inr (x' \<cdot> y') | _ \<Rightarrow> Inv)"
+instantiation sum_ext :: (camera,camera) camera begin
+  definition valid_raw_sum_ext :: "('a,'b) sum_ext \<Rightarrow> sprop" where
+    "valid_raw_sum_ext s \<equiv> case s of (Inl a) \<Rightarrow> valid_raw a | Inr b \<Rightarrow> valid_raw b | sum_ext.Inv \<Rightarrow> sFalse"
+  definition "pcore_sum_ext \<equiv> sum_pcore"
+  definition op_sum_ext :: "('a,'b) sum_ext \<Rightarrow> ('a,'b) sum_ext \<Rightarrow> ('a,'b) sum_ext" where
+    "op_sum_ext x y = (case (x,y) of (Inl x', Inl y') \<Rightarrow> Inl (x' \<cdot> y') 
+    | (Inr x', Inr y') \<Rightarrow> Inr (x' \<cdot> y') | _ \<Rightarrow> sum_ext.Inv)"
 instance proof
-show "non_expansive (valid_raw::('a,'b) sum_camera \<Rightarrow> sprop)"
-  by (rule non_expansiveI;auto simp: valid_raw_sum_camera_def split: sum_camera.splits)
+show "non_expansive (valid_raw::('a,'b) sum_ext \<Rightarrow> sprop)"
+  by (rule non_expansiveI;auto simp: valid_raw_sum_ext_def split: sum_ext.splits)
   (auto simp: n_equiv_sprop_def)
 next
-show "non_expansive (pcore::('a,'b) sum_camera \<Rightarrow> ('a,'b) sum_camera option)"
-  by (simp add: sum_pcore_ne pcore_sum_camera_def)
+show "non_expansive (pcore::('a,'b) sum_ext \<Rightarrow> ('a,'b) sum_ext option)"
+  by (simp add: sum_pcore_ne pcore_sum_ext_def)
 next
-show "non_expansive2 (op::('a,'b) sum_camera \<Rightarrow> ('a,'b) sum_camera \<Rightarrow> ('a,'b) sum_camera)"
+show "non_expansive2 (op::('a,'b) sum_ext \<Rightarrow> ('a,'b) sum_ext \<Rightarrow> ('a,'b) sum_ext)"
 proof (rule non_expansive2I)
-fix x y a b :: "('a,'b) sum_camera"
+fix x y a b :: "('a,'b) sum_ext"
 fix n
 assume " n_equiv n x y" "n_equiv n a b"
 then show "n_equiv n (x \<cdot> a) (y \<cdot> b)"
-  by (cases x y a b rule: sum_ex4) (auto simp: ofe_refl ofe_sym op_sum_camera_def)
+  by (cases x y a b rule: sum_ex4) (auto simp: ofe_refl ofe_sym op_sum_ext_def)
 qed
 next
-fix a b c :: "('a,'b) sum_camera"
+fix a b c :: "('a,'b) sum_ext"
 show "a \<cdot> b \<cdot> c = a \<cdot> (b \<cdot> c)" 
-  by (cases a b c rule: sum_ex3) (auto simp: op_sum_camera_def camera_assoc)
+  by (cases a b c rule: sum_ex3) (auto simp: op_sum_ext_def camera_assoc)
 next
-fix a b :: "('a,'b) sum_camera"
-show "a \<cdot> b = b \<cdot> a" by (cases a b rule: sum_ex2) (auto simp: op_sum_camera_def camera_comm)
+fix a b :: "('a,'b) sum_ext"
+show "a \<cdot> b = b \<cdot> a" by (cases a b rule: sum_ex2) (auto simp: op_sum_ext_def camera_comm)
 next
-fix a a' :: "('a,'b) sum_camera"
+fix a a' :: "('a,'b) sum_ext"
 show "pcore a = Some a' \<Longrightarrow> a' \<cdot> a = a" by (cases a a' rule: sum_ex2) 
-  (auto simp: pcore_sum_camera_def op_sum_camera_def camera_pcore_id split: option.splits)
+  (auto simp: pcore_sum_ext_def op_sum_ext_def camera_pcore_id split: option.splits)
 next
-fix a a' :: "('a,'b) sum_camera"
+fix a a' :: "('a,'b) sum_ext"
 show "pcore a = Some a' \<Longrightarrow> pcore a' = pcore a" by (cases a a' rule: sum_ex2)
-  (auto simp: pcore_sum_camera_def camera_pcore_idem split: option.splits)
+  (auto simp: pcore_sum_ext_def camera_pcore_idem split: option.splits)
 next
-fix a a' b :: "('a,'b) sum_camera"
+fix a a' b :: "('a,'b) sum_ext"
 show "pcore a = Some a' \<Longrightarrow> \<exists>c. b = a \<cdot> c \<Longrightarrow> \<exists>b'. pcore b = Some b' \<and> (\<exists>c. b' = a' \<cdot> c)"
   apply (cases a a' b rule: sum_ex3) 
-  apply (simp_all add: pcore_sum_camera_def op_sum_camera_def split: option.splits sum_camera.splits)
-  apply (metis camera_pcore_mono option.inject sum_camera.inject(1) sum_camera.simps(4) sum_camera.simps(6))
+  apply (simp_all add: pcore_sum_ext_def op_sum_ext_def split: option.splits sum_ext.splits)
+  apply (metis camera_pcore_mono option.inject sum_ext.inject(1) sum_ext.simps(4) sum_ext.simps(6))
   apply blast+
-  apply (metis camera_pcore_mono option.inject sum_camera.distinct(5) sum_camera.inject(2) sum_camera.simps(4))
+  apply (metis camera_pcore_mono option.inject sum_ext.distinct(5) sum_ext.inject(2) sum_ext.simps(4))
   by blast+
 next
-fix a b :: "('a,'b) sum_camera"
+fix a b :: "('a,'b) sum_ext"
 fix n
 show "Rep_sprop (valid_raw (a \<cdot> b)) n \<Longrightarrow> Rep_sprop (valid_raw a) n" by (cases a; cases b) 
-  (auto simp: valid_raw_sum_camera_def op_sum_camera_def camera_valid_op split: sum_camera.splits)
+  (auto simp: valid_raw_sum_ext_def op_sum_ext_def camera_valid_op split: sum_ext.splits)
 next
-fix a b c :: "('a,'b) sum_camera"
+fix a b c :: "('a,'b) sum_ext"
 fix n
 show "Rep_sprop (valid_raw a) n \<Longrightarrow> n_equiv n a (b \<cdot> c) \<Longrightarrow> 
   \<exists>c1 c2. a = c1 \<cdot> c2 \<and> n_equiv n c1 b \<and> n_equiv n c2 c" apply (cases a b c rule: sum_ex3) 
-  apply (simp_all add: valid_raw_sum_camera_def op_sum_camera_def split: sum_camera.splits)
+  apply (simp_all add: valid_raw_sum_ext_def op_sum_ext_def split: sum_ext.splits)
   using camera_extend by fast+
 qed
 end
 
-instance sum_camera :: (dcamera,dcamera) dcamera
-  apply (standard; auto simp: valid_raw_sum_camera_def valid_def split: sum_camera.splits)
+instance sum_ext :: (dcamera,dcamera) dcamera
+  apply (standard; auto simp: valid_raw_sum_ext_def valid_def split: sum_ext.splits)
   using d_valid[simplified valid_def] by blast+
 
-instance sum_camera :: (core_id,core_id) core_id 
+instance sum_ext :: (core_id,core_id) core_id 
 proof
-fix a :: "('a,'b) sum_camera"
-show "pcore a = Some a" by (cases a) (auto simp: pcore_sum_camera_def pcore_id)
+fix a :: "('a,'b) sum_ext"
+show "pcore a = Some a" by (cases a) (auto simp: pcore_sum_ext_def pcore_id)
 qed
 
 lemma sum_update_l: "a\<leadsto>B \<Longrightarrow> (Inl a) \<leadsto> {Inl b |b. b\<in>B}"
-by (auto simp: fup_def op_sum_camera_def valid_def valid_raw_sum_camera_def split: sum_camera.splits)
+by (auto simp: fup_def op_sum_ext_def valid_def valid_raw_sum_ext_def split: sum_ext.splits)
   blast
 
 lemma sum_update_r: "a\<leadsto>B \<Longrightarrow> (Inr a) \<leadsto> {Inr b |b. b\<in>B}"
-by (auto simp: fup_def op_sum_camera_def valid_def valid_raw_sum_camera_def split: sum_camera.splits)
+by (auto simp: fup_def op_sum_ext_def valid_def valid_raw_sum_ext_def split: sum_ext.splits)
 
 lemma sum_swap_l: "\<lbrakk>\<forall>c n. \<not> n_valid (op a c) n; valid b\<rbrakk> \<Longrightarrow> (Inl a) \<leadsto> {Inr b}"
-by (auto simp: valid_def fup_def valid_raw_sum_camera_def op_sum_camera_def split: sum_camera.splits)
+by (auto simp: valid_def fup_def valid_raw_sum_ext_def op_sum_ext_def split: sum_ext.splits)
 
 lemma sum_swap_r: "\<lbrakk>\<forall>c n. \<not> Rep_sprop (valid_raw (op a c)) n; valid b\<rbrakk> \<Longrightarrow> (Inr a) \<leadsto> {Inl b}"
-by (auto simp: valid_def fup_def valid_raw_sum_camera_def op_sum_camera_def split: sum_camera.splits)
+by (auto simp: valid_def fup_def valid_raw_sum_ext_def op_sum_ext_def split: sum_ext.splits)
 
 subsubsection \<open> Option type \<close>
 fun option_op :: "('a::camera) option \<Rightarrow> 'a option \<Rightarrow> 'a option" where
@@ -347,114 +282,7 @@ end
 
 instance option :: (dcamera) ducamera ..
 
-subsubsection \<open> Agreement camera functor \<close>
-typedef 'a ag = "{a::'a set | a. finite a \<and> a\<noteq>{} }"
-  by auto
-setup_lifting type_definition_ag
-
-lift_definition map_ag :: "('a\<Rightarrow>'b) \<Rightarrow> 'a ag \<Rightarrow> 'b ag" is "(`)" by simp
-lift_definition pred_ag :: "('a \<Rightarrow> bool) \<Rightarrow> 'a ag \<Rightarrow> bool" is "\<lambda>P s. Ball s P" .
-lift_definition rel_ag :: "('a \<Rightarrow> 'b \<Rightarrow> bool) \<Rightarrow> 'a ag \<Rightarrow> 'b ag \<Rightarrow> bool" is rel_set .
-
-lemma image_ag: "image f (Rep_ag s) \<in> {a |a. finite a \<and> a \<noteq> {}}"
-  apply (simp_all add: image_def)
-  apply (rule conjI)
-  subgoal using finite_imageI[unfolded image_def] Rep_ag by auto
-  using Rep_ag by fast
-lemmas image_abs_ag = Abs_ag_inverse[OF image_ag] Abs_ag_inject[OF image_ag  image_ag]
-
-context includes cardinal_syntax begin
-bnf "'a ag"
-  map: map_ag
-  sets: Rep_ag
-  bd: "natLeq"
-  rel: rel_ag
-proof -
-show "map_ag id = id" by (auto simp: map_ag_def Rep_ag_inverse)
-next
-fix f :: "'a \<Rightarrow> 'b" and g :: "'b \<Rightarrow> 'c"
-show "map_ag (g \<circ> f) = map_ag g \<circ> map_ag f" 
-  by (auto simp: comp_def image_def map_ag_def)
-  (metis Rep_ag_inverse image_def image_image map_ag.rep_eq map_fun_apply)
-next
-fix x :: "'a ag" and f g :: "'a \<Rightarrow> 'b"
-assume "\<And>z. z \<in> Rep_ag x \<Longrightarrow> f z = g z"
-then show "map_ag f x = map_ag g x" by transfer auto
-next
-fix f :: "'a\<Rightarrow>'b"
-have "{y. \<exists>x\<in>Rep_ag s. y = f x} = image f (Rep_ag s)" for s by auto
-then have "{y. \<exists>x\<in>Rep_ag s. y = f x} \<in> {a |a. finite a \<and> a \<noteq> {}}" for s
-  apply simp_all
-  apply (rule conjI)
-  subgoal using finite_imageI Rep_ag by fast
-  using Rep_ag by blast
-from Abs_ag_inverse[OF this] show "Rep_ag \<circ> map_ag f = (`) f \<circ> Rep_ag" 
-  by (auto simp: map_ag_def image_def comp_def)
-next
-show "card_order (natLeq )"
-  using card_of_card_order_on card_order_csum natLeq_card_order by blast
-next
-show "cinfinite (natLeq )"
-  using cinfinite_csum natLeq_cinfinite by blast
-next
-fix s :: "'a ag"
-show "|Rep_ag s| \<le>o natLeq"
-by (metis (no_types, lifting) Rep_ag card_of_Well_order infinite_iff_natLeq_ordLeq mem_Collect_eq 
-  natLeq_Well_order not_ordLeq_iff_ordLess ordLess_imp_ordLeq)
-next
-fix R :: "'a\<Rightarrow>'b\<Rightarrow>bool" and S :: "'b\<Rightarrow>'c\<Rightarrow>bool"
-show "rel_ag R OO rel_ag S \<le> rel_ag (R OO S)"
-  by (auto simp: rel_ag.rep_eq rel_set_def relcompp.simps) blast+
-next
-fix R :: "'a\<Rightarrow>'b\<Rightarrow>bool"
-show "rel_ag R = (\<lambda>x y. \<exists>z. Rep_ag z \<subseteq> {(x, y). R x y} \<and> map_ag fst z = x \<and> map_ag snd z = y)"
-apply (auto simp: rel_ag_def map_ag_def rel_set_def map_fun_def comp_def)
-apply standard
-apply standard
-proof
-  fix a :: "'a ag" and b :: "'b ag"
-  assume "(\<forall>x\<in>Rep_ag a. \<exists>xa\<in>Rep_ag b. R x xa) \<and> (\<forall>y\<in>Rep_ag b. \<exists>x\<in>Rep_ag a. R x y)"
-  then have assms: "\<forall>x\<in>Rep_ag a. \<exists>xa\<in>Rep_ag b. R x xa" "\<forall>y\<in>Rep_ag b. \<exists>x\<in>Rep_ag a. R x y" by simp_all
-  define c where c:"c = {(x,y) | x y. x\<in>Rep_ag a \<and> y\<in>Rep_ag b}"
-  from Rep_ag have "finite (Rep_ag a)" "Rep_ag a \<noteq> {}" "finite (Rep_ag b)" "Rep_ag b \<noteq> {}" by auto
-  with c have c_ag: "finite c" "c \<noteq> {}" by auto
-  define c' where c': "c' = c \<inter> {(x,y) | x y. R x y}"
-  with c_ag c and assms have c'_ag: "finite c'" "c' \<noteq> {}" by auto
-  from c' c assms have c'_alt: "c' = {(x,y) | x y. x\<in>Rep_ag a \<and> y\<in>Rep_ag b \<and> R x y}" by auto
-  define z where z: "z = Abs_ag c'"
-  then have rep_z: "Rep_ag z = c'" using Abs_ag_inverse c'_ag by auto
-  {
-    from c'_alt assms(1) have "(fst ` c') = Rep_ag a" by (simp add: image_def) blast
-    with rep_z have "Abs_ag (fst ` Rep_ag z) = a" using Rep_ag_inverse by auto
-  }
-  moreover {
-    from c'_alt assms(2) have "(snd ` c') = Rep_ag b" by (simp add: image_def) blast
-    with rep_z have "Abs_ag (snd ` Rep_ag z) = b" using Rep_ag_inverse by auto
-  }
-  moreover have "Rep_ag z \<subseteq> {(x, y). R x y}" using rep_z c' by simp
-  ultimately show "\<exists>z. Rep_ag z \<subseteq> {(x, y). R x y} \<and> Abs_ag (fst ` Rep_ag z) = a \<and> Abs_ag (snd ` Rep_ag z) = b"
-  by auto
-next
-  fix a :: "'a ag" and b :: "'b ag"
-  assume "\<exists>z. Rep_ag z \<subseteq> {(x, y). R x y} \<and> Abs_ag (fst ` Rep_ag z) = a \<and> Abs_ag (snd ` Rep_ag z) = b"
-  then show "(\<forall>x\<in>Rep_ag a. \<exists>xa\<in>Rep_ag b. R x xa) \<and> (\<forall>y\<in>Rep_ag b. \<exists>x\<in>Rep_ag a. R x y)"
-  by (smt (verit, best) Product_Type.Collect_case_prodD image_abs_ag(1) image_iff subset_eq)
-qed
-qed
-end
-
-instantiation ag :: (ofe) ofe begin
-lift_definition n_equiv_ag :: "nat \<Rightarrow> ('a::ofe) ag \<Rightarrow> 'a ag \<Rightarrow> bool" is
-  "\<lambda>n a b. (\<forall>x\<in>a. \<exists>y\<in>b. n_equiv n x y) \<and> (\<forall>y\<in>b. \<exists>x\<in>a. n_equiv n x y)" .
-definition ofe_eq_ag :: "('a::ofe) ag \<Rightarrow> 'a ag \<Rightarrow> bool" where
-  "ofe_eq_ag a b \<equiv> \<forall>n. n_equiv n a b"
-lemmas defs = n_equiv_ag.rep_eq ofe_eq_ag_def
-instance by (standard) (auto 4 4 simp: defs ofe_sym intro: ofe_refl ofe_trans ofe_mono)
-end
-instance ag :: (discrete) discrete apply standard
-  apply (simp_all add: n_equiv_ag.rep_eq d_equiv ofe_eq_ag_def)
-  using Rep_ag_inject by blast+
-
+subsubsection \<open> Agreement camera combinator\<close>
 instantiation ag :: (ofe) camera begin
 lift_definition valid_raw_ag :: "'a ag \<Rightarrow> sprop" is
   "\<lambda>a n. \<exists>b. a={b} \<or> (\<forall>x y. (x\<in>a\<and>y\<in>a) \<longrightarrow> n_equiv n x y)" by (metis ofe_mono)
@@ -541,44 +369,12 @@ lemma d_ag_agree: "valid ((a::('a::discrete) ag) \<cdot> b) \<Longrightarrow> a=
   by (auto simp: n_equiv_ag.rep_eq valid_def d_equiv) (metis ag_agree d_equiv)
 
 subsubsection \<open> Exclusive camera functor\<close>
-
-datatype 'a::ofe ex = Ex 'a | Inv
-instantiation ex :: (ofe) ofe begin
-fun n_equiv_ex :: "nat \<Rightarrow> 'a ex \<Rightarrow> 'a ex \<Rightarrow> bool" where
-  "n_equiv_ex n (Ex a) (Ex b) = n_equiv n a b"
-| "n_equiv_ex _ Inv Inv = True"
-| "n_equiv_ex _ _ _ = False"
-fun ofe_eq_ex :: "'a ex \<Rightarrow> 'a ex \<Rightarrow> bool" where
-  "ofe_eq_ex (Ex a) (Ex b) = ofe_eq a b"
-| "ofe_eq_ex Inv Inv = True"
-| "ofe_eq_ex _ _ = False"
-instance proof
-fix x n show "n_equiv n x (x::'a ex)" by (cases x) (auto intro: ofe_refl)
-next fix n x y show "n_equiv n x y = n_equiv n y (x::'a ex)" by (cases x; cases y) (auto simp: ofe_sym)
-next fix n x y z show "n_equiv n x y \<Longrightarrow> n_equiv n y z \<Longrightarrow> n_equiv n x (z::'a ex)"
-  by (cases x; cases y; cases z) (auto intro: ofe_trans)
-next fix m n x y show "m \<le> n \<Longrightarrow> n_equiv n x y \<Longrightarrow> n_equiv m x (y::'a ex)" 
-  by (cases x; cases y) (auto intro: ofe_mono)
-next fix x y show "ofe_eq x y \<longleftrightarrow> (\<forall>n. n_equiv n x (y::'a ex))" 
-  apply (cases x; cases y) apply simp_all using ofe_limit by blast+
-next fix x y show "x = y \<Longrightarrow> ofe_eq x (y::'a ex)" by (cases x; cases y) (auto intro: ofe_eq_eq)
-qed
-end
-instance ex :: (discrete) discrete
-proof
-fix a b :: "'a ex" fix n
-show "n_equiv n a b = (a = b)" by (cases a; cases b) (auto simp: d_equiv)
-next
-fix a b :: "'a ex"
-show "ofe_eq a b = (a = b)" by (cases a; cases b) (auto simp: d_eq)
-qed
-
 instantiation ex :: (ofe) camera begin
 definition valid_raw_ex :: "'a ex \<Rightarrow> sprop" where 
-  "valid_raw_ex x = (case x of Ex _ \<Rightarrow> sTrue | Inv \<Rightarrow> sFalse)" 
+  "valid_raw_ex x = (case x of Ex _ \<Rightarrow> sTrue | ex.Inv \<Rightarrow> sFalse)" 
 definition pcore_ex :: "'a ex \<Rightarrow> 'a ex option" where
-  "pcore_ex x = (case x of Ex _ \<Rightarrow> None | Inv \<Rightarrow> Some Inv)"
-definition op_ex :: "'a ex \<Rightarrow> 'a ex \<Rightarrow> 'a ex" where [simp]: "op_ex _ _ = Inv"
+  "pcore_ex x = (case x of Ex _ \<Rightarrow> None | ex.Inv \<Rightarrow> Some ex.Inv)"
+definition op_ex :: "'a ex \<Rightarrow> 'a ex \<Rightarrow> 'a ex" where [simp]: "op_ex _ _ = ex.Inv"
 instance proof
 show "non_expansive (valid_raw::'a ex \<Rightarrow> sprop)"
   by (rule non_expansiveI) (auto simp: valid_raw_ex_def n_equiv_sprop_def split: ex.splits)
@@ -593,34 +389,6 @@ end
 instance ex :: (discrete) dcamera by (standard; auto simp: valid_raw_ex_def valid_def split: ex.splits)
 
 subsubsection \<open> Authoritative camera functor \<close>
-datatype 'm auth = Auth "('m ex option\<times>'m)"
-instantiation auth :: (camera) ofe begin
-fun n_equiv_auth :: "nat \<Rightarrow> 'a auth \<Rightarrow> 'a auth \<Rightarrow> bool" where
-  "n_equiv_auth n (Auth a) (Auth b) = n_equiv n a b"
-fun ofe_eq_auth :: "'a auth \<Rightarrow> 'a auth \<Rightarrow> bool" where
-  "ofe_eq_auth (Auth a) (Auth b) = ofe_eq a b"
-instance proof
-fix n x show "n_equiv n x (x::'a auth)" by (cases x) (auto intro: ofe_refl) next
-fix n x y show "n_equiv n x y \<longleftrightarrow> n_equiv n y (x::'a auth)" 
-  by (cases x; cases y) (auto simp: ofe_sym) next
-fix n x y z show "n_equiv n x y \<Longrightarrow> n_equiv n y z \<Longrightarrow> n_equiv n x (z::'a auth)"
-  by (cases x; cases y; cases z) (auto intro: ofe_trans) next 
-fix m n x y show "m \<le> n \<Longrightarrow> n_equiv n x y \<Longrightarrow> n_equiv m x (y::'a auth)"
-  by (cases x; cases y) (auto intro: ofe_mono) next
-fix x y show "ofe_eq x y \<longleftrightarrow> (\<forall>n. n_equiv n x (y::'a auth))" apply (cases x; cases y; auto)
-  using ofe_limit by blast+ next
-fix x y show " x = y \<Longrightarrow> ofe_eq x (y::'a auth)" by (cases x; cases y) (auto intro: ofe_eq_eq)
-qed
-end
-instance auth :: (dcamera) discrete
-proof
-fix a b :: "'a auth" fix n
-show "n_equiv n a b = (a = b)" by (cases a; cases b) (auto simp: d_equiv)
-next
-fix a b :: "'a auth"
-show "ofe_eq a b = (a = b)" by (cases a; cases b) (auto simp: d_eq)
-qed
-
 lemma valid_raw_auth_aux: "(\<lambda>n. \<exists>c. x = ex.Ex c \<and> n_incl n (y::'a::ucamera) c \<and> n_valid c n) \<in> 
   {s. \<forall>n m. m \<le> n \<longrightarrow> s n \<longrightarrow> s m}" apply (simp add: n_incl_def) using ofe_mono by fastforce
 
@@ -769,8 +537,6 @@ end
 instance auth :: (ducamera) ducamera ..
 
 abbreviation full :: "'m::ucamera \<Rightarrow> 'm auth" where "full \<equiv> \<lambda>a::'m. Auth (Some (Ex a), \<epsilon>)"
-abbreviation fragm :: "'m::ucamera \<Rightarrow> 'm auth" where "fragm \<equiv> \<lambda>a::'m. Auth (None, a)"
-abbreviation comb :: "'m::ucamera \<Rightarrow> 'm \<Rightarrow> 'm auth" where "comb \<equiv> \<lambda>(a::'m) b. Auth (Some (Ex a), b)"
 
 lemma fragm_core_id: "pcore_id_pred (fragm (a::'a::{ucamera,core_id}))"
   by (auto simp: core_id_pred core_def pcore_auth_def core_id[unfolded core_def, simplified] 
@@ -828,20 +594,6 @@ class opt = ucamera + fixes none assumes none_\<epsilon>: "\<epsilon> = none"
 instantiation option :: (camera) opt begin definition [simp]: "none \<equiv> None" instance 
   by standard (auto simp: ofe_eq_option_def)
 end
-
-instantiation "fun" :: (type,ofe) ofe begin
-definition n_equiv_fun :: "nat \<Rightarrow> ('a\<Rightarrow>'b) \<Rightarrow> ('a\<Rightarrow>'b) \<Rightarrow> bool" where
-  "n_equiv_fun n m1 m2 \<equiv> \<forall>i. n_equiv n (m1 i) (m2 i)"
-definition ofe_eq_fun :: "('a\<Rightarrow>'b) \<Rightarrow> ('a\<Rightarrow>'b) \<Rightarrow> bool" where
-  "ofe_eq_fun m1 m2 \<equiv> \<forall>i. ofe_eq (m1 i) (m2 i)"
-instance by (standard, unfold n_equiv_fun_def ofe_eq_fun_def) 
-  (auto simp: ofe_sym  ofe_limit intro: ofe_refl ofe_trans ofe_mono ofe_limit ofe_eq_eq)
-end
-
-instance "fun" :: (type,discrete) discrete 
-  by standard (auto simp: n_equiv_fun_def d_equiv ofe_eq_fun_def d_eq)
-
-(* No cofe instantiation because I have no idea how the Coq maps work for this one. *)
 
 lemma pcore_op_opt[simp]: "(case pcore x of None \<Rightarrow> none | Some a \<Rightarrow> a) \<cdot> (x::'b::opt) = x"
   apply (cases "pcore x")
@@ -943,13 +695,6 @@ end
 instance "fun" :: (type,d_opt) ducamera ..
 
 subsubsection \<open> Set type camera \<close>
-instantiation set :: (type) ofe begin
-definition n_equiv_set :: "nat \<Rightarrow> 'a set \<Rightarrow> 'a set \<Rightarrow> bool" where "n_equiv_set _ \<equiv> (=)"
-definition ofe_eq_set :: "'a set \<Rightarrow> 'a set \<Rightarrow> bool" where "ofe_eq_set \<equiv> (=)"
-instance by (standard) (auto simp: n_equiv_set_def ofe_eq_set_def)
-end
-instance set :: (type) discrete by standard (auto simp: n_equiv_set_def ofe_eq_set_def)
-
 instantiation set :: (type) camera begin
 definition valid_raw_set :: "'a set \<Rightarrow> sprop" where "valid_raw_set _ = sTrue"
 definition pcore_set :: "'a set \<Rightarrow> 'a set option" where "pcore_set \<equiv> Some"
@@ -983,17 +728,6 @@ end
 instance set :: (type) ducamera ..
 
 subsubsection \<open> Disjoint set camera \<close>
-text \<open> Set with extra bottom element to encode non-disjoint unions \<close>
-datatype 'a dset = DSet "'a set" | DBot 
-
-instantiation dset :: (type) ofe begin
-definition n_equiv_dset :: "nat \<Rightarrow> 'a dset \<Rightarrow> 'a dset \<Rightarrow> bool" where "n_equiv_dset \<equiv> \<lambda>_. (=)"
-definition ofe_eq_dset :: "'a dset \<Rightarrow> 'a dset \<Rightarrow> bool" where "ofe_eq_dset \<equiv> (=)"
-instance by standard (auto simp: n_equiv_dset_def ofe_eq_dset_def)
-end
-
-instance dset :: (type) discrete by standard (auto simp: n_equiv_dset_def ofe_eq_dset_def)
-
 instantiation dset :: (type) camera begin
 definition valid_raw_dset :: "'a dset \<Rightarrow> sprop" where 
   "valid_raw_dset d \<equiv> case d of DSet _ \<Rightarrow> sTrue | DBot \<Rightarrow> sFalse"
@@ -1042,14 +776,6 @@ end
 instance unit :: ducamera ..
 
 subsubsection \<open>Finite set camera\<close>
-instantiation fset :: (type) ofe begin
-definition n_equiv_fset :: "nat \<Rightarrow> 'a fset \<Rightarrow> 'a fset \<Rightarrow> bool" where [simp]: "n_equiv_fset _ \<equiv> (=)"
-definition ofe_eq_fset :: "'a fset \<Rightarrow> 'a fset \<Rightarrow> bool" where [simp]: "ofe_eq_fset \<equiv> (=)"
-instance by (standard) auto
-end
-
-instance fset :: (type) discrete by standard auto
-
 instantiation fset :: (type) camera begin
 definition valid_raw_fset :: "'a fset \<Rightarrow> sprop" where "valid_raw_fset _ = sTrue"
 definition pcore_fset :: "'a fset \<Rightarrow> 'a fset option" where "pcore_fset \<equiv> Some"
@@ -1081,17 +807,6 @@ instance by (standard) (auto simp: op_fset_def valid_def valid_raw_fset_def pcor
 end
 
 subsubsection \<open> Disjoint fset camera \<close>
-text \<open> Finite set with extra bottom element to encode non-disjoint unions \<close>
-datatype 'a dfset = DFSet "'a fset" | DFBot 
-
-instantiation dfset :: (type) ofe begin
-definition n_equiv_dfset :: "nat \<Rightarrow> 'a dfset \<Rightarrow> 'a dfset \<Rightarrow> bool" where "n_equiv_dfset \<equiv> \<lambda>_. (=)"
-definition ofe_eq_dfset :: "'a dfset \<Rightarrow> 'a dfset \<Rightarrow> bool" where "ofe_eq_dfset \<equiv> (=)"
-instance by standard (auto simp: n_equiv_dfset_def ofe_eq_dfset_def)
-end
-
-instance dfset :: (type) discrete by standard (auto simp: n_equiv_dfset_def ofe_eq_dfset_def)
-
 instantiation dfset :: (type) camera begin
 definition valid_raw_dfset :: "'a dfset \<Rightarrow> sprop" where 
   "valid_raw_dfset d \<equiv> case d of DFSet _ \<Rightarrow> sTrue | DFBot \<Rightarrow> sFalse"

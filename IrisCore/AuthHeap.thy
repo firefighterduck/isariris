@@ -2,7 +2,7 @@ theory AuthHeap
 imports DerivedConstructions Frac BaseLogicShallow Misc
 begin
 
-subsubsection \<open>Auth based fragm\<close>
+subsubsection \<open>Auth based heap\<close>
 type_synonym ('l,'v) heap = "('l\<rightharpoonup>(dfrac\<times>'v ag)) auth"
 
 lemma heap_auth_agree:
@@ -44,22 +44,22 @@ lemma heap_op: "[l\<mapsto>(dq1, to_ag v1)]\<cdot>[l\<mapsto>(dq2, to_ag v2)] = 
 
 lemma heap_op_val_eq: "[l\<mapsto>(dq1, to_ag v)]\<cdot>[l\<mapsto>(dq2, to_ag v)] = [l\<mapsto>(dq1\<cdot>dq2, to_ag v)]" 
   unfolding heap_op by (auto simp: op_prod_def op_ag_def to_ag_def Rep_ag_inverse)
-  
-text \<open>The modular Heap camera\<close>
-type_synonym ('l,'v,'c) heapCmra = "('l,'v) heap\<times>'c"
-abbreviation own_heap :: "('l,'v::ofe) heap \<Rightarrow> ('l,'v,'c::ucamera) heapCmra iprop" ("Own\<^sub>h _") where
-   "own_heap \<equiv> \<lambda>h. Own(h,\<epsilon>)"
 
-abbreviation own_other :: "'c::ucamera \<Rightarrow> ('l,'v::ofe,'c::ucamera) heapCmra iprop" where
-  "own_other \<equiv> \<lambda>c. Own(\<epsilon>,c)"
+lemma iprop_heap_valid: "\<V>((\<epsilon>,\<epsilon>,\<epsilon>,h)::res) \<turnstile> \<V>(h::heap_lang_heap)"
+  apply (simp add: upred_valid_def upred_entails.rep_eq Abs_upred_f_inverse)
+  using prod_n_valid_snd[OF prod_n_valid_snd[OF prod_n_valid_snd]] by fastforce
+
+text \<open>The modular Heap camera\<close>
+abbreviation own_heap :: "heap_lang_heap \<Rightarrow> iprop" ("Own\<^sub>h _") where
+   "own_heap h \<equiv> Own(\<epsilon>,\<epsilon>,\<epsilon>,h)"
    
-definition points_to :: "'l \<Rightarrow> dfrac \<Rightarrow> 'v::ofe \<Rightarrow> ('l,'v option,'c::ucamera) heapCmra iprop" where
+definition points_to :: "loc \<Rightarrow> dfrac \<Rightarrow> val \<Rightarrow> iprop" where
   "points_to l dq v = Own\<^sub>h(fragm [l\<mapsto>(dq, to_ag (Some v))])"
-abbreviation points_to_disc :: "'l \<Rightarrow> 'v::ofe \<Rightarrow> ('l,'v option,'c::ucamera) heapCmra iprop" where 
+abbreviation points_to_disc :: "loc \<Rightarrow> val \<Rightarrow> iprop" where 
   "points_to_disc \<equiv> \<lambda>l v. points_to l DfracDiscarded v"
-abbreviation points_to_own :: "'l \<Rightarrow> frac \<Rightarrow> 'v::ofe \<Rightarrow> ('l,'v option,'c::ucamera) heapCmra iprop" where
+abbreviation points_to_own :: "loc \<Rightarrow> frac \<Rightarrow> val \<Rightarrow> iprop" where
   "points_to_own \<equiv> \<lambda>l p v. points_to l (DfracOwn p) v"
-abbreviation points_to_full :: "'l \<Rightarrow> 'v::ofe \<Rightarrow> ('l,'v option,'c::ucamera) heapCmra iprop" where
+abbreviation points_to_full :: "loc \<Rightarrow> val \<Rightarrow> iprop" where
   "points_to_full \<equiv> \<lambda>l v. points_to_own l 1 v"
 
 bundle points_to_syntax begin
@@ -72,32 +72,33 @@ end
 context includes points_to_syntax assumes "SORT_CONSTRAINT('c::ucamera)" begin 
 
 lemma points_to_valid: 
-  "upred_holds (((l \<mapsto>{dq} v)::('a,'v::discrete option,'c) heapCmra iprop) -\<^emph> \<upharpoonleft>(valid dq))"
+  "upred_holds ((l \<mapsto>{dq} v) -\<^emph> \<upharpoonleft>(valid dq))"
 proof -
-  have "((l \<mapsto>{dq} v)::('a,'v option,'c) heapCmra iprop) 
-    \<turnstile> \<V>(fragm [l\<mapsto>(dq,to_ag (Some v))],\<epsilon>::'c)" by (auto simp: points_to_def own_valid)
-  moreover have "\<V>(fragm [l\<mapsto>(dq,to_ag (Some v))],\<epsilon>::'c)\<turnstile>\<V>(fragm [l\<mapsto>(dq,to_ag (Some v))])"
-     by (auto simp: upred_valid_def valid_def valid_raw_prod_def sprop_conj.rep_eq \<epsilon>_n_valid valid_raw_auth_def)
+  have "(l \<mapsto>{dq} v) \<turnstile> \<V>((\<epsilon>,\<epsilon>,\<epsilon>,fragm [l\<mapsto>(dq,to_ag (Some v))])::res)" 
+    by (auto simp: points_to_def own_valid)
+  moreover have "\<V>((\<epsilon>,\<epsilon>,\<epsilon>,fragm [l\<mapsto>(dq,to_ag (Some v))])::res) \<turnstile> 
+    \<V>((fragm [l\<mapsto>(dq,to_ag (Some v))])::heap_lang_heap)"
+    using iprop_heap_valid by blast
   moreover have "\<V>(fragm [l\<mapsto>(dq,to_ag (Some v))]) \<turnstile> \<upharpoonleft>(valid(fragm [l\<mapsto>(dq,to_ag (Some v))]))"
     using discrete_valid[of "fragm [l\<mapsto>(dq,to_ag (Some v))]"] upred_entail_eq_def 
     by (auto simp: valid_raw_prod_def \<epsilon>_n_valid valid_def)
-  ultimately have "((l \<mapsto>{dq} v)::('a,'v option,'c) heapCmra iprop) \<turnstile> \<upharpoonleft>(valid dq)" 
+  ultimately have "(l \<mapsto>{dq} v) \<turnstile> \<upharpoonleft>(valid dq)"
     by (auto simp: frag_heap_valid intro: upred_entails_trans)
   from upred_wand_holdsI [OF this] show ?thesis .
 qed
 
-lemma points_to_agree: "upred_holds ((l \<mapsto>{dq1} (v1::'v::discrete)) -\<^emph> 
-  ((l \<mapsto>{dq2} v2)::('a,'v option,'c::ucamera) heapCmra iprop) -\<^emph> \<upharpoonleft>(v1 = v2))"
+lemma points_to_agree: "upred_holds ((l \<mapsto>{dq1} v1) -\<^emph> ((l \<mapsto>{dq2} v2) -\<^emph> \<upharpoonleft>(v1 = v2)))"
 proof -
-  have "upred_holds ((l \<mapsto>{dq1} v1) -\<^emph> ((l \<mapsto>{dq2} v2)::('a,'v option,'c::ucamera) heapCmra iprop) -\<^emph> 
-    \<V>((fragm [l\<mapsto>(dq1, to_ag (Some v1))],\<epsilon>::'c)\<cdot>(fragm [l\<mapsto>(dq2, to_ag (Some v2))],\<epsilon>)))"
+  have "upred_holds ((l \<mapsto>{dq1} v1) -\<^emph> ((l \<mapsto>{dq2} v2)) -\<^emph> 
+    \<V>((\<epsilon>,\<epsilon>,\<epsilon>,fragm [l\<mapsto>(dq1, to_ag (Some v1))])\<cdot>(\<epsilon>,\<epsilon>,\<epsilon>,fragm [l\<mapsto>(dq2, to_ag (Some v2))]))::res)"
     apply (simp add: points_to_def) using own_valid2 by blast
-  then have "upred_holds ((l \<mapsto>{dq1} v1) -\<^emph> ((l \<mapsto>{dq2} v2)::('a,'v option,'c::ucamera) heapCmra iprop) -\<^emph> 
-    \<V>((fragm ([l\<mapsto>(dq1, to_ag (Some v1))\<cdot>(dq2, to_ag (Some v2))]),\<epsilon>::'c)))"
-    by (auto simp: heap_op \<epsilon>_left_id op_prod_def op_auth_def op_option_def)    
-  then have v:"upred_holds ((l \<mapsto>{dq1} v1) -\<^emph> ((l \<mapsto>{dq2} v2)::('a,'v option,'c::ucamera) heapCmra iprop) -\<^emph> 
+  then have "upred_holds ((l \<mapsto>{dq1} v1) -\<^emph> ((l \<mapsto>{dq2} v2)) -\<^emph> 
+    \<V>((\<epsilon>,\<epsilon>,\<epsilon>,fragm ([l\<mapsto>(dq1, to_ag (Some v1))\<cdot>(dq2, to_ag (Some v2))]))::res))"
+    by (simp add: \<epsilon>_left_id op_prod_def op_dset_def op_dfset_def)
+      (auto simp: heap_op op_auth_def op_option_def op_prod_def)
+  then have v:"upred_holds ((l \<mapsto>{dq1} v1) -\<^emph> ((l \<mapsto>{dq2} v2)) -\<^emph> 
     \<V>(fragm ([l\<mapsto>(dq1, to_ag (Some v1))\<cdot>(dq2, to_ag (Some v2))])))"
-    by (auto simp: upred_valid_def valid_def valid_raw_prod_def \<epsilon>_n_valid sprop_conj.rep_eq valid_raw_auth_def)
+    using  upred_entails_wand_holdsR2[OF iprop_heap_valid] by blast
   have "valid (fragm [l \<mapsto> (dq1, to_ag (Some v1)) \<cdot> (dq2, to_ag (Some v2))]) \<Longrightarrow> 
       valid (to_ag (Some v1) \<cdot> to_ag (Some v2))"
     by (auto simp: valid_def valid_raw_fun.rep_eq op_prod_def valid_raw_option_def prod_n_valid_def 
@@ -110,15 +111,14 @@ proof -
   show ?thesis .
 qed
 
-lemma points_to_combine_same:"((l \<mapsto>{dq1} v)::('a,'v::discrete option,'c) heapCmra iprop) \<^emph> (l \<mapsto>{dq2} v) \<turnstile> (l \<mapsto>{dq1 \<cdot> dq2} v)"
+lemma points_to_combine_same:"((l \<mapsto>{dq1} v)) \<^emph> (l \<mapsto>{dq2} v) \<turnstile> (l \<mapsto>{dq1 \<cdot> dq2} v)"
   apply (unfold points_to_def)
   apply (unfold heap_op_val_eq[symmetric])
-  by (rule upred_entail_eqR[OF own_op, of "(fragm [l \<mapsto> (dq1, to_ag (Some v))],\<epsilon>::'c)" 
-      "(fragm [l \<mapsto> (dq2, to_ag (Some v))],\<epsilon>)", unfolded op_prod_def, simplified, 
-      unfolded \<epsilon>_left_id auth_frag_op[symmetric]])
+  apply simp
+  apply (rule upred_entails_trans[OF upred_entail_eqR[OF own_op]])
+  by (auto simp: op_prod_def op_dset_def op_dfset_def \<epsilon>_left_id auth_frag_op)
 
-lemma points_to_combine: "upred_holds ((l\<mapsto>{dq1} (v1::'v::discrete)) -\<^emph> 
-  ((l \<mapsto>{dq2} v2)::('a,'v option,'c::ucamera) heapCmra iprop) -\<^emph> (l\<mapsto>{dq1\<cdot>dq2} v1) \<^emph> \<upharpoonleft>(v1=v2))"
+lemma points_to_combine: "upred_holds ((l\<mapsto>{dq1} v1) -\<^emph> ((l \<mapsto>{dq2} v2) -\<^emph> (l\<mapsto>{dq1\<cdot>dq2} v1) \<^emph> \<upharpoonleft>(v1=v2)))"
   apply (rule upred_wand_holds2I)
   apply (rule upred_sep_pure)
   apply (rule entails_pure_extend[OF upred_wandE[OF upred_wand_holdsE[OF points_to_agree]]])
@@ -128,24 +128,22 @@ lemma points_to_combine: "upred_holds ((l\<mapsto>{dq1} (v1::'v::discrete)) -\<^
 
 lemma points_to_frac_ne: 
   assumes "\<not> (valid (dq1\<cdot>dq2))"
-  shows "upred_holds ((l1 \<mapsto>{dq1} (v1::'v::discrete)) -\<^emph> 
-    ((l2 \<mapsto>{dq2} v2)::('a,'v option,'c::ucamera) heapCmra iprop) -\<^emph> \<upharpoonleft>(l1\<noteq>l2))"
+  shows "upred_holds ((l1 \<mapsto>{dq1} v1) -\<^emph> ((l2 \<mapsto>{dq2} v2) -\<^emph> \<upharpoonleft>(l1\<noteq>l2)))"
 proof -
   have valid_drop : 
-    "valid ((fragm [l1\<mapsto>(dq1,to_ag (Some v1))],\<epsilon>::'c) \<cdot> (fragm [l2\<mapsto>(dq2,to_ag (Some v2))],\<epsilon>::'c)) =
+    "valid ((\<epsilon>,\<epsilon>,\<epsilon>,fragm [l1\<mapsto>(dq1,to_ag (Some v1))]) \<cdot> (\<epsilon>,\<epsilon>,\<epsilon>,fragm [l2\<mapsto>(dq2,to_ag (Some v2))])::res) =
       valid ((fragm [l1\<mapsto>(dq1,to_ag (Some v1))]) \<cdot> (fragm [l2\<mapsto>(dq2,to_ag (Some v2))]))"
-    by (auto simp: camera_valid_op prod_valid_def op_prod_def \<epsilon>_left_id \<epsilon>_valid)
-  have "\<V>(((fragm [l1\<mapsto>(dq1,to_ag (Some v1))],\<epsilon>::'c) \<cdot> (fragm [l2\<mapsto>(dq2,to_ag (Some v2))],\<epsilon>::'c))) \<turnstile>
-    \<upharpoonleft>(valid ((fragm [l1\<mapsto>(dq1,to_ag (Some v1))],\<epsilon>::'c) \<cdot> (fragm [l2\<mapsto>(dq2,to_ag (Some v2))],\<epsilon>::'c)))"
-    apply (simp add: op_prod_def)
-    apply (simp add: prod_valid_def \<epsilon>_left_id \<epsilon>_valid upred_valid_def)
-    apply (simp add: valid_raw_prod_def sprop_conj.rep_eq \<epsilon>_n_valid)
-    by (rule upred_entail_eqL[OF discrete_valid[unfolded upred_valid_def], simplified])    
-  then have base: "upred_holds ((l1 \<mapsto>{dq1} v1) -\<^emph> 
-    ((l2 \<mapsto>{dq2} v2)::('a,'v option,'c::ucamera) heapCmra iprop) -\<^emph> 
-    \<upharpoonleft>(valid ((fragm [l1\<mapsto>(dq1,to_ag (Some v1))],\<epsilon>::'c) \<cdot> (fragm [l2\<mapsto>(dq2,to_ag (Some v2))],\<epsilon>::'c))))"
-    using upred_wand_holds2I[OF upred_entails_trans[OF upred_wand_holds2E[OF own_valid2]]]
-    by (smt (verit, del_insts) points_to_def)
+      by (simp add: op_prod_def \<epsilon>_left_id \<epsilon>_valid prod_valid_def del: \<epsilon>_dset_def \<epsilon>_dfset_def)
+  have "\<V>(((\<epsilon>,\<epsilon>,\<epsilon>,fragm [l1\<mapsto>(dq1,to_ag (Some v1))]) \<cdot> (\<epsilon>,\<epsilon>,\<epsilon>,fragm [l2\<mapsto>(dq2,to_ag (Some v2))])::res)) \<turnstile>
+    \<upharpoonleft>(valid ((\<epsilon>,\<epsilon>,\<epsilon>,fragm [l1\<mapsto>(dq1,to_ag (Some v1))]) \<cdot> (\<epsilon>,\<epsilon>,\<epsilon>,fragm [l2\<mapsto>(dq2,to_ag (Some v2))])::res))"
+    apply (simp add: op_prod_def \<epsilon>_left_id del: \<epsilon>_dset_def \<epsilon>_dfset_def)
+    apply (simp add: upred_pure.rep_eq upred_entails.rep_eq upred_valid.rep_eq del: \<epsilon>_dset_def \<epsilon>_dfset_def)
+    apply (simp add: prod_n_valid_fun_def prod_valid_def \<epsilon>_valid \<epsilon>_n_valid del: \<epsilon>_dset_def \<epsilon>_dfset_def)
+    using dcamera_valid_iff by auto
+  then have base: "upred_holds ((l1 \<mapsto>{dq1} v1) -\<^emph> ((l2 \<mapsto>{dq2} v2)) -\<^emph> 
+    \<upharpoonleft>(valid ((\<epsilon>,\<epsilon>,\<epsilon>,fragm [l1\<mapsto>(dq1,to_ag (Some v1))]) \<cdot> (\<epsilon>,\<epsilon>,\<epsilon>,fragm [l2\<mapsto>(dq2,to_ag (Some v2))])::res)))"
+    using upred_wand_holds2I[OF upred_entails_trans[OF upred_wand_holds2E[OF own_valid2]]] points_to_def 
+    by auto
   from assms have "valid ((fragm [l1\<mapsto>(dq1,to_ag (Some v1))]) \<cdot> (fragm [l2\<mapsto>(dq2,to_ag (Some v2))])) 
     \<Longrightarrow> l1\<noteq>l2"
     apply (simp add: valid_def)
@@ -156,13 +154,12 @@ proof -
   then have "\<upharpoonleft>(valid ((fragm [l1\<mapsto>(dq1,to_ag (Some v1))]) \<cdot> (fragm [l2\<mapsto>(dq2,to_ag (Some v2))]))) \<turnstile>
     \<upharpoonleft>(l1\<noteq>l2)" using pure_entailsI by blast
   with valid_drop have 
-    "\<upharpoonleft>(valid ((fragm [l1\<mapsto>(dq1,to_ag (Some v1))],\<epsilon>::'c)\<cdot>(fragm [l2\<mapsto>(dq2,to_ag (Some v2))],\<epsilon>::'c))) \<turnstile>
+    "\<upharpoonleft>(valid ((\<epsilon>,\<epsilon>,\<epsilon>,fragm [l1\<mapsto>(dq1,to_ag (Some v1))])\<cdot>(\<epsilon>,\<epsilon>,\<epsilon>,fragm [l2\<mapsto>(dq2,to_ag (Some v2))])::res)) \<turnstile>
     \<upharpoonleft>(l1\<noteq>l2)" by simp
     from upred_entails_wand_holdsR2[OF this base] show ?thesis .
 qed
 
-lemma points_to_ne: "upred_holds ((l1\<mapsto>\<^sub>u(v1::'v::discrete)) -\<^emph> 
-  ((l2 \<mapsto>{dq2} v2)::('a,'v option,'c::ucamera) heapCmra iprop) -\<^emph> \<upharpoonleft>(l1\<noteq>l2))"
+lemma points_to_ne: "upred_holds ((l1\<mapsto>\<^sub>uv1) -\<^emph> ((l2 \<mapsto>{dq2} v2)) -\<^emph> \<upharpoonleft>(l1\<noteq>l2))"
   by (rule points_to_frac_ne[OF dfrac_not_valid_own])
 
 definition to_heap :: "('l\<rightharpoonup>'v::ofe) \<Rightarrow> ('l\<rightharpoonup>(dfrac\<times>'v option ag))" where
@@ -171,7 +168,7 @@ definition to_heap :: "('l\<rightharpoonup>'v::ofe) \<Rightarrow> ('l\<rightharp
 definition to_heap_op :: "('l\<rightharpoonup>('v::ofe option)) \<Rightarrow> ('l\<rightharpoonup>(dfrac\<times>'v option ag))" where
   "to_heap_op h = (\<lambda>op. map_option (\<lambda>v::'v option. (DfracOwn 1,to_ag  v)) op) \<circ> h"
   
-definition heapInv :: "('l,('v::ofe) option,'c::ucamera) heapCmra iprop" where
+definition heapInv :: iprop where
   "heapInv \<equiv> \<exists>\<^sub>u h. (Own\<^sub>h(full (to_heap h))) \<^emph> (sep_map_heap h (\<lambda>(l,v). l\<mapsto>\<^sub>uv))"
 end
 end

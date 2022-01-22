@@ -4,7 +4,7 @@ begin
 
 section \<open> Metatheory \<close>
 text \<open> Meta theory about HeapLang; 
-  based on https://gitlab.mpi-sws.org/iris/iris/-/blob/master/iris_heap_lang/metatheory.v\<close>
+  based on \<^url>\<open>https://gitlab.mpi-sws.org/iris/iris/-/blob/master/iris_heap_lang/metatheory.v\<close> \<close>
 
 fun cons_binder :: "binder_t \<Rightarrow> string set \<Rightarrow> string set" (infixr "#\<^sub>b" 60) where
   "None#\<^sub>bbs = bs"

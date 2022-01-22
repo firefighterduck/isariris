@@ -3,7 +3,7 @@ imports Spawn
 begin
 
 subsection \<open> Parallel execution \<close>
-text \<open> Based on https://gitlab.mpi-sws.org/iris/iris/-/blob/master/iris_heap_lang/lib/par.v \<close>
+text \<open> Based on \<^url>\<open>https://gitlab.mpi-sws.org/iris/iris/-/blob/master/iris_heap_lang/lib/par.v\<close> \<close>
 
 definition par :: val where "par \<equiv>
   V\<lambda> Some ''e1'': E\<lambda> Some ''e2'':

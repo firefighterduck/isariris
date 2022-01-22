@@ -3,7 +3,7 @@ imports Mon "../HeapLang/Par"
 begin
 
 subsection \<open> Spanning Tree \<close>
-text \<open> Based on https://gitlab.mpi-sws.org/iris/examples/-/blob/master/theories/spanning_tree/spanning.v\<close>
+text \<open> Based on \<^url>\<open>https://gitlab.mpi-sws.org/iris/examples/-/blob/master/theories/spanning_tree/spanning.v\<close> \<close>
 
 definition try_mark :: val where "try_mark \<equiv> 
   V\<lambda> Some ''y'': let: Some ''e'' := Fst (!(V ''y'')) in (CAS (V ''e'') FalseE TrueE) endlet"

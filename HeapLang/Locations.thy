@@ -3,7 +3,7 @@ imports "../IrisCore/OFEs"
 begin
 
 section \<open> Locations \<close>
-text \<open> Based on https://gitlab.mpi-sws.org/iris/iris/-/blob/master/iris_heap_lang/locations.v \<close>
+text \<open> Based on \<^url>\<open>https://gitlab.mpi-sws.org/iris/iris/-/blob/master/iris_heap_lang/locations.v\<close> \<close>
 
 datatype loc = Loc (loc_car: int)
 

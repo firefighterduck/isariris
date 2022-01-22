@@ -3,22 +3,19 @@ imports CoreStructures
 begin
 (* The Coq formalization also used the empty type but I have no idea why 
   or whether HOL has such a type. Cmra is the carrier type of the underlying camera. *)
-datatype logic_type = PropT | Cmra | UnitT | SumT logic_type logic_type
-  | ProdT "logic_type\<times>logic_type" | FunT logic_type logic_type 
+datatype logic_type = PropT | CmraT | UnitT | ProdT logic_type logic_type
+  | FunT logic_type logic_type 
   (* These types are relevant for arguing about HeapLang programs*)
   | Expr | State | Observation | List logic_type
 
 datatype 'x::ucamera logic_term = 
-  Var string
+  VarL string
 | Unit
-| Prod "'x logic_term\<times>'x logic_term"
-| Fst "'x logic_term"
-| Snd "'x logic_term"
+| Prod "'x logic_term" "'x logic_term"
+| FstL "'x logic_term"
+| SndL "'x logic_term"
 | Abs string logic_type "'x logic_term"
-| App "'x logic_term" "'x logic_term"
-| Left "'x logic_term"
-| Right "'x logic_term"
-| Match "'x logic_term" string "'x logic_term" string "'x logic_term"
+| AppL "'x logic_term" "'x logic_term"
 | Const 'x
 | Core "'x logic_term"
 | Comp "'x logic_term" "'x logic_term"
@@ -42,16 +39,12 @@ datatype 'x::ucamera logic_term =
 
 (* Concurrent variable-for-variable substitution in logic terms *)
 fun var_subst :: "(string \<Rightarrow> string) \<Rightarrow> 'x::ucamera logic_term \<Rightarrow> 'x logic_term" where
-  "var_subst f (Var x) = Var (f x)"
-| "var_subst f (Prod (x,y)) = Prod (var_subst f x, var_subst f y)"
-| "var_subst f (Fst t) = Fst (var_subst f t)"
-| "var_subst f (Snd t) = Snd (var_subst f t)"
+  "var_subst f (VarL x) = VarL (f x)"
+| "var_subst f (Prod x y) = Prod (var_subst f x) (var_subst f y)"
+| "var_subst f (FstL t) = FstL (var_subst f t)"
+| "var_subst f (SndL t) = SndL (var_subst f t)"
 | "var_subst f (Abs x \<tau> t) = Abs x \<tau> (var_subst (f(x:=x)) t)"
-| "var_subst f (App t1 t2) = App (var_subst f t1) (var_subst f t2)"
-| "var_subst f (Left t) = Left (var_subst f t)"
-| "var_subst f (Right t) = Right (var_subst f t)"
-| "var_subst f (Match t x l y r) = 
-  Match (var_subst f t) x (var_subst (f(x:=x)) l) y (var_subst (f(y:=y)) r)"
+| "var_subst f (AppL t1 t2) = AppL (var_subst f t1) (var_subst f t2)"
 | "var_subst f (Core t) = Core (var_subst f t)"
 | "var_subst f (Comp t1 t2) = Comp (var_subst f t1) (var_subst f t2)"
 | "var_subst f (EqTrm \<tau> t1 t2) = EqTrm \<tau> (var_subst f t1) (var_subst f t2)"
@@ -73,17 +66,12 @@ fun var_subst :: "(string \<Rightarrow> string) \<Rightarrow> 'x::ucamera logic_
 
 (* Variable substitution with terms in logic terms *)
 fun term_subst :: "'x::ucamera logic_term \<Rightarrow> string \<Rightarrow> 'x logic_term \<Rightarrow> 'x logic_term" where
-  "term_subst f v (Var x) = (if v=x then f else Var x)"
-| "term_subst f v (Prod (x,y)) = Prod (term_subst f v x, term_subst f v y)"
-| "term_subst f v (Fst t) = Fst (term_subst f v t)"
-| "term_subst f v (Snd t) = Snd (term_subst f v t)"
+  "term_subst f v (VarL x) = (if v=x then f else VarL x)"
+| "term_subst f v (Prod x y) = Prod (term_subst f v x) (term_subst f v y)"
+| "term_subst f v (FstL t) = FstL (term_subst f v t)"
+| "term_subst f v (SndL t) = SndL (term_subst f v t)"
 | "term_subst f v (Abs x \<tau> t) = Abs x \<tau> (if v=x then t else term_subst f v t)"
-| "term_subst f v (App t1 t2) = App (term_subst f v t1) (term_subst f v t2)"
-| "term_subst f v (Left t) = Left (term_subst f v t)"
-| "term_subst f v (Right t) = Right (term_subst f v t)"
-| "term_subst f v (Match t x l y r) = 
-  Match (term_subst f v t) x (if v=x then l else term_subst f v l) 
-  y (if v=y then r else term_subst f v r)"
+| "term_subst f v (AppL t1 t2) = AppL (term_subst f v t1) (term_subst f v t2)"
 | "term_subst f v (Core t) = Core (term_subst f v t)"
 | "term_subst f v (Comp t1 t2) = Comp (term_subst f v t1) (term_subst f v t2)"
 | "term_subst f v (EqTrm \<tau> t1 t2) = EqTrm \<tau> (term_subst f v t1) (term_subst f v t2)"
@@ -105,14 +93,11 @@ fun term_subst :: "'x::ucamera logic_term \<Rightarrow> string \<Rightarrow> 'x 
 
 (* The variable x can only appear under the later modality. *)
 fun guarded :: "string \<Rightarrow> 'x::ucamera logic_term \<Rightarrow> bool" where
-  "guarded _ (Later (Var _)) = True"
-| "guarded x (Prod (t1,t2)) = (guarded x t1 \<and> guarded x t2)"
-| "guarded x (Fst t) = guarded x t"
-| "guarded x (Snd t) = guarded x t"
+  "guarded _ (Later (VarL _)) = True"
+| "guarded x (Prod t1 t2) = (guarded x t1 \<and> guarded x t2)"
+| "guarded x (FstL t) = guarded x t"
+| "guarded x (SndL t) = guarded x t"
 | "guarded x (Abs y _ t) = ((x=y) \<or> guarded x t)"
-| "guarded x (Left t) = guarded x t"
-| "guarded x (Right t) = guarded x t"
-| "guarded x (Match t y l z r) = (guarded x t \<and> ((x=y) \<or> guarded x l) \<and> ((x=z) \<or> guarded x r))"
 | "guarded x (Core t) = guarded x t"
 | "guarded x (Comp t1 t2) = (guarded x t1 \<and> guarded x t2)"
 | "guarded x (EqTrm _ t1 t2) = (guarded x t1 \<and> guarded x t2)"
@@ -130,7 +115,7 @@ fun guarded :: "string \<Rightarrow> 'x::ucamera logic_term \<Rightarrow> bool" 
 | "guarded x (Plain t) = guarded x t"
 | "guarded x (Later t) = guarded x t"
 | "guarded x (Upd t) = guarded x t"
-| "guarded _ (Var _) = False"
+| "guarded _ (VarL _) = False"
 | "guarded _ _ = True"
 
 end

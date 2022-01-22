@@ -2,7 +2,7 @@ theory Notation
 imports HeapLang
 begin
 
-text \<open> Loosely based on https://gitlab.mpi-sws.org/iris/iris/-/blob/master/iris_heap_lang/notation.v\<close>
+text \<open> Loosely based on \<^url>\<open>https://gitlab.mpi-sws.org/iris/iris/-/blob/master/iris_heap_lang/notation.v\<close> \<close>
 
 abbreviation "LamE \<equiv> Rec None"
 abbreviation "LamV \<equiv> RecV None"

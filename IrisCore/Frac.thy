@@ -5,7 +5,7 @@ begin
 subsection \<open> Frac and DFrac \<close>
 
 text \<open> Fractions camera/RA \<close>
-text \<open> Positive rational numbers, that are only valid \<le> 1. \<close>
+text \<open> Positive rational numbers, that are only valid $<= 1$. \<close>
 typedef frac = "{p::rat. 0<p}" by (simp add: gt_ex)
 setup_lifting type_definition_frac
 lemmas [simp] = Rep_frac_inverse Rep_frac_inject

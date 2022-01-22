@@ -11,4 +11,7 @@ session IsarIris = "HOL-Library" +
       "SpanningTree"
     theories
       "IsarIris"
-        
+    document_files
+      "root.bib"
+      "root.tex"
+

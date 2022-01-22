@@ -4,7 +4,7 @@ begin
 
 section \<open> State \<close>
 text \<open> State specific definitions and lemmata; 
-  based on https://gitlab.mpi-sws.org/iris/iris/-/blob/master/iris_heap_lang/lang.v \<close>
+  based on \<^url>\<open>https://gitlab.mpi-sws.org/iris/iris/-/blob/master/iris_heap_lang/lang.v\<close> \<close>
 
 (* The state: heaps of val options, with None representing deallocated locations. *)
 datatype state = State (heap: "(loc,val option) map") (used_proph_id: "proph_id set")

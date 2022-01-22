@@ -1,9 +1,9 @@
 theory OFEs
-imports Main
+imports BasicTypes
 begin
 
 section \<open> Ordered family of equivalences \<close>
-text \<open> The definition of OFEs, COFEs and instances of those. \<close>
+text \<open> The definition of the class of OFEs and some instances. \<close>
 
 section \<open> OFE \<close>
 class ofe =
@@ -25,41 +25,16 @@ class discrete = ofe + assumes d_equiv: "n_equiv n a b = (a=b)" and d_eq: "ofe_e
 lemma ofe_down_contr: "n_equiv n x y \<longleftrightarrow> (\<forall>m\<le>n. n_equiv m x y)"
   by (auto simp: ofe_trans ofe_sym intro: ofe_mono)
 
-subsection \<open> Simple OFE instances \<close>
-subsubsection \<open> Step indexed propositions \<close> 
-text \<open>They are defined to hold for all steps below a maximum. \<close>
-typedef sprop = "{s::nat\<Rightarrow>bool. \<forall>n m. m\<le>n \<longrightarrow> s n \<longrightarrow> s m}"
-proof
-  define s :: "nat\<Rightarrow>bool" where "s = (\<lambda>_. True)"
-  thus "s \<in> {s::nat\<Rightarrow>bool. \<forall>n m. m\<le>n \<longrightarrow> s n \<longrightarrow> s m}" by simp
-qed
-setup_lifting type_definition_sprop
-lemmas [simp] = Rep_sprop_inverse Rep_sprop_inject
-lemmas [simp, intro!] = Rep_sprop[unfolded mem_Collect_eq]
-
-instantiation sprop :: ofe begin
-  definition n_equiv_sprop :: "nat \<Rightarrow> sprop \<Rightarrow> sprop \<Rightarrow> bool" where
-    "n_equiv_sprop n x y \<equiv> \<forall>m\<le>n. Rep_sprop x m \<longleftrightarrow> Rep_sprop y m"
-  definition ofe_eq_sprop :: "sprop \<Rightarrow> sprop \<Rightarrow> bool" where
-    "ofe_eq_sprop x y \<equiv> \<forall>n. (Rep_sprop x n) \<longleftrightarrow> (Rep_sprop y n)"
-instance by (standard, unfold n_equiv_sprop_def ofe_eq_sprop_def) auto
+subsection \<open> Basic OFE instances \<close>
+subsubsection \<open>unit OFE\<close>
+instantiation unit :: ofe begin
+  definition n_equiv_unit :: "nat \<Rightarrow> unit \<Rightarrow> unit \<Rightarrow> bool" where
+    "n_equiv_unit _ _ _ = True"
+  fun ofe_eq_unit :: "unit \<Rightarrow> unit \<Rightarrow> bool" where "ofe_eq_unit _ _ = True"
+instance by (standard, unfold n_equiv_unit_def) auto
 end
 
-lift_definition sPure :: "bool \<Rightarrow> sprop" is "\<lambda>b _. b" .
-lemma sPureId: "Rep_sprop (Abs_sprop ((\<lambda>b _. b) b)) n = b"
-  using Abs_sprop_inverse by auto
-definition sFalse :: sprop where [simp]: "sFalse \<equiv> sPure False"
-definition sTrue :: sprop where [simp]: "sTrue \<equiv> sPure True"
-lemmas [simp] = sPure.rep_eq sPureId sPureId[simplified sPure.abs_eq[symmetric]]
-
-lift_definition n_subseteq :: "nat \<Rightarrow> sprop \<Rightarrow> sprop \<Rightarrow> bool" is
-  "\<lambda>n X Y. \<forall>m\<le>n. X m \<longrightarrow> Y m" .
-lift_definition sprop_conj :: "sprop \<Rightarrow> sprop \<Rightarrow> sprop" (infixl "\<and>\<^sub>s" 60) is 
-  "\<lambda>x y. (\<lambda>n. x n \<and> y n)" using conj_forward by simp
-lift_definition sprop_disj :: "sprop \<Rightarrow> sprop \<Rightarrow> sprop" (infixl "\<or>\<^sub>s" 60) is
-  "\<lambda>x y. (\<lambda>n. x n \<or> y n)" using disj_forward by simp
-lift_definition sprop_impl :: "sprop \<Rightarrow> sprop \<Rightarrow> sprop" (infixr "\<longrightarrow>\<^sub>s" 60) is
-  "\<lambda>x y. (\<lambda>n. \<forall>m\<le>n. x m \<longrightarrow> y m)" by (meson dual_order.trans)
+instance unit :: discrete by standard (auto simp: n_equiv_unit_def)
 
 subsubsection \<open>nat OFE\<close>
 instantiation nat :: ofe begin
@@ -67,6 +42,7 @@ instantiation nat :: ofe begin
   definition ofe_eq_nat :: "nat \<Rightarrow> nat \<Rightarrow> bool" where [simp]: "ofe_eq_nat \<equiv> (=)"
 instance by standard auto
 end
+
 instance nat :: discrete by standard (auto)
 
 subsubsection \<open>bool OFE\<close>
@@ -75,7 +51,26 @@ instantiation bool :: ofe begin
   definition ofe_eq_bool :: "bool \<Rightarrow> bool \<Rightarrow> bool" where [simp]: "ofe_eq_bool \<equiv> (=)"
 instance by standard auto
 end
+
 instance bool :: discrete by standard (auto)
+
+subsubsection \<open>Set type OFE\<close>
+instantiation set :: (type) ofe begin
+definition n_equiv_set :: "nat \<Rightarrow> 'a set \<Rightarrow> 'a set \<Rightarrow> bool" where "n_equiv_set _ \<equiv> (=)"
+definition ofe_eq_set :: "'a set \<Rightarrow> 'a set \<Rightarrow> bool" where "ofe_eq_set \<equiv> (=)"
+instance by (standard) (auto simp: n_equiv_set_def ofe_eq_set_def)
+end
+
+instance set :: (type) discrete by standard (auto simp: n_equiv_set_def ofe_eq_set_def)
+
+subsubsection \<open>Disjoint set OFE\<close>
+instantiation dset :: (type) ofe begin
+definition n_equiv_dset :: "nat \<Rightarrow> 'a dset \<Rightarrow> 'a dset \<Rightarrow> bool" where "n_equiv_dset \<equiv> \<lambda>_. (=)"
+definition ofe_eq_dset :: "'a dset \<Rightarrow> 'a dset \<Rightarrow> bool" where "ofe_eq_dset \<equiv> (=)"
+instance by standard (auto simp: n_equiv_dset_def ofe_eq_dset_def)
+end
+
+instance dset :: (type) discrete by standard (auto simp: n_equiv_dset_def ofe_eq_dset_def)
 
 subsubsection \<open>option OFE\<close>
 instantiation option :: (ofe) ofe begin
@@ -97,7 +92,8 @@ next
     by (auto simp: n_equiv_option_def ofe_mono)
 qed (auto simp: n_equiv_option_def ofe_eq_option_def ofe_eq_eq ofe_refl intro: ofe_trans)
 end
-instance option :: (discrete) discrete 
+
+instance option :: (discrete) discrete
 proof 
 fix a b :: "'a option" fix n
 show "n_equiv n a b = (a=b)" by (cases a; cases b) (auto simp: n_equiv_option_def d_equiv)
@@ -129,21 +125,97 @@ qed (auto simp: ofe_sym ofe_eq_eq intro: ofe_refl ofe_trans)
 end
 instance prod :: (discrete,discrete) discrete by standard (auto simp: d_equiv d_eq)
 
-subsubsection \<open>unit OFE\<close>
-instantiation unit :: ofe begin
-  definition n_equiv_unit :: "nat \<Rightarrow> unit \<Rightarrow> unit \<Rightarrow> bool" where
-    "n_equiv_unit _ _ _ = True"
-  fun ofe_eq_unit :: "unit \<Rightarrow> unit \<Rightarrow> bool" where "ofe_eq_unit _ _ = True"
-instance by (standard, unfold n_equiv_unit_def) auto
+subsubsection \<open>Function type OFE\<close>
+instantiation "fun" :: (type,ofe) ofe begin
+definition n_equiv_fun :: "nat \<Rightarrow> ('a\<Rightarrow>'b) \<Rightarrow> ('a\<Rightarrow>'b) \<Rightarrow> bool" where
+  "n_equiv_fun n m1 m2 \<equiv> \<forall>i. n_equiv n (m1 i) (m2 i)"
+definition ofe_eq_fun :: "('a\<Rightarrow>'b) \<Rightarrow> ('a\<Rightarrow>'b) \<Rightarrow> bool" where
+  "ofe_eq_fun m1 m2 \<equiv> \<forall>i. ofe_eq (m1 i) (m2 i)"
+instance by (standard, unfold n_equiv_fun_def ofe_eq_fun_def) 
+  (auto simp: ofe_sym  ofe_limit intro: ofe_refl ofe_trans ofe_mono ofe_limit ofe_eq_eq)
 end
-instance unit :: discrete by standard (auto simp: n_equiv_unit_def)
+
+instance "fun" :: (type,discrete) discrete 
+  by standard (auto simp: n_equiv_fun_def d_equiv ofe_eq_fun_def d_eq)
+
+subsubsection \<open>Finite set OFE\<close>
+instantiation fset :: (type) ofe begin
+definition n_equiv_fset :: "nat \<Rightarrow> 'a fset \<Rightarrow> 'a fset \<Rightarrow> bool" where [simp]: "n_equiv_fset _ \<equiv> (=)"
+definition ofe_eq_fset :: "'a fset \<Rightarrow> 'a fset \<Rightarrow> bool" where [simp]: "ofe_eq_fset \<equiv> (=)"
+instance by (standard) auto
+end
+
+instance fset :: (type) discrete by standard auto
+
+subsubsection \<open>Disjoint finite set OFE\<close>
+instantiation dfset :: (type) ofe begin
+definition n_equiv_dfset :: "nat \<Rightarrow> 'a dfset \<Rightarrow> 'a dfset \<Rightarrow> bool" where "n_equiv_dfset \<equiv> \<lambda>_. (=)"
+definition ofe_eq_dfset :: "'a dfset \<Rightarrow> 'a dfset \<Rightarrow> bool" where "ofe_eq_dfset \<equiv> (=)"
+instance by standard (auto simp: n_equiv_dfset_def ofe_eq_dfset_def)
+end
+
+instance dfset :: (type) discrete by standard (auto simp: n_equiv_dfset_def ofe_eq_dfset_def)
+
+subsubsection \<open>Extended sum type\<close>
+instantiation sum_ext :: (ofe,ofe) ofe begin
+  fun ofe_eq_sum_ext :: "'a+\<^sub>e'b \<Rightarrow> 'a+\<^sub>e'b \<Rightarrow> bool" where
+    "ofe_eq_sum_ext (Inl a) (Inl b) = ofe_eq a b"
+  | "ofe_eq_sum_ext (Inr a) (Inr b) = ofe_eq a b"
+  | "ofe_eq_sum_ext sum_ext.Inv sum_ext.Inv = True"
+  | "ofe_eq_sum_ext _ _ = False"
+  fun n_equiv_sum_ext :: "nat \<Rightarrow> 'a+\<^sub>e'b \<Rightarrow> 'a+\<^sub>e'b \<Rightarrow> bool" where
+    "n_equiv_sum_ext n (Inl x) (Inl y) = n_equiv n x y"
+  | "n_equiv_sum_ext n (Inr x) (Inr y) =  n_equiv n x y"
+  | "n_equiv_sum_ext _ sum_ext.Inv sum_ext.Inv = True"
+  | "n_equiv_sum_ext _ _ _ = False"
+instance proof
+  fix n x
+  show "n_equiv n x (x::'a+\<^sub>e'b)" by (cases x) (auto simp: ofe_refl)
+next
+  fix n x y
+  show "n_equiv n x y = n_equiv n y (x::'a+\<^sub>e'b)" 
+    by (cases x y rule: sum_ex2) (auto simp: ofe_sym)
+next
+  fix n x y z 
+  show "n_equiv n x y \<Longrightarrow> n_equiv n y z \<Longrightarrow> n_equiv n x (z::'a+\<^sub>e'b)"
+    by (cases x y z rule: sum_ex3) (auto intro: ofe_trans)
+next
+  fix m n x y
+  show "m \<le> n \<Longrightarrow> n_equiv n x y \<Longrightarrow> n_equiv m x (y::'a+\<^sub>e'b)"
+  by (cases x y rule: sum_ex2) (auto intro: ofe_mono)
+next
+  fix x y :: "'a+\<^sub>e'b"
+  show "ofe_eq x y \<longleftrightarrow> (\<forall>n. n_equiv n x y)"
+  apply (cases x; cases y) 
+  apply simp_all
+  using ofe_limit by blast+
+next
+  fix x y :: "'a+\<^sub>e'b" 
+  show "(x=y) \<Longrightarrow> ofe_eq x y" by (cases x y rule: sum_ex2) (auto intro: ofe_eq_eq)
+qed
+end
+
+instance sum_ext :: (discrete,discrete) discrete
+proof
+fix a b :: "'a+\<^sub>e'b" fix n
+show "n_equiv n a b = (a = b)" by (cases a b rule: sum_ex2) (auto simp: d_equiv)
+next
+fix a b :: "'a+\<^sub>e'b"
+show "ofe_eq a b = (a = b)" by (cases a b rule: sum_ex2) (auto simp: d_eq)
+qed
+
+subsection \<open> Advanced OFE instances\<close>
+
+subsubsection \<open> Step indexed proposition OFE\<close> 
+instantiation sprop :: ofe begin
+  definition n_equiv_sprop :: "nat \<Rightarrow> sprop \<Rightarrow> sprop \<Rightarrow> bool" where
+    "n_equiv_sprop n x y \<equiv> \<forall>m\<le>n. Rep_sprop x m \<longleftrightarrow> Rep_sprop y m"
+  definition ofe_eq_sprop :: "sprop \<Rightarrow> sprop \<Rightarrow> bool" where
+    "ofe_eq_sprop x y \<equiv> \<forall>n. (Rep_sprop x n) \<longleftrightarrow> (Rep_sprop y n)"
+instance by (standard, unfold n_equiv_sprop_def ofe_eq_sprop_def) auto
+end
 
 subsubsection \<open>later type OFE\<close>
-text \<open>This type encodes the later modality on a type level.\<close>
-datatype ('a::ofe) later = Next (later_car: 'a)
-lemmas later2_ex = later.exhaust[case_product later.exhaust]
-lemmas later3_ex = later.exhaust[case_product later2_ex]
-
 instantiation later :: (ofe) ofe begin
   definition n_equiv_later :: "nat \<Rightarrow> 'a later \<Rightarrow> 'a later \<Rightarrow> bool" where
     "n_equiv_later n x y = (n=0 \<or> n_equiv (n-1) (later_car x) (later_car y))"
@@ -176,59 +248,81 @@ show "(x=y) \<Longrightarrow> ofe_eq x y" using OFEs.ofe_eq_later.elims(3) ofe_e
 qed
 end
 
-subsection \<open> COFE \<close>
-typedef (overloaded) 't chain = "{c::(nat \<Rightarrow> 't::ofe). \<forall>n m. n\<le>m \<longrightarrow> n_equiv n (c m) (c n)}"
-  using ofe_eq_limit by force
-setup_lifting type_definition_chain
-lemmas [simp] = Rep_chain_inverse Rep_chain_inject
-lemmas [simp, intro!] = Rep_chain[unfolded mem_Collect_eq]
-
-class cofe = ofe +
-  fixes lim :: "('a::ofe) chain \<Rightarrow> 'a"
-  assumes core_compl: "n_equiv n (lim c) (Rep_chain c n)"
-
-instantiation unit :: cofe begin
-definition lim_unit :: "unit chain \<Rightarrow> unit" where [simp]: "lim_unit _ = ()"
-instance by standard (simp add: n_equiv_unit_def)
+subsubsection \<open>Agreement camera combinator OFE\<close>
+instantiation ag :: (ofe) ofe begin
+lift_definition n_equiv_ag :: "nat \<Rightarrow> ('a::ofe) ag \<Rightarrow> 'a ag \<Rightarrow> bool" is
+  "\<lambda>n a b. (\<forall>x\<in>a. \<exists>y\<in>b. n_equiv n x y) \<and> (\<forall>y\<in>b. \<exists>x\<in>a. n_equiv n x y)" .
+definition ofe_eq_ag :: "('a::ofe) ag \<Rightarrow> 'a ag \<Rightarrow> bool" where
+  "ofe_eq_ag a b \<equiv> \<forall>n. n_equiv n a b"
+lemmas defs = n_equiv_ag.rep_eq ofe_eq_ag_def
+instance by (standard) (auto 4 4 simp: defs ofe_sym intro: ofe_refl ofe_trans ofe_mono)
 end
 
-lift_definition option_chain :: "'a::ofe option chain \<Rightarrow> 'a \<Rightarrow> 'a chain" is
-  "\<lambda>c x n. case c n of Some y \<Rightarrow> y | None \<Rightarrow> x" 
-  by (auto simp: ofe_refl n_equiv_option_def split: option.splits) fastforce+
+instance ag :: (discrete) discrete apply standard
+  apply (simp_all add: n_equiv_ag.rep_eq d_equiv ofe_eq_ag_def)
+  using Rep_ag_inject by blast+
 
-instantiation option :: (cofe) cofe begin
-definition lim_option :: "'a option chain \<Rightarrow> 'a option" where
-  "lim_option c \<equiv> case (Rep_chain c 0) of Some x \<Rightarrow> Some (lim (option_chain c x)) | None \<Rightarrow> None"
+subsubsection \<open>Exclusive camera combinator OFE\<close>
+instantiation ex :: (ofe) ofe begin
+fun n_equiv_ex :: "nat \<Rightarrow> 'a::ofe ex \<Rightarrow> 'a ex \<Rightarrow> bool" where
+  "n_equiv_ex n (Ex a) (Ex b) = n_equiv n a b"
+| "n_equiv_ex _ ex.Inv ex.Inv = True"
+| "n_equiv_ex _ _ _ = False"
+fun ofe_eq_ex :: "'a ex \<Rightarrow> 'a ex \<Rightarrow> bool" where
+  "ofe_eq_ex (Ex a) (Ex b) = ofe_eq a b"
+| "ofe_eq_ex ex.Inv ex.Inv = True"
+| "ofe_eq_ex _ _ = False"
 instance proof
-  fix c :: "'a option chain" and n
-  have base: "n_equiv 0 (Rep_chain c n) (Rep_chain c 0)" by transfer auto
-  from core_compl have step: "n_equiv n (lim (option_chain c x)) (Rep_chain (option_chain c x) n)" for x .
-  show "n_equiv n (lim c) (Rep_chain c n)" unfolding lim_option_def
-  apply (cases "Rep_chain c 0")
-  apply simp_all
-  apply (metis base n_equiv_option_def option.distinct(1))
-  by (smt (verit) base step n_equiv_option_def option.simps(5) option_chain.rep_eq)
+fix x n show "n_equiv n x (x::'a ex)" by (cases x) (auto intro: ofe_refl)
+next fix n x y show "n_equiv n x y = n_equiv n y (x::'a ex)" by (cases x; cases y) (auto simp: ofe_sym)
+next fix n x y z show "n_equiv n x y \<Longrightarrow> n_equiv n y z \<Longrightarrow> n_equiv n x (z::'a ex)"
+  by (cases x; cases y; cases z) (auto intro: ofe_trans)
+next fix m n x y show "m \<le> n \<Longrightarrow> n_equiv n x y \<Longrightarrow> n_equiv m x (y::'a ex)" 
+  by (cases x; cases y) (auto intro: ofe_mono)
+next fix x y show "ofe_eq x y \<longleftrightarrow> (\<forall>n. n_equiv n x (y::'a ex))" 
+  apply (cases x; cases y) apply simp_all using ofe_limit by blast+
+next fix x y show "x = y \<Longrightarrow> ofe_eq x (y::'a ex)" by (cases x; cases y) (auto intro: ofe_eq_eq)
 qed
 end
 
-lift_definition later_chain :: "'a::ofe later chain \<Rightarrow> 'a chain" is
-  "\<lambda>c n. later_car (Rep_chain c (Suc n))" 
-  by transfer (metis Suc_le_mono add_diff_cancel_left' n_equiv_later_def nat.discI plus_1_eq_Suc)
+instance ex :: (discrete) discrete
+proof
+fix a b :: "'a ex" fix n
+show "n_equiv n a b = (a = b)" by (cases a; cases b) (auto simp: d_equiv)
+next
+fix a b :: "'a ex"
+show "ofe_eq a b = (a = b)" by (cases a; cases b) (auto simp: d_eq)
+qed
 
-instantiation later :: (cofe) cofe begin
-definition lim_later :: "'a later chain \<Rightarrow> 'a later" where
-  "lim_later c = Next (lim (later_chain c))"
+subsubsection \<open>Authoritative camera combinator OFE\<close>
+
+instantiation auth :: (ofe) ofe begin
+fun n_equiv_auth :: "nat \<Rightarrow> 'a auth \<Rightarrow> 'a auth \<Rightarrow> bool" where
+  "n_equiv_auth n (Auth a) (Auth b) = n_equiv n a b"
+fun ofe_eq_auth :: "'a auth \<Rightarrow> 'a auth \<Rightarrow> bool" where
+  "ofe_eq_auth (Auth a) (Auth b) = ofe_eq a b"
 instance proof
-  fix c :: "'a later chain" and n
-  from core_compl[of n] show "n_equiv n (lim c) (Rep_chain c n)" 
-    apply (simp add: n_equiv_later_def lim_later_def)
-    by (smt (verit, ccfv_threshold) Suc_pred bot_nat_0.not_eq_extremum core_compl later_chain.rep_eq)
+fix n x show "n_equiv n x (x::'a auth)" by (cases x) (auto intro: ofe_refl) next
+fix n x y show "n_equiv n x y \<longleftrightarrow> n_equiv n y (x::'a auth)" 
+  by (cases x; cases y) (auto simp: ofe_sym) next
+fix n x y z show "n_equiv n x y \<Longrightarrow> n_equiv n y z \<Longrightarrow> n_equiv n x (z::'a auth)"
+  by (cases x; cases y; cases z) (auto intro: ofe_trans) next 
+fix m n x y show "m \<le> n \<Longrightarrow> n_equiv n x y \<Longrightarrow> n_equiv m x (y::'a auth)"
+  by (cases x; cases y) (auto intro: ofe_mono) next
+fix x y show "ofe_eq x y \<longleftrightarrow> (\<forall>n. n_equiv n x (y::'a auth))" apply (cases x; cases y; auto)
+  using ofe_limit by blast+ next
+fix x y show " x = y \<Longrightarrow> ofe_eq x (y::'a auth)" by (cases x; cases y) (auto intro: ofe_eq_eq)
 qed
 end
 
-definition discrete_lim :: "('a::discrete chain) \<Rightarrow> 'a" where
-  "discrete_lim c = Rep_chain c 0"
+instance auth :: (discrete) discrete
+proof
+fix a b :: "'a auth" fix n
+show "n_equiv n a b = (a = b)" by (cases a; cases b) (auto simp: d_equiv)
+next
+fix a b :: "'a auth"
+show "ofe_eq a b = (a = b)" by (cases a; cases b) (auto simp: d_eq)
+qed
 
-lemma discrete_cofe: "n_equiv n (discrete_lim c) (Rep_chain c n)"
-  unfolding discrete_lim_def by transfer (metis d_equiv nat_le_linear)
+
 end
