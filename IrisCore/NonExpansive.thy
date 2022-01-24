@@ -46,8 +46,7 @@ lemma discrete_ne: "non_expansive (f::'a::discrete\<Rightarrow>'b::discrete)"
 subsubsection \<open>Non expansive function type\<close>
 text \<open>The corresponding subtype of non-expansive functions.\<close>
 typedef (overloaded) ('a, 'b) ne = "{f::'a::ofe\<Rightarrow>'b::ofe. non_expansive f}"
-  using sprop_ne[of sTrue] apply simp
-  by (metis non_expansiveI ofe_refl)
+  using sprop_ne[of sTrue] apply simp by (metis non_expansiveI ofe_refl)
 type_notation ne (infix "-n>" 60)
 setup_lifting type_definition_ne
 lemmas [simp] = Rep_ne_inverse Rep_ne_inject

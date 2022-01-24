@@ -57,7 +57,8 @@ fun type_of_term :: "'a::ucamera logic_term \<Rightarrow> (string\<rightharpoonu
 | "type_of_term (SndL p) \<Gamma> =
   (case type_of_term p \<Gamma> of Some (ProdT _ sT) \<Rightarrow> Some sT | _ \<Rightarrow> None)"
 | "type_of_term (Abs v vT b) \<Gamma> = map_option (\<lambda>bT. FunT vT bT) (type_of_term b (\<Gamma>(v \<mapsto> vT)))"
-| "type_of_term (AppL f x) \<Gamma> = comb_option (type_of_term f \<Gamma>) (type_of_term x \<Gamma>) FunT"
+| "type_of_term (AppL f x) \<Gamma> = (case (type_of_term f \<Gamma>) of Some (FunT pT rT) \<Rightarrow> 
+    (case (type_of_term x \<Gamma>) of Some xT \<Rightarrow> (if xT=pT then Some rT else None) | _ \<Rightarrow> None) | _ \<Rightarrow> None)"
 | "type_of_term (Const _) _ = Some CmraT"
 | "type_of_term (Core x) \<Gamma> = (case type_of_term x \<Gamma> of Some CmraT \<Rightarrow> Some CmraT | _ \<Rightarrow> None)"
 | "type_of_term (Comp x y) \<Gamma> = comb_option_eq2 CmraT (type_of_term x \<Gamma>) (type_of_term y \<Gamma>) CmraT"
@@ -71,8 +72,8 @@ fun type_of_term :: "'a::ucamera logic_term \<Rightarrow> (string\<rightharpoonu
 | "type_of_term (Wand P Q) \<Gamma> = comb_option_eq2 PropT (type_of_term P \<Gamma>) (type_of_term Q \<Gamma>) PropT"
 | "type_of_term (Guarded v vT b) \<Gamma> = (if guarded v b then 
   Option.bind (type_of_term b (\<Gamma>(v\<mapsto>vT))) (\<lambda>bT. if bT=vT then Some vT else None) else None)"
-| "type_of_term (Exists v vT b) \<Gamma> = Option.bind (type_of_term b (\<Gamma>(v\<mapsto>vT))) (\<lambda>_. Some PropT)"
-| "type_of_term (Forall v vT b) \<Gamma> = Option.bind (type_of_term b (\<Gamma>(v\<mapsto>vT))) (\<lambda>_. Some PropT)"
+| "type_of_term (Exists v vT b) \<Gamma> = comb_option_eq PropT (type_of_term b (\<Gamma>(v\<mapsto>vT))) PropT"
+| "type_of_term (Forall v vT b) \<Gamma> = comb_option_eq PropT (type_of_term b (\<Gamma>(v\<mapsto>vT))) PropT"
 | "type_of_term (Own x) \<Gamma> = comb_option_eq CmraT (type_of_term x \<Gamma>) PropT"
 | "type_of_term (Valid x) \<Gamma> = comb_option_eq CmraT (type_of_term x \<Gamma>) PropT"
 | "type_of_term (Persistent x) \<Gamma> = comb_option_eq PropT (type_of_term x \<Gamma>) PropT"
@@ -82,4 +83,10 @@ fun type_of_term :: "'a::ucamera logic_term \<Rightarrow> (string\<rightharpoonu
 
 lemma "(type_of_term t (map_of \<Gamma>) = Some \<tau>) \<longleftrightarrow> \<Gamma>\<turnstile>t:\<tau>"
 sorry
+
+definition head_step_ty :: logic_type where
+  "head_step_ty \<equiv> Expr \<rightarrow> State \<rightarrow> (List Observation) \<rightarrow> Expr \<rightarrow> State \<rightarrow> (List Expr) \<rightarrow> PropT"
+
+lemma "type_of_term wp [''head_step''\<mapsto>head_step_ty] = Some (Expr \<rightarrow> PropT)"
+  by (simp add: wp_def head_step_ty_def)
 end

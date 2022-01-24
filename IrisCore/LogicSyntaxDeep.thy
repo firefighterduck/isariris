@@ -4,7 +4,7 @@ begin
 (* The Coq formalization also used the empty type but I have no idea why 
   or whether HOL has such a type. Cmra is the carrier type of the underlying camera. *)
 datatype logic_type = PropT | CmraT | UnitT | ProdT logic_type logic_type
-  | FunT logic_type logic_type 
+  | FunT logic_type logic_type (infixr "\<rightarrow>" 15)
   (* These types are relevant for arguing about HeapLang programs*)
   | Expr | State | Observation | List logic_type
 
@@ -15,7 +15,7 @@ datatype 'x::ucamera logic_term =
 | FstL "'x logic_term"
 | SndL "'x logic_term"
 | Abs string logic_type "'x logic_term"
-| AppL "'x logic_term" "'x logic_term"
+| AppL "'x logic_term" "'x logic_term" (infixl "$" 60)
 | Const 'x
 | Core "'x logic_term"
 | Comp "'x logic_term" "'x logic_term"
@@ -36,6 +36,11 @@ datatype 'x::ucamera logic_term =
 | Plain "'x logic_term"
 | Later "'x logic_term"
 | Upd "'x logic_term"
+
+definition wp :: "'x::ucamera logic_term" where
+  "wp \<equiv> Abs ''e1'' Expr (Forall ''s1'' State (Forall ''k'' (List Observation) (Forall ''e2'' Expr
+    (Forall ''s2'' State (Forall ''efs'' (List Expr) 
+      (VarL ''head_step'' $ VarL ''e1'' $ VarL ''s1'' $ VarL ''k'' $ VarL ''e2'' $ VarL ''s2'' $ VarL ''efs''))))))"
 
 (* Concurrent variable-for-variable substitution in logic terms *)
 fun var_subst :: "(string \<Rightarrow> string) \<Rightarrow> 'x::ucamera logic_term \<Rightarrow> 'x logic_term" where
