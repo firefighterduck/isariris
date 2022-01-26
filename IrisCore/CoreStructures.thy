@@ -68,7 +68,7 @@ proof -
 qed  
 
 lemma op_equiv_subst: 
-  "\<lbrakk>n_equiv n a (op b c); n_equiv m b d; n\<le>m\<rbrakk> \<Longrightarrow> n_equiv n a (d \<cdot> c)"
+  "\<lbrakk>n_equiv n a (b \<cdot> c); n_equiv m b d; n\<le>m\<rbrakk> \<Longrightarrow> n_equiv n a (d \<cdot> c)"
   by (meson op_equiv ofe_class.ofe_mono ofe_class.ofe_refl ofe_class.ofe_trans)
 
 lemma valid_op_op_weaken: "\<lbrakk>n_equiv n x (y \<cdot> z); n_valid (x \<cdot> x') n\<rbrakk> 
@@ -156,6 +156,9 @@ proof (unfold n_incl_def; standard)
     by (metis camera_comm \<epsilon>_left_id)
   then show "n_equiv n2 x2 (op x1 \<epsilon>)" by (simp add: ofe_class.ofe_sym)
 qed
+
+lemma total_n_incl_extend: "\<lbrakk>n_equiv n a b; m\<le>n\<rbrakk> \<Longrightarrow> n_incl m (a\<cdot>c) (b\<cdot>c)"
+  using total_n_inclI n_incl_extend by blast
 
 lemma n_incl_\<epsilon>[simp]: "n_incl n \<epsilon> a"
 proof (unfold n_incl_def)

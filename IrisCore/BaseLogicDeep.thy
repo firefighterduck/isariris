@@ -28,10 +28,10 @@ inductive judgement :: "(string\<times>logic_type) list \<Rightarrow> 'a::ucamer
 | EtaRed: "I|P\<turnstile>Q \<Longrightarrow> I|P\<turnstile>Abs x \<tau> (AppL Q (VarL x))"
 
 datatype 'a semantic_type = PropS "'a \<Rightarrow> nat \<Rightarrow> bool" | CmraS 'a | UnitS unit 
-  | SumS "'a semantic_type + 'a semantic_type" | ProdS "'a semantic_type\<times>'a semantic_type" 
+  | ProdS "'a semantic_type\<times>'a semantic_type" 
   | FunS "('a semantic_type\<times>'a semantic_type) fset" \<comment> \<open>BNFs can't have recursion in function arguments\<close>
   | ExprS expr | StateS state | ObservationS observation | ListS "'a semantic_type list"
-
+  
 definition funS :: "('a semantic_type\<Rightarrow>'a semantic_type) \<Rightarrow> 'a semantic_type" where
   "funS f = FunS (Abs_fset {(x,y) | x y. f x = y})"
 
@@ -51,7 +51,7 @@ definition head_step_sem :: "'a::ucamera semantic_type" where
       ((unwrap_expr e1S) (unwrap_state s1S) (unwrap_list unwrap_obs kl) \<Rightarrow>\<^sub>h 
       (unwrap_expr e2S) (unwrap_state s2S) (unwrap_list unwrap_expr efsl))
   )))))))"
-
+  
 definition "wp_sem \<equiv> funS 
   (\<lambda>e. PropS (\<lambda>x n. \<forall>s1 k e2 s2 efs. unwrap_prop (head_step_sem$$e$$s1$$k$$e2$$s2$$efs) x n))"
 
@@ -108,10 +108,42 @@ fun logic_semantic
 | "logic_semantic (Upd p) \<Gamma> = (case logic_semantic p \<Gamma> of Some (PropS p') \<Rightarrow>
   Some (PropS (\<lambda>a n. \<forall>m b. m\<le>n \<longrightarrow> n_valid (a \<cdot> b) m \<longrightarrow> (\<exists>c. n_valid (c \<cdot> b) m \<and> p' c m))))"
 
-lemma "types_of_term t \<Gamma>T = None \<Longrightarrow> logic_semantic t \<Gamma>S = None"
-sorry  
+lemma "type_of_term t \<Gamma>T = None \<Longrightarrow> logic_semantic t \<Gamma>S = None"
+sorry
 
+definition entails :: "'a::ucamera semantic_type \<Rightarrow> 'a semantic_type \<Rightarrow> bool" where
+  "entails P Q \<equiv> let P' = unwrap_prop P in let Q' = unwrap_prop Q in 
+    (\<forall>a n. n_valid a n \<longrightarrow> P' a n \<longrightarrow> Q' a n)"
+
+lemma "\<lbrakk>\<Gamma>T|P\<turnstile>Q; logic_semantic P \<Gamma>S = Some P'; logic_semantic Q \<Gamma>S = Some Q'\<rbrakk> \<Longrightarrow> entails P' Q'"
+sorry
+    
 lemma "logic_semantic wp [''head_step''\<mapsto>head_step_sem] = Some wp_sem"
 apply (simp add: wp_def head_step_sem_def funS_def appS_def the_elem_def Abs_fset_inverse)
 sorry
+
+
+text \<open>
+  Deep Embedding of uniform predicates:
+
+  - all Iris logic formulae as instances of datatype \<^typ>\<open>'a logic_term\<close>
+  - terms with camera objects (\<^typ>\<open>'a::ucamera\<close>/\<^const>\<open>CmraT\<close>) very simple: 
+    \<^const>\<open>Const\<close>, \<^const>\<open>Core\<close>, \<^const>\<open>Comp\<close>
+  - uniform predicates about camera objects (\<^typ>\<open>'a::ucamera\<Rightarrow>nat\<Rightarrow>bool\<close>/\<^const>\<open>PropT\<close>) very simple: 
+    \<^const>\<open>Own\<close>, \<^const>\<open>Valid\<close>, \<^const>\<open>Conj\<close>, \<^const>\<open>Disj\<close>, \<^const>\<open>TrueTrm\<close>, \<^const>\<open>FalseTrm\<close>, 
+    \<^const>\<open>EqTrm\<close>, \<^const>\<open>Impl\<close>, \<^const>\<open>Sep\<close>, \<^const>\<open>Wand\<close>, \<^const>\<open>Persistent\<close>, \<^const>\<open>Plain\<close>, 
+    \<^const>\<open>Later\<close>, \<^const>\<open>Upd\<close>, (maybe also have a wrapper for "pure" propositions, e.g. \<open>\<lambda>a n. True\<close>)
+  - BUT: Iris base logic also reasons about terms of other types as well:
+    \<^typ>\<open>unit\<close>/\<^const>\<open>UnitT\<close>, \<^typ>\<open>'a\<times>'b\<close>/\<^const>\<open>ProdT\<close>, \<^typ>\<open>'a\<Rightarrow>'b\<close>/\<^const>\<open>FunT\<close> (i.e. \<^typ>\<open>'a-n>'b\<close>),
+    \<^typ>\<open>'a+'b\<close> (omitted), and all other types an application needs (e.g. \<^typ>\<open>expr\<close>/\<^const>\<open>Expr\<close>,
+    \<^typ>\<open>state\<close>/\<^const>\<open>State\<close>, \<^typ>\<open>observation\<close>/\<^const>\<open>Observation\<close> and lists of these types)
+  - Do we need to be to argue about other types than cameras within the base logic?
+    => if we would only be able to reason about cameras, we would lose the ability to have 
+    sideconditions about them (e.g. if we can do a head step in HeapLang, we can also do a ghost update
+    to then own the new state)
+    => quantifiers make things really difficult either way if the variable, over which we abstract
+    is used within a "pure" context
+    => The biggest problem is the semantics of functions and application, no deep embedding can have 
+    well-typed function semantics (i.e. a datatype which wraps functions on itself)
+\<close>
 end

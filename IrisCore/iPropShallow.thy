@@ -6,12 +6,12 @@ begin
 (*
   The functorial definition of iprop is as follows (unused arguments omitted):
 
-  gampF := ((loc\<rightharpoonup>((loc option\<times>loc option) ex))\<times>frac) option auth
+  gmapF := ((loc\<rightharpoonup>((loc option\<times>loc option) ex))\<times>frac) option auth
   markingF := loc set auth
   b invF := (name\<rightharpoonup>b later ag)  auth
   heapF := (loc\<rightharpoonup>(dfrac\<times>val ag)) auth
-  (b,_) resf := gmapF \<times> markingF \<times> b invF \<times> heapF
-  iprop := (iprop,iprop) resf upred
+  (b,_) resF := gmapF \<times> markingF \<times> b invF \<times> heapF
+  iprop := (iprop,iprop) resF upred
 *)
 
 type_synonym 'a pre_inv = "(name\<rightharpoonup>'a later ag) auth \<times> name dset \<times> name dfset"

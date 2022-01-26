@@ -342,7 +342,6 @@ instance ag :: (discrete) dcamera
   
 instance ag :: (ofe) core_id by standard (auto simp: pcore_ag_def)
 
-lift_definition to_ag :: "'a::ofe \<Rightarrow> 'a ag" is "\<lambda>a::'a. {a}" by simp
 lemma to_ag_valid: "valid (to_ag a)"
   by (auto simp: to_ag.rep_eq valid_def valid_raw_ag.rep_eq)
   

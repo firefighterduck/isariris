@@ -65,6 +65,8 @@ lift_definition map_ag :: "('a\<Rightarrow>'b) \<Rightarrow> 'a ag \<Rightarrow>
 lift_definition pred_ag :: "('a \<Rightarrow> bool) \<Rightarrow> 'a ag \<Rightarrow> bool" is "\<lambda>P s. Ball s P" .
 lift_definition rel_ag :: "('a \<Rightarrow> 'b \<Rightarrow> bool) \<Rightarrow> 'a ag \<Rightarrow> 'b ag \<Rightarrow> bool" is rel_set .
 
+lift_definition to_ag :: "'a \<Rightarrow> 'a ag" is "\<lambda>a::'a. {a}" by simp
+
 lemma image_ag: "image f (Rep_ag s) \<in> {a |a. finite a \<and> a \<noteq> {}}"
   apply (simp_all add: image_def)
   apply (rule conjI)
