@@ -60,16 +60,18 @@ lemma valid_frac: "valid (q::frac) = n_valid q n"
 instantiation frac :: order begin
 lift_definition less_frac :: "frac \<Rightarrow> frac \<Rightarrow> bool" is "(<)" .
 lift_definition less_eq_frac :: "frac \<Rightarrow> frac \<Rightarrow> bool" is "(\<le>)" .
-instance by standard (auto simp: less_frac.rep_eq less_eq_frac.rep_eq Rep_frac_inject)
+instance by standard (auto simp: less_frac.rep_eq less_eq_frac.rep_eq)
 end
 
 lemma frac_valid: "valid (p\<cdot>q) \<Longrightarrow> ((p::frac)<1)"
   by (auto simp: valid_def valid_raw_frac.rep_eq less_eq_frac.rep_eq less_frac.rep_eq op_frac.rep_eq)
   (metis Rep_frac less_add_same_cancel1 mem_Collect_eq one_frac.rep_eq one_frac_def order_less_le_trans)
 
+lemma one_op: "1\<cdot>q > (1::frac)"
+  by (auto simp: less_frac_def op_frac.rep_eq)
+
 lemma frac_not_valid: "(p::frac)=1 \<Longrightarrow> \<not> valid (p\<cdot>q)"
-  by (auto simp: valid_def valid_raw_frac.rep_eq less_eq_frac.rep_eq less_frac.rep_eq op_frac.rep_eq)
-  (metis Rep_frac add_le_same_cancel1 linorder_not_less mem_Collect_eq one_frac.rep_eq one_frac_def)
+  using one_op  frac_valid by auto  
 
 lemma frac_own_incl: "incl (p::frac) q \<longleftrightarrow> (p<q)"
 proof (auto simp: incl_def op_frac_def less_frac.rep_eq; transfer; auto simp: Abs_frac_inverse)

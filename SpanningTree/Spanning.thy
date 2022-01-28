@@ -1,5 +1,5 @@
 theory Spanning
-imports Mon "../HeapLang/Par"
+imports Mon "../HeapLang/Par" "../HeapLang/WeakestPrecondition"
 begin
 
 subsection \<open> Spanning Tree \<close>
@@ -32,5 +32,12 @@ definition span :: val where "span \<equiv>
     endif
   endmatch"
 
-
+subsubsection \<open>Proofs\<close>
+lemma wp_try_mark:
+assumes "x\<in>dom g" 
+shows "graph_ctxt g Mrk \<^emph> own_graphUR q Map.empty \<^emph> cinv_own k \<turnstile>
+  wp (App (of_val try_mark) (of_val #[x])) (\<lambda>v. 
+    ((\<upharpoonleft>(v=#[True])) \<^emph> (\<exists>\<^sub>u u. (((\<upharpoonleft>(g x = Some u)) \<^emph> own_graphUR q (x [\<mapsto>\<^sub>g] u)) \<^emph> is_marked x \<^emph> cinv_own k)))
+    \<or>\<^sub>u ((\<upharpoonleft>(v=#[False])) \<^emph> own_graphUR q Map.empty \<^emph> is_marked x \<^emph> cinv_own k))"
+sorry
 end

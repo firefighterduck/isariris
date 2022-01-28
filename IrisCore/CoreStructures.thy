@@ -107,7 +107,7 @@ lemmas camera_props = camera_assoc camera_comm camera_pcore_id camera_pcore_idem
   camera_valid_op camera_extend valid_raw_ne pcore_ne op_ne
 end
 
-lemma n_incl_incl: "(\<forall>n. n_incl n (a::'a::{camera,discrete}) b) \<longleftrightarrow> incl a b"
+lemma n_incl_incl: "n_incl n (a::'a::{camera,discrete}) b \<longleftrightarrow> incl a b"
  by (auto simp: incl_def n_incl_def d_equiv)
 
 subsection \<open>Camera Extensions\<close>

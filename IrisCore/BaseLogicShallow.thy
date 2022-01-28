@@ -180,10 +180,10 @@ qed
 lift_definition upred_forall :: "('c \<Rightarrow> 'a upred_f) \<Rightarrow> 'a upred_f" (binder "\<forall>\<^sub>u" 60) is 
   "\<lambda>P (a::'a) (n::nat). \<forall>x::'c. P x a n" by (rule meta_allE)
 
-lift_definition upred_exists :: "('c \<Rightarrow> 'a upred_f) \<Rightarrow> 'a upred_f" (binder "\<exists>\<^sub>u" 60) is 
+lift_definition upred_exists :: "('c \<Rightarrow> 'a upred_f) \<Rightarrow> 'a upred_f" (binder "\<exists>\<^sub>u" 50) is 
   "\<lambda>P (a::'a) (n::nat). \<exists>x::'c. P x a n" by (rule ex_forward)
 
-lift_definition upred_sep :: "'a upred_f \<Rightarrow> 'a upred_f \<Rightarrow> 'a upred_f" (infixl "\<^emph>" 80) is
+lift_definition upred_sep :: "'a upred_f \<Rightarrow> 'a upred_f \<Rightarrow> 'a upred_f" (infixl "\<^emph>" 60) is
   "\<lambda>P Q (a::'a) n. \<exists>b1 b2. n_equiv n a (b1 \<cdot> b2) \<and> P b1 n \<and> Q b2 n"
 proof (erule exE;erule exE)
   fix P Q n m a b c1 c2
@@ -250,7 +250,7 @@ definition upred_entail_eq :: "'a upred_f \<Rightarrow> 'a upred_f \<Rightarrow>
 end
 
 (* Basic view shift operator *)
-definition upred_bvs :: "('a::ucamera) upred_f \<Rightarrow> 'a upred_f \<Rightarrow> 'a upred_f" (infix "\<Rrightarrow>\<^sub>v" 60) where
+definition upred_bvs :: "('a::ucamera) upred_f \<Rightarrow> 'a upred_f \<Rightarrow> 'a upred_f" (infix "\<Rrightarrow>\<^sub>v" 70) where
   "upred_bvs P Q \<equiv> \<box>(P -\<^emph> (\<Rrightarrow>\<^sub>b Q))"
 
 subsubsection \<open> Basic properties of upred predicates: \<close>
@@ -379,6 +379,9 @@ lemma persistent_core_own2: "pcore_id_pred (a::'a::ucamera) \<Longrightarrow> pe
 
 lemma persistent_conj: "\<lbrakk>persistent P; persistent Q\<rbrakk> \<Longrightarrow> persistent (P \<and>\<^sub>u Q)"
   by (auto simp: persistent_def upred_conj.rep_eq upred_entails.rep_eq upred_persis.rep_eq)
+
+lemma persistent_disj: "\<lbrakk>persistent P; persistent Q\<rbrakk> \<Longrightarrow> persistent (P \<or>\<^sub>u Q)"
+  by (auto simp: persistent_def upred_disj.rep_eq upred_entails.rep_eq upred_persis.rep_eq)
   
 lemma persistent_exists: "\<forall>x. persistent (P x) \<Longrightarrow> persistent (\<exists>\<^sub>u x. P x)"
   by (auto simp: upred_exists.rep_eq persistent_def upred_persis.rep_eq upred_entails.rep_eq)
@@ -387,4 +390,9 @@ subsubsection \<open> Timeless predicates \<close>
 definition except_zero :: "'a::ucamera upred_f \<Rightarrow> 'a upred_f" ("\<diamondop>_") where 
   "except_zero P \<equiv> P \<or>\<^sub>u \<triangleright>\<upharpoonleft>False"
 definition timeless :: "'a::ucamera upred_f \<Rightarrow> bool" where "timeless P \<equiv> (\<triangleright>P) \<turnstile> \<diamondop>P"
+
+lemma own_timeless: "timeless (Own (x::'a::ducamera))"
+  by (auto simp: upred_own.rep_eq upred_entails.rep_eq upred_later.rep_eq except_zero_def 
+    upred_disj.rep_eq upred_pure.rep_eq n_incl_def d_equiv timeless_def)
+
 end
