@@ -1,5 +1,5 @@
 theory Namespace
-imports Main
+imports BasicTypes
 begin
 subsection \<open> Namespaces \<close>
 text \<open> 
@@ -10,7 +10,8 @@ type_synonym namespace = "nat list"
 type_synonym name = "nat list"
 definition names :: "namespace \<Rightarrow> name set" where
   "names N = {n. \<exists>p. n=N@p}" \<comment> \<open> A namespace is used as the prefix for other names. \<close> 
-
+definition dnames :: "namespace \<Rightarrow> name dset" where "dnames N = DSet {n. \<exists>p. n=N@p}"
+  
 definition nroot :: namespace where "nroot = []"
 definition add_name :: "namespace \<Rightarrow> name \<Rightarrow> namespace" where "add_name N n = N@n"
 definition string_to_name :: "string \<Rightarrow> name" where 

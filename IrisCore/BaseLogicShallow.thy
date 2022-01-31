@@ -253,6 +253,8 @@ end
 definition upred_bvs :: "('a::ucamera) upred_f \<Rightarrow> 'a upred_f \<Rightarrow> 'a upred_f" (infix "\<Rrightarrow>\<^sub>v" 70) where
   "upred_bvs P Q \<equiv> \<box>(P -\<^emph> (\<Rrightarrow>\<^sub>b Q))"
 
+abbreviation wand_bupd (infix "==\<^emph>" 60) where "wand_bupd P Q \<equiv> P -\<^emph> \<Rrightarrow>\<^sub>b Q"
+  
 subsubsection \<open> Basic properties of upred predicates: \<close>
 
 lemma upred_entail_eq_simp: "P\<stileturn>\<turnstile>Q \<equiv> \<forall>a n. n_valid a n \<longrightarrow> Rep_upred_f P a n = Rep_upred_f Q a n"
@@ -353,6 +355,21 @@ lemma upred_wand_holds2E: "upred_holds (P -\<^emph> Q -\<^emph> R) \<Longrightar
 lemma upred_own_nothing_true: "Own \<epsilon> \<stileturn>\<turnstile> \<upharpoonleft>True"
   by (rule upred_entail_eqI) (auto simp: upred_pure.rep_eq upred_own.rep_eq)
 
+lemma upred_persis_mono: "P \<turnstile> Q \<Longrightarrow> \<box> P \<turnstile> \<box> Q"
+  by (auto simp: upred_entails.rep_eq upred_persis.rep_eq camera_core_n_valid)
+
+lemma upred_persisE: "\<box> P \<turnstile> P"
+  by (auto simp: upred_entails.rep_eq upred_persis.rep_eq)
+    (metis camera_core_id n_incl_def nle_le ofe_refl upred_def_def upred_def_rep)
+
+lemma upred_later_mono: "P\<turnstile>Q \<Longrightarrow> \<triangleright>P \<turnstile> \<triangleright> Q"
+apply transfer
+using Rep_sprop diff_le_self by blast
+
+lemma upred_persis_later: "\<box>\<triangleright>P \<stileturn>\<turnstile> \<triangleright>\<box>P"
+  by (rule upred_entail_eqI)
+    (simp add: upred_later.rep_eq upred_persis.rep_eq)
+
 subsubsection \<open> Persistent predicates \<close>
 definition persistent :: "('a::ucamera) upred_f \<Rightarrow> bool" where "persistent P \<equiv> P \<turnstile> \<box>P"
 
@@ -369,13 +386,17 @@ lemma persistent_pure: "persistent (\<upharpoonleft>P)"
 
 lemma persistent_valid: "persistent (\<V>(a))"
   by (auto simp: persistent_def upred_persis.rep_eq upred_entails.rep_eq upred_valid.rep_eq)
-
+  
 lemma persistent_core_own: "persistent (Own(a::'a::{core_id,ucamera}))"
   by (auto simp: persistent_def upred_persis.rep_eq upred_entails.rep_eq upred_own.rep_eq core_id)
 
 lemma persistent_core_own2: "pcore_id_pred (a::'a::ucamera) \<Longrightarrow> persistent (Own a)"
   unfolding persistent_def upred_persis.rep_eq upred_entails.rep_eq upred_own.rep_eq core_id_pred
   using camera_core_mono_n by fastforce
+
+lemma persistent_later: "persistent P \<Longrightarrow> persistent (\<triangleright> P)"
+unfolding persistent_def
+by (rule upred_entails_trans[OF upred_later_mono[of P "\<box>P"] upred_entail_eqR[OF upred_persis_later]])
 
 lemma persistent_conj: "\<lbrakk>persistent P; persistent Q\<rbrakk> \<Longrightarrow> persistent (P \<and>\<^sub>u Q)"
   by (auto simp: persistent_def upred_conj.rep_eq upred_entails.rep_eq upred_persis.rep_eq)
@@ -386,13 +407,23 @@ lemma persistent_disj: "\<lbrakk>persistent P; persistent Q\<rbrakk> \<Longright
 lemma persistent_exists: "\<forall>x. persistent (P x) \<Longrightarrow> persistent (\<exists>\<^sub>u x. P x)"
   by (auto simp: upred_exists.rep_eq persistent_def upred_persis.rep_eq upred_entails.rep_eq)
 
+lemma persistent_sep: "\<lbrakk>persistent P; persistent Q\<rbrakk> \<Longrightarrow> persistent (P \<^emph> Q)"
+by (simp add: persistent_def upred_sep.rep_eq upred_entails.rep_eq upred_persis.rep_eq)
+  (metis camera_comm camera_core_id camera_valid_op dual_order.refl n_incl_def ofe_refl 
+    upred_def_def upred_def_rep)
+
 subsubsection \<open> Timeless predicates \<close>
 definition except_zero :: "'a::ucamera upred_f \<Rightarrow> 'a upred_f" ("\<diamondop>_") where 
   "except_zero P \<equiv> P \<or>\<^sub>u \<triangleright>\<upharpoonleft>False"
+lemma persistent_except_zero: "persistent P \<Longrightarrow> persistent (\<diamondop>P)"
+unfolding except_zero_def
+apply (rule persistent_disj)
+apply assumption
+by (rule persistent_later[OF persistent_pure])
+
 definition timeless :: "'a::ucamera upred_f \<Rightarrow> bool" where "timeless P \<equiv> (\<triangleright>P) \<turnstile> \<diamondop>P"
 
 lemma own_timeless: "timeless (Own (x::'a::ducamera))"
   by (auto simp: upred_own.rep_eq upred_entails.rep_eq upred_later.rep_eq except_zero_def 
     upred_disj.rep_eq upred_pure.rep_eq n_incl_def d_equiv timeless_def)
-
 end

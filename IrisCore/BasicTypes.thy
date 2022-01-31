@@ -8,6 +8,21 @@ subsubsection \<open>Disjoint set type\<close>
 text \<open> Set with extra bottom element to encode non-disjoint unions \<close>
 datatype 'a dset = DSet "'a set" | DBot
 
+fun subdset_eq :: "'a dset \<Rightarrow> 'a dset \<Rightarrow> bool" (infix "\<subseteq>\<^sub>d" 50) where
+  "subdset_eq (DSet s) (DSet t) = (s\<subseteq>t)"
+| "subdset_eq _ _ = False"
+
+fun dmember :: "'a \<Rightarrow> 'a dset \<Rightarrow> bool" (infix "\<in>\<^sub>d" 50) where
+  "dmember x (DSet s) = (x\<in>s)"
+| "dmember _ _ = False"
+
+instantiation dset :: (type) minus begin
+fun minus_dset :: "'a dset \<Rightarrow> 'a dset \<Rightarrow> 'a dset" where
+  "minus_dset (DSet s) (DSet t) = DSet (s-t)"
+| "minus_dset _ _ = DBot"
+instance ..
+end
+
 subsubsection \<open>Disjoint finite set type\<close>
 text \<open> Finite set with extra bottom element to encode non-disjoint unions \<close>
 datatype 'a dfset = DFSet "'a fset" | DFBot

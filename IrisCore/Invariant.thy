@@ -50,8 +50,7 @@ lemma persistent_inv: "persistent (inv N P)"
   apply (rule persistent_conj)
   apply (rule persistent_pure)
   by (rule persistent_ownI)
-
-
+  
 subsubsection \<open>Cancelable Invariants\<close>
 type_synonym cinvG = frac
 definition cinv_own :: "frac \<Rightarrow> iprop" where "cinv_own p = Own (constr_cinv (Some p))"
