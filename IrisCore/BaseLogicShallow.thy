@@ -415,6 +415,7 @@ by (simp add: persistent_def upred_sep.rep_eq upred_entails.rep_eq upred_persis.
 subsubsection \<open> Timeless predicates \<close>
 definition except_zero :: "'a::ucamera upred_f \<Rightarrow> 'a upred_f" ("\<diamondop>_") where 
   "except_zero P \<equiv> P \<or>\<^sub>u \<triangleright>\<upharpoonleft>False"
+
 lemma persistent_except_zero: "persistent P \<Longrightarrow> persistent (\<diamondop>P)"
 unfolding except_zero_def
 apply (rule persistent_disj)

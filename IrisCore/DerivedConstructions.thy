@@ -267,6 +267,17 @@ show "Rep_sprop (valid_raw a) n \<Longrightarrow> n_equiv n a (b \<cdot> c) \<Lo
 qed
 end
 
+lemma option_n_incl: "n_incl n o1 o2 \<longleftrightarrow> 
+  (o1 = None \<or> (\<exists>x y. o1 = Some x \<and> o2 = Some y \<and> (n_equiv n x y \<or> n_incl n x y)))"
+  apply (cases o1; cases o2)
+  apply (simp_all add: n_incl_def n_equiv_option_def op_option_def)
+  using option_op.simps(4) apply blast
+  apply (meson ofe_eq_limit option_op.simps(3))
+  using option_op.elims apply blast 
+  apply (rule iffI)
+  apply (metis (no_types, lifting) ofe_sym option.discI option.sel option_op.elims)
+  using ofe_sym option_op.simps(1) option_op.simps(2) by blast
+  
 instance option :: (dcamera) dcamera
   apply (standard; auto simp: valid_raw_option_def valid_def split: option.splits)
   using d_valid[simplified valid_def] by blast
@@ -344,7 +355,8 @@ instance ag :: (ofe) core_id by standard (auto simp: pcore_ag_def)
 
 lemma to_ag_valid: "valid (to_ag a)"
   by (auto simp: to_ag.rep_eq valid_def valid_raw_ag.rep_eq)
-  
+lemma to_ag_n_valid: "n_valid (to_ag a) n" using to_ag_valid valid_def by auto
+    
 lemma to_ag_op: "(to_ag a) = b\<cdot>c \<Longrightarrow> (b=to_ag a) \<and> (c=to_ag a)"
 proof -
   assume assm: "to_ag a = b\<cdot>c"
@@ -353,6 +365,19 @@ proof -
   then show "(b=to_ag a) \<and> (c=to_ag a)" by (metis Rep_ag_inverse to_ag.abs_eq)
 qed
 
+lemma ag_idem: "((a::'a::ofe ag) \<cdot> a) = a"
+  by (simp add: Rep_ag_inverse op_ag_def)
+
+lemma ag_incl: "incl (a::'a::ofe ag) b \<longleftrightarrow> b = (a\<cdot>b)"
+  apply (simp add: incl_def op_ag_def)
+  by (metis Rep_ag_inverse op_ag.rep_eq sup.left_idem)
+
+lemma to_ag_uninj: "n_valid a n \<Longrightarrow> \<exists>b. n_equiv n (to_ag b) a"
+  apply (auto simp: valid_def valid_raw_ag.rep_eq n_equiv_ag.rep_eq to_ag.rep_eq)
+  using ofe_refl apply blast
+  by (metis (no_types, opaque_lifting) Rep_ag_inverse equals0I op_ag.rep_eq singletonI 
+    sup_bot.left_neutral to_ag.rep_eq to_ag_op)
+ 
 lemma d_valid_ag: "valid (a::('a::discrete) ag) \<Longrightarrow> \<exists>b. a = to_ag b"
   apply (simp add: valid_def valid_raw_ag.rep_eq to_ag_def d_equiv )
   by (metis (mono_tags, lifting) Rep_ag_inverse image_ag image_empty is_singletonE is_singletonI' 
@@ -364,8 +389,23 @@ lemma ag_agree: "n_valid ((a::('a::ofe) ag) \<cdot> b) n \<Longrightarrow> n_equ
   apply (smt (verit, del_insts) Rep_ag Rep_ag_inverse all_not_in_conv mem_Collect_eq ofe_eq_limit op_ag.rep_eq to_ag.abs_eq to_ag_op)
   by (smt (verit, del_insts) Rep_ag Rep_ag_inject ex_in_conv mem_Collect_eq ofe_eq_limit op_ag.rep_eq to_ag.rep_eq to_ag_op)
 
+lemma ag_valid_n_incl: "\<lbrakk>n_valid b n; n_incl n a b\<rbrakk> \<Longrightarrow> n_equiv n a (b::'a::ofe ag)"
+proof -
+  assume assms: "n_valid b n" "n_incl n a b"
+  then obtain c where "n_equiv n b (a\<cdot>c)" using n_incl_def by blast
+  with ag_agree[OF n_valid_ne[OF this assms(1)]]  
+  show ?thesis using ag_idem by (metis ofe_sym ofe_trans op_ne)
+qed
+  
 lemma d_ag_agree: "valid ((a::('a::discrete) ag) \<cdot> b) \<Longrightarrow> a=b"
   by (auto simp: n_equiv_ag.rep_eq valid_def d_equiv) (metis ag_agree d_equiv)
+
+lemma ag_incl_equiv: "n_equiv n a b \<Longrightarrow> n_incl n a (b::'a::ofe ag)"
+  by (metis ag_idem n_incl_def ofe_sym)
+
+lemma to_ag_n_incl: "\<lbrakk>n_equiv n a b; n_incl n (to_ag a) c\<rbrakk> \<Longrightarrow> n_incl n (to_ag b) c"
+  apply (simp add: n_incl_def to_ag.rep_eq n_equiv_ag.rep_eq op_ag.rep_eq)
+  using ofe_trans by blast
 
 subsubsection \<open> Exclusive camera functor\<close>
 instantiation ex :: (ofe) camera begin
@@ -691,7 +731,19 @@ subgoal by (auto simp: op_fun_def \<epsilon>_left_id)
 by (auto simp: pcore_fun_def \<epsilon>_pcore split: option.splits)
 end
 
+lemma map_empty_left_id: "Map.empty \<cdot> f = (f:: 'a\<rightharpoonup>'b::ucamera)"
+unfolding op_fun_def op_option_def HOL.fun_eq_iff
+proof
+fix x show "option_op None (f x) = f x" by (cases "f x") auto
+qed
+
 instance "fun" :: (type,d_opt) ducamera ..
+
+lemma fun_n_incl:
+  "n_incl n (f::'a\<Rightarrow>'b::{camera} option) g \<Longrightarrow> dom f \<subseteq> dom g \<and> (\<forall>k. n_incl n (f k) (g k))"
+apply (auto simp: n_incl_def incl_def n_equiv_fun_def n_equiv_option_def op_fun_def op_option_def)
+subgoal by (metis option_op.elims)
+by meson
 
 subsubsection \<open> Set type camera \<close>
 instantiation set :: (type) camera begin

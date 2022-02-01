@@ -50,6 +50,29 @@ lemma persistent_inv: "persistent (inv N P)"
   apply (rule persistent_conj)
   apply (rule persistent_pure)
   by (rule persistent_ownI)
+
+lemma "(\<forall>n x. (\<forall>i\<in>dom f. f i = m i) \<longrightarrow> Rep_upred_f P x n) \<Longrightarrow> 
+  \<V>(constr_inv (full m,\<epsilon>,\<epsilon>) \<cdot> constr_inv (fragm f,\<epsilon>,\<epsilon>)) \<turnstile> P"
+  apply transfer
+  unfolding constr_inv_def
+  apply (simp add: op_prod_def auth_comb_opL \<epsilon>_left_id del: \<epsilon>_dfset_def \<epsilon>_dset_def \<epsilon>_option_def)
+  apply (simp add:  prod_n_valid_def \<epsilon>_n_valid valid_raw_option_def del: \<epsilon>_dfset_def \<epsilon>_dset_def)
+  
+  
+lemma auth_map_both_validI: 
+  "\<V>(constr_inv (full m,\<epsilon>,\<epsilon>) \<cdot> constr_inv (fragm [k\<mapsto>v],\<epsilon>,\<epsilon>)) \<turnstile> (m k =\<^sub>u Some v)"
+unfolding constr_inv_def op_prod_def
+apply (simp add: \<epsilon>_left_id auth_comb_opL del: \<epsilon>_dfset_def \<epsilon>_dset_def \<epsilon>_option_def split: prod.splits)
+apply (simp add: op_fun_def op_option_def del: \<epsilon>_dfset_def \<epsilon>_dset_def)
+apply transfer
+apply (simp add: prod_n_valid_def \<epsilon>_n_valid valid_raw_option_def del: \<epsilon>_dfset_def \<epsilon>_dset_def)
+
+
+lemma invariant_lookup: 
+  "Own\<^sub>i (full (lift_inv_map I),\<epsilon>,\<epsilon>) \<^emph> ownI \<iota> P \<turnstile> (\<exists>\<^sub>u Q. \<upharpoonleft>(I \<iota> = Some Q) \<^emph> \<triangleright> (Q=\<^sub>uP))"
+  unfolding ownI_def own_inv_def
+  apply (rule upred_entails_trans[OF upred_entail_eqR[OF own_op]])
+  apply (rule upred_entails_trans[OF own_valid])
   
 subsubsection \<open>Cancelable Invariants\<close>
 type_synonym cinvG = frac
