@@ -1,6 +1,6 @@
 theory iPropShallow                                                      
 imports DerivedConstructions "../SpanningTree/SpanningTreeCameras" Namespace
-  BaseLogicShallow "../HeapLang/PrimitiveLaws"
+  BaseLogicShallow "../HeapLang/PrimitiveLaws" View
 begin
 
 (*
@@ -14,7 +14,7 @@ begin
   iprop := (iprop,iprop) resF upred
 *)
 
-type_synonym 'a pre_inv = "(name\<rightharpoonup>'a later ag) auth \<times> name dset \<times> name dfset"
+type_synonym 'a pre_inv = "(name, 'a later) map_view \<times> name dset \<times> name dfset"
 
 ML \<open>
   local
@@ -156,4 +156,6 @@ setup \<open>mk_iprop [(\<^typ>\<open>graphUR auth\<close>, "graph"), (\<^typ>\<
 
 lemma iprop_fp: "iProp (pre P) = P" sorry
 declare [[coercion iProp]]
+
+lemma n_equiv_pre [simp]: "n_equiv n (pre P) (pre Q) \<longleftrightarrow> n_equiv n P Q" sorry
 end

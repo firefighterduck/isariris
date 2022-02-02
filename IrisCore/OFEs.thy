@@ -262,6 +262,9 @@ instance ag :: (discrete) discrete apply standard
   apply (simp_all add: n_equiv_ag.rep_eq d_equiv ofe_eq_ag_def)
   using Rep_ag_inject by blast+
 
+lemma to_ag_n_equiv: "n_equiv n (to_ag a) (to_ag b) \<longleftrightarrow> n_equiv n a b"
+  unfolding to_ag.rep_eq n_equiv_ag.rep_eq by simp
+
 subsubsection \<open>Exclusive camera combinator OFE\<close>
 instantiation ex :: (ofe) ofe begin
 fun n_equiv_ex :: "nat \<Rightarrow> 'a::ofe ex \<Rightarrow> 'a ex \<Rightarrow> bool" where

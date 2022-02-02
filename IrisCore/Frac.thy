@@ -158,7 +158,7 @@ end
 instance dfrac :: dcamera 
   apply (standard; auto simp: valid_raw_dfrac_def valid_def  split: dfrac.splits)
   using d_valid[simplified valid_def] by fast
-
+  
 lemma dfrac_own_incl: "incl (DfracOwn p) (DfracOwn q) \<longleftrightarrow> (p<q)"
 proof (standard; unfold incl_def op_dfrac_def)
   assume "\<exists>c. DfracOwn q = dfrac_add (DfracOwn p) c"
@@ -178,6 +178,12 @@ lemma valid_dfrac: "valid (q::dfrac) = n_valid q n"
   apply (simp add: valid_def valid_raw_dfrac_def split: dfrac.splits) 
   using valid_frac by auto
 
+lemma discarded_core_id: "pcore DfracDiscarded = Some DfracDiscarded"
+  by (simp add: pcore_dfrac_def)
+
+lemma valid_dfrac_own: "valid (DfracOwn 1)" unfolding valid_def valid_raw_dfrac_def apply simp
+  using one_frac.rep_eq valid_raw_frac.rep_eq by auto  
+  
 lemma dfrac_valid_own_r: "valid (dq \<cdot> DfracOwn q) \<Longrightarrow> (q < 1)"
 apply (cases dq) apply (simp_all add: op_dfrac_def valid_raw_dfrac_def valid_def split: dfrac.splits)
 apply (metis camera_comm frac_valid one_frac_def valid_frac)

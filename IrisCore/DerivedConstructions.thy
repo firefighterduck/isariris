@@ -731,7 +731,7 @@ subgoal by (auto simp: op_fun_def \<epsilon>_left_id)
 by (auto simp: pcore_fun_def \<epsilon>_pcore split: option.splits)
 end
 
-lemma map_empty_left_id: "Map.empty \<cdot> f = (f:: 'a\<rightharpoonup>'b::ucamera)"
+lemma map_empty_left_id: "Map.empty \<cdot> f = (f:: 'a\<rightharpoonup>'b::camera)"
 unfolding op_fun_def op_option_def HOL.fun_eq_iff
 proof
 fix x show "option_op None (f x) = f x" by (cases "f x") auto

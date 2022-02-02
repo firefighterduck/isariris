@@ -19,6 +19,7 @@ fun dmember :: "'a \<Rightarrow> 'a dset \<Rightarrow> bool" (infix "\<in>\<^sub
 instantiation dset :: (type) minus begin
 fun minus_dset :: "'a dset \<Rightarrow> 'a dset \<Rightarrow> 'a dset" where
   "minus_dset (DSet s) (DSet t) = DSet (s-t)"
+| "minus_dset (DSet s) DBot = DSet s"
 | "minus_dset _ _ = DBot"
 instance ..
 end
@@ -26,6 +27,17 @@ end
 subsubsection \<open>Disjoint finite set type\<close>
 text \<open> Finite set with extra bottom element to encode non-disjoint unions \<close>
 datatype 'a dfset = DFSet "'a fset" | DFBot
+
+fun dfmember :: "'a \<Rightarrow> 'a dfset \<Rightarrow> bool" (infix "\<in>\<^sub>f" 50) where
+  "dfmember x (DFSet s) = (x|\<in>|s)"
+| "dfmember _ _ = False"
+
+fun dset_of_finite :: "'a dfset \<Rightarrow> 'a dset" where
+  "dset_of_finite (DFSet f) = DSet (fset f)"
+| "dset_of_finite DFBot = DBot"
+
+lemma dset_of_finite_finite: "finite {x. x \<in>\<^sub>d (dset_of_finite f)}"
+  by (cases f) auto
 
 subsubsection \<open>Extended sum type\<close>
 datatype ('a,'b) sum_ext = Inl 'a | Inr 'b | Inv
