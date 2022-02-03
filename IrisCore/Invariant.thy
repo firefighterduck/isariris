@@ -27,14 +27,17 @@ text \<open>Allocate new disabled invariant map\<close>
 definition ownD :: "name dfset \<Rightarrow> iprop" where
   "ownD D = Own\<^sub>i (\<epsilon>,\<epsilon>,D)"  
   
-definition lift_inv_map :: "(name\<rightharpoonup>iprop) \<Rightarrow> (name\<rightharpoonup> pre_iprop later)" where
-  "lift_inv_map = (\<circ>) (map_option (Next \<circ> pre))"
-  
+definition lift_inv_fmap :: "(name,iprop) fmap \<Rightarrow> (name,pre_iprop later) fmap" where
+  "lift_inv_fmap m = Abs_fmap (map_option (Next \<circ> pre) \<circ> (fmlookup m))"
+
+lemma lift_inf_fmap_finite: "(map_option (Next \<circ> pre) \<circ> (fmlookup m)) \<in> {m. finite (dom m)}"
+  by auto
+
 text \<open>World satisfaction, i.e. the invariant that holds all invariants\<close>
 definition wsat :: iprop where
-  "wsat \<equiv> \<exists>\<^sub>u (I::name\<rightharpoonup>iprop).
-    ((Own\<^sub>i(map_view_auth (DfracOwn 1) (lift_inv_map I),\<epsilon>,\<epsilon>))
-    \<^emph> (sep_map_set (\<lambda>\<iota>. ((\<triangleright>((the \<circ> I) \<iota>)) \<^emph> ownD (DFSet {|\<iota>|})) \<or>\<^sub>u (ownE (DSet {\<iota>}))) (dom I))
+  "wsat \<equiv> \<exists>\<^sub>u (I::(name,iprop) fmap).
+    ((Own\<^sub>i(map_view_auth (DfracOwn 1) (lift_inv_fmap I),\<epsilon>,\<epsilon>))
+    \<^emph> (sep_map_fmdom (\<lambda>\<iota>. ((\<triangleright>(the (fmlookup I \<iota>))) \<^emph> ownD (DFSet {|\<iota>|})) \<or>\<^sub>u (ownE (DSet {\<iota>}))) I)
   )"
 end
 
@@ -56,7 +59,7 @@ lemma persistent_inv: "persistent (inv N P)"
 
 lemma auth_map_both_validI: 
   "\<V>(constr_inv (map_view_auth (DfracOwn 1) m,\<epsilon>,\<epsilon>) \<cdot> constr_inv (map_view_frag k dq v,\<epsilon>,\<epsilon>)) \<turnstile>
-    (m k =\<^sub>u Some v) \<and>\<^sub>u \<upharpoonleft>(valid dq)"
+    (fmlookup m k =\<^sub>u Some v) \<and>\<^sub>u \<upharpoonleft>(valid dq)"
 unfolding constr_inv_def op_prod_def
 apply (simp add: \<epsilon>_left_id auth_comb_opL del: \<epsilon>_dfset_def \<epsilon>_dset_def \<epsilon>_option_def split: prod.splits)
 apply (simp add: op_fun_def op_option_def del: \<epsilon>_dfset_def \<epsilon>_dset_def)
@@ -65,18 +68,38 @@ apply (simp add: prod_n_valid_def \<epsilon>_n_valid valid_raw_option_def del: \
 using map_view_both_valid by fastforce
 
 lemma invariant_lookup: 
-  "Own\<^sub>i (map_view_auth (DfracOwn 1) (lift_inv_map I),\<epsilon>,\<epsilon>) \<^emph> ownI \<iota> P \<turnstile> (\<exists>\<^sub>u Q. \<upharpoonleft>(I \<iota> = Some Q) \<^emph> \<triangleright>(Q=\<^sub>uP))"
+  "Own\<^sub>i (map_view_auth (DfracOwn 1) (lift_inv_fmap I),\<epsilon>,\<epsilon>) \<^emph> ownI \<iota> P \<turnstile> 
+  (\<exists>\<^sub>u Q. \<upharpoonleft>(fmlookup I \<iota> = Some Q) \<^emph> \<triangleright>(Q=\<^sub>uP))"
   unfolding ownI_def own_inv_def
   apply (rule upred_entails_trans[OF upred_entail_eqR[OF own_op]])
   apply (rule upred_entails_trans[OF own_valid])
   apply (rule upred_entails_trans[OF auth_map_both_validI])
-  apply transfer
-  apply (auto simp:lift_inv_map_def valid_raw_dfrac_def valid_def n_equiv_option_def n_equiv_later_def)
+  apply transfer'
+  apply (auto simp: lift_inv_fmap_def valid_raw_dfrac_def valid_def n_equiv_option_def 
+    n_equiv_later_def Abs_fmap_inverse[OF lift_inf_fmap_finite])
   apply (metis dual_order.refl n_incl_def ofe_refl prod_cases3 total_n_inclI)
-  by (metis \<epsilon>_left_id ofe_eq_limit prod_cases3)
-
+  by (metis \<epsilon>_left_id ofe_refl prod_cases3) 
+  
 lemma "wsat \<^emph> ownI i P \<^emph> ownE (DSet {i}) \<turnstile> wsat \<^emph> (\<triangleright>P) \<^emph> ownD (DFSet {|i|})"
-unfolding ownI_def wsat_def
+unfolding wsat_def
+apply (rule pull_exists_antecedent2)
+apply (rule upred_existsE')
+apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm]])
+apply (rule upred_entails_trans[OF upred_sep_assoc])
+apply (rule upred_entails_trans[OF upred_sep_assoc'])
+apply (rule upred_entails_trans[OF upred_sep_comm3M])
+apply (rule upred_entails_trans[OF upred_sep_assoc_rev])
+apply (rule upred_entails_exchange[OF invariant_lookup])
+apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm]])
+apply (rule pull_exists_antecedent)
+apply (rule upred_existsE')
+apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm]])
+apply (rule upred_entails_trans[OF upred_sep_assoc])
+apply (rule upred_entails_trans[OF upred_sep_comm2R])
+apply (rule upred_pure_impl)
+apply (rule upred_entails_trans[OF upred_sep_comm2R])
+apply (simp add: sep_map_dom_delete del: \<epsilon>_dfset_def \<epsilon>_dset_def)
+apply (rule upred_entails_trans[OF upred_sep_comm2R])
 sorry
 
 subsubsection \<open>Cancelable Invariants\<close>
@@ -96,7 +119,8 @@ lemma cinv_own_valid: "upred_holds (cinv_own q1 -\<^emph> cinv_own q2 -\<^emph> 
 unfolding cinv_own_def
 apply (rule upred_entails_wand_holdsR2[OF _ own_valid2])
 apply (simp add: constr_cinv_def op_prod_def \<epsilon>_left_id op_option_def del: \<epsilon>_dfset_def \<epsilon>_dset_def)
-apply (simp add: upred_entails.rep_eq upred_valid.rep_eq upred_pure.rep_eq prod_n_valid_def \<epsilon>_n_valid del: \<epsilon>_dfset_def \<epsilon>_dset_def)
+apply (simp add: upred_entails.rep_eq upred_valid.rep_eq upred_pure.rep_eq prod_n_valid_def \<epsilon>_n_valid 
+  del: \<epsilon>_dfset_def \<epsilon>_dset_def)
 apply (simp add: valid_raw_option_def valid_frac[symmetric] split: option.splits)
 by (metis dcamera_valid_iff less_eq_frac.rep_eq one_frac.rep_eq one_frac_def valid_raw_frac.rep_eq)
 

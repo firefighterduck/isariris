@@ -6,16 +6,16 @@ subsubsection \<open>View camera\<close>
 text \<open>A camera combinator similar to \<^typ>\<open>'m auth\<close>\<close>
 
 
-definition map_view_rel :: "nat \<Rightarrow> ('a\<rightharpoonup>('b::ofe)) \<Rightarrow> ('a\<rightharpoonup>(dfrac\<times>'b ag)) \<Rightarrow> bool" where 
+definition map_view_rel :: "nat \<Rightarrow> ('a,'b::ofe) fmap \<Rightarrow> ('a\<rightharpoonup>(dfrac\<times>'b ag)) \<Rightarrow> bool" where 
   "map_view_rel n m f \<equiv>
-    \<forall>k d vag. f k = Some (d,vag) \<longrightarrow> (\<exists>v. n_equiv n vag (to_ag v) \<and> valid d \<and> m k = Some v)"
+    \<forall>k d vag. f k = Some (d,vag) \<longrightarrow> (\<exists>v. n_equiv n vag (to_ag v) \<and> valid d \<and> fmlookup m k = Some v)"
 
 lemma map_view_rel_mono: 
   assumes "map_view_rel n1 m1 f1" "n_equiv n2 m1 m2" "n_incl n2 f2 f1" "n2 \<le> n1"
   shows "map_view_rel n2 m2 f2"
 proof -
   from assms(1) have rel1: "\<forall>k d vag. f1 k = Some (d,vag) \<longrightarrow> (\<exists>v. n_equiv n1 vag (to_ag v) \<and> valid d 
-    \<and> m1 k = Some v)" by (simp add: map_view_rel_def)
+    \<and> fmlookup m1 k = Some v)" by (simp add: map_view_rel_def)
   {
     fix k d vag
     {
@@ -23,17 +23,17 @@ proof -
       then obtain d' vag' where dvag': "f1 k = Some (d', vag')" "n_incl n2 (Some (d,vag)) (Some (d',vag'))"
         using fun_n_incl[OF assms(3)] 
         by (metis (no_types, lifting) domIff n_equiv_option_def n_equiv_prod.elims(2) n_incl_def subsetD)
-      with rel1 obtain v' where v': "n_equiv n1 vag' (to_ag v')" "valid d'" "m1 k = Some v'"
+      with rel1 obtain v' where v': "n_equiv n1 vag' (to_ag v')" "valid d'" "fmlookup m1 k = Some v'"
         by blast
       from dvag'(2) have eq_or_incl: "(n_equiv n2 d d' \<and> n_equiv n2 vag vag') \<or>
         (n_incl n2 d d' \<and> n_incl n2 vag vag')" by (auto simp: option_n_incl)
       with v'(1) assms(4) have v'2: "n_equiv n2 vag (to_ag v') \<or> n_incl n2 (to_ag v') vag" 
-        by (smt (verit, ccfv_SIG) camera_props(7) n_incl_def ofe_down_contr ofe_sym ofe_trans 
-          to_ag.rep_eq to_ag_op valid_raw_ag.rep_eq)
-      from assms(2) v'(3) obtain v where v: "m2 k = Some v" "n_equiv n2 v' v"
-        by (metis n_equiv_fun_def n_equiv_option_def option.inject option.simps(3)) 
+      by (meson ag_valid_n_incl camera_props(8) n_equiv_sprop_def ofe_mono ofe_trans to_ag_n_valid)
+      from assms(2) v'(3) obtain v where v: "fmlookup m2 k = Some v" "n_equiv n2 v' v" 
+        unfolding n_equiv_fmap.rep_eq 
+        by (metis fmdom'I fmdom'_notI n_equiv_fun_def n_equiv_option_def option.sel)
       from this(2) v'2 have "n_equiv n2 vag (to_ag v) \<or> n_incl n2 (to_ag v) vag"
-         by (metis ag_incl_equiv ofe_sym to_ag_n_incl)
+        using ofe_trans to_ag_n_equiv to_ag_n_incl by blast
       with ag_incl_equiv have "n_incl n2 (to_ag v) vag" using ofe_sym by blast
       from v'(1) to_ag_n_valid have "n_valid vag' n1" using n_valid_ne ofe_sym by blast
       with ag_valid_n_incl[OF this] eq_or_incl assms(4) have "n_equiv n2 vag vag'"
@@ -42,9 +42,9 @@ proof -
         using Rep_sprop n_valid_ne ofe_sym by fastforce
       from eq_or_incl d_equiv n_incl_def v'(2) have "valid d" by (metis camera_valid_op valid_dfrac)
       with ag_valid_n_incl[OF \<open>n_valid vag n2\<close> \<open>n_incl n2 (to_ag v) vag\<close>] v(1)
-      have "\<exists>v. n_equiv n2 vag (to_ag v) \<and> valid d \<and> m2 k = Some v" using ofe_sym by blast
+      have "\<exists>v. n_equiv n2 vag (to_ag v) \<and> valid d \<and> fmlookup m2 k = Some v" using ofe_sym by blast
     } 
-    then have "f2 k = Some (d,vag) \<longrightarrow> (\<exists>v. n_equiv n2 vag (to_ag v) \<and> valid d \<and> m2 k = Some v)"
+    then have "f2 k = Some (d,vag) \<longrightarrow> (\<exists>v. n_equiv n2 vag (to_ag v) \<and> valid d \<and> fmlookup m2 k = Some v)"
       by simp
   } 
   then show ?thesis unfolding map_view_rel_def by simp
@@ -57,24 +57,24 @@ lemma map_view_rel_ne: "\<lbrakk>n_equiv n m1 m2; n_equiv n f1 f2\<rbrakk> \<Lon
   using map_view_rel_mono[of n m1 f1 n m2 f2] apply (simp add: ofe_sym total_n_inclI)
   using map_view_rel_mono[of n m2 f2 n m1 f1] by (simp add: ofe_sym total_n_inclI)
 
-lemma map_view_rel_discrete: "map_view_rel 0 (a::('a\<rightharpoonup>('b::discrete))) b \<Longrightarrow> map_view_rel n a b"
+lemma map_view_rel_discrete: "map_view_rel 0 (a::('a,'b::discrete) fmap) b \<Longrightarrow> map_view_rel n a b"
   unfolding map_view_rel_def
   by (auto simp: d_equiv)
   
 datatype ('k,'v) map_view = 
-  MapView (map_view_auth_proj: "((dfrac\<times>('k\<rightharpoonup>('v)) ag)) option") (map_view_frag_proj: "('k\<rightharpoonup>(dfrac\<times>'v ag))")
+  MapView (map_view_auth_proj: "((dfrac\<times>('k,'v) fmap ag)) option") (map_view_frag_proj: "('k\<rightharpoonup>(dfrac\<times>'v ag))")
 
-definition view_auth :: "dfrac \<Rightarrow> ('k\<rightharpoonup>'v) \<Rightarrow> ('k,'v::ofe) map_view" ("\<Zspot>V{_} _") where
+definition view_auth :: "dfrac \<Rightarrow> ('k,'v) fmap \<Rightarrow> ('k,'v::ofe) map_view" ("\<Zspot>V{_} _") where
   "view_auth dq a = MapView (Some (dq, to_ag a)) \<epsilon>"
 definition view_frag :: "('k\<rightharpoonup>(dfrac\<times>'v ag)) \<Rightarrow> ('k,'v::ofe) map_view" ("\<circle>V _") where 
   "view_frag b = MapView None b"
 
-abbreviation view_auth_disc :: "('k\<rightharpoonup>'v) \<Rightarrow> ('k,'v::ofe) map_view" ("\<Zspot>V\<box> _") where 
+abbreviation view_auth_disc :: "('k,'v) fmap \<Rightarrow> ('k,'v::ofe) map_view" ("\<Zspot>V\<box> _") where 
   "view_auth_disc a \<equiv> \<Zspot>V{DfracDiscarded} a"
-abbreviation view_auth_full :: "('k\<rightharpoonup>'v) \<Rightarrow> ('k,'v::ofe) map_view" ("\<Zspot>V _") where
+abbreviation view_auth_full :: "('k,'v) fmap \<Rightarrow> ('k,'v::ofe) map_view" ("\<Zspot>V _") where
   "view_auth_full a \<equiv> \<Zspot>V{DfracOwn 1} a"
 
-definition map_view_auth :: "dfrac \<Rightarrow> ('k\<rightharpoonup>'v) \<Rightarrow> ('k,'v::ofe) map_view" where
+definition map_view_auth :: "dfrac \<Rightarrow> ('k,'v) fmap \<Rightarrow> ('k,'v::ofe) map_view" where
   "map_view_auth dq m = \<Zspot>V{dq} m"
 definition map_view_frag :: "'k \<Rightarrow> dfrac \<Rightarrow> 'v \<Rightarrow> ('k,'v::ofe) map_view" where
   "map_view_frag k dq v = \<circle>V [k\<mapsto>(dq,to_ag v)]"
@@ -230,7 +230,7 @@ lemma view_both_valid2: "n_valid (\<Zspot>V a \<cdot> \<circle>V b) n \<longleft
   using view_both_valid valid_dfrac_own by auto
 
 lemma map_view_both_valid: "n_valid (map_view_auth (DfracOwn 1) m \<cdot> map_view_frag k dq v) n \<longleftrightarrow>
-  valid dq \<and> n_equiv n (m k) (Some v)"
+  valid dq \<and> n_equiv n (fmlookup m k) (Some v)"
   unfolding map_view_auth_def map_view_frag_def
   unfolding view_both_valid2 map_view_rel_def 
   by (auto simp: to_ag_n_equiv n_equiv_option_def ofe_sym)

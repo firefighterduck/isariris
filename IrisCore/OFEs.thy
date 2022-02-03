@@ -1,5 +1,5 @@
 theory OFEs
-imports BasicTypes
+imports BasicTypes "HOL-Library.Finite_Map"
 begin
 
 section \<open> Ordered family of equivalences \<close>
@@ -156,6 +156,21 @@ end
 
 instance dfset :: (type) discrete by standard (auto simp: n_equiv_dfset_def ofe_eq_dfset_def)
 
+subsubsection \<open>Finite map OFE\<close>
+instantiation fmap :: (type,ofe) ofe begin
+context includes fmap.lifting begin
+lift_definition n_equiv_fmap :: "nat \<Rightarrow> ('a, 'b) fmap \<Rightarrow> ('a, 'b) fmap \<Rightarrow> bool" is
+  "n_equiv::nat\<Rightarrow>('a\<rightharpoonup>'b) \<Rightarrow> ('a\<rightharpoonup>'b) \<Rightarrow> bool" .
+lift_definition ofe_eq_fmap :: "('a, 'b) fmap \<Rightarrow> ('a, 'b) fmap \<Rightarrow> bool" is
+  "ofe_eq::('a\<rightharpoonup>'b) \<Rightarrow> ('a\<rightharpoonup>'b) \<Rightarrow> bool" .
+instance by (standard; transfer') 
+  (auto simp: ofe_refl ofe_sym ofe_trans ofe_eq_eq ofe_limit intro: ofe_mono)
+end
+end
+
+instance fmap :: (type,discrete) discrete by standard 
+  (auto simp: d_equiv d_eq n_equiv_fmap.rep_eq ofe_eq_fmap.rep_eq fmlookup_inject)
+  
 subsubsection \<open>Extended sum type\<close>
 instantiation sum_ext :: (ofe,ofe) ofe begin
   fun ofe_eq_sum_ext :: "'a+\<^sub>e'b \<Rightarrow> 'a+\<^sub>e'b \<Rightarrow> bool" where
