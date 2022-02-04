@@ -34,5 +34,5 @@ proof -
     folding_on.F (\<lambda>x a. a \<^emph> P x) (\<upharpoonleft>True) (fset (fmdom (fmdrop i m))) \<^emph> (P i)" by simp
   then show "sep_map_fmdom P m = P i \<^emph> sep_map_fmdom P (fmdrop i m)" 
     using sep_map_fset_def upred_sep_comm by metis
-qed
+qed    
 end

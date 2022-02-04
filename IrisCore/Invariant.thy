@@ -37,7 +37,7 @@ text \<open>World satisfaction, i.e. the invariant that holds all invariants\<cl
 definition wsat :: iprop where
   "wsat \<equiv> \<exists>\<^sub>u (I::(name,iprop) fmap).
     ((Own\<^sub>i(map_view_auth (DfracOwn 1) (lift_inv_fmap I),\<epsilon>,\<epsilon>))
-    \<^emph> (sep_map_fmdom (\<lambda>\<iota>. ((\<triangleright>(the (fmlookup I \<iota>))) \<^emph> ownD (DFSet {|\<iota>|})) \<or>\<^sub>u (ownE (DSet {\<iota>}))) I)
+    \<^emph> (sep_map_fmdom (\<lambda>\<iota>. (\<triangleright>(the (fmlookup I \<iota>))) \<^emph> ownD (DFSet {|\<iota>|}) \<or>\<^sub>u (ownE (DSet {\<iota>}))) I)
   )"
 end
 
@@ -52,10 +52,17 @@ lemma persistent_ownI: "persistent (ownI \<iota> P)"
 lemma persistent_inv: "persistent (inv N P)"
   unfolding inv_def
   apply (rule persistent_exists)
-  apply (rule allI)
   apply (rule persistent_conj)
   apply (rule persistent_pure)
   by (rule persistent_ownI)
+
+lemma ownE_singleton_twice: "ownE (DSet {i}) \<^emph> ownE (DSet {i}) \<turnstile> \<upharpoonleft>False"
+  unfolding ownE_def own_inv_def constr_inv_def
+  apply (rule upred_entails_trans[OF upred_entail_eqR[OF own_op]])
+  apply (rule upred_entails_trans[OF own_valid])
+  apply (simp add: op_prod_def \<epsilon>_left_id op_dset_def del: \<epsilon>_option_def \<epsilon>_dfset_def \<epsilon>_dset_def)
+  apply transfer
+  by (simp add: prod_n_valid_def \<epsilon>_n_valid valid_raw_dset_def del: \<epsilon>_option_def \<epsilon>_dfset_def \<epsilon>_dset_def)
 
 lemma auth_map_both_validI: 
   "\<V>(constr_inv (map_view_auth (DfracOwn 1) m,\<epsilon>,\<epsilon>) \<cdot> constr_inv (map_view_frag k dq v,\<epsilon>,\<epsilon>)) \<turnstile>
@@ -79,8 +86,10 @@ lemma invariant_lookup:
     n_equiv_later_def Abs_fmap_inverse[OF lift_inf_fmap_finite])
   apply (metis dual_order.refl n_incl_def ofe_refl prod_cases3 total_n_inclI)
   by (metis \<epsilon>_left_id ofe_refl prod_cases3) 
+
+lemmas invariant_lookup' = persistent_keep[OF persistent_exists[OF persistent_sep[OF persistent_pure persistent_later[OF persistent_eq]]] invariant_lookup]
   
-lemma "wsat \<^emph> ownI i P \<^emph> ownE (DSet {i}) \<turnstile> wsat \<^emph> (\<triangleright>P) \<^emph> ownD (DFSet {|i|})"
+lemma ownI_open: "wsat \<^emph> ownI i P \<^emph> ownE (DSet {i}) \<turnstile> wsat \<^emph> (\<triangleright>P) \<^emph> ownD (DFSet {|i|})"
 unfolding wsat_def
 apply (rule pull_exists_antecedent2)
 apply (rule upred_existsE')
@@ -89,18 +98,57 @@ apply (rule upred_entails_trans[OF upred_sep_assoc])
 apply (rule upred_entails_trans[OF upred_sep_assoc'])
 apply (rule upred_entails_trans[OF upred_sep_comm3M])
 apply (rule upred_entails_trans[OF upred_sep_assoc_rev])
-apply (rule upred_entails_exchange[OF invariant_lookup])
-apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm]])
-apply (rule pull_exists_antecedent)
+apply (rule upred_entails_exchange[OF invariant_lookup'])
+apply (rule upred_entails_trans[OF upred_sep_assoc])
+apply (rule pull_exists_antecedentR)
 apply (rule upred_existsE')
+apply (rule upred_entails_trans[OF upred_sep_assoc])
 apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm]])
 apply (rule upred_entails_trans[OF upred_sep_assoc])
-apply (rule upred_entails_trans[OF upred_sep_comm2R])
 apply (rule upred_pure_impl)
-apply (rule upred_entails_trans[OF upred_sep_comm2R])
+apply (rule upred_entails_trans[OF upred_sep_assoc])
+apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm]])
+apply (rule upred_entails_trans[OF upred_sep_assoc])+
 apply (simp add: sep_map_dom_delete del: \<epsilon>_dfset_def \<epsilon>_dset_def)
+apply (rule upred_entails_trans[OF upred_sep_assoc])
 apply (rule upred_entails_trans[OF upred_sep_comm2R])
-sorry
+apply (rule upred_disjE')
+subgoal for I Q
+  apply (rule upred_entails_trans[OF upred_sep_assoc])
+  apply (rule upred_frame)
+  apply (rule upred_entails_trans[OF upred_sep_comm4_2])
+  apply (rule upred_entails_trans[OF upred_sep_comm3M])
+  apply (rule persistent_split[OF persistent_later[OF persistent_eq]])
+  subgoal
+    apply (rule upred_entails_trans[OF upred_entail_eqR[OF upred_later_sep]])
+    apply (rule upred_later_mono)
+    apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm]])
+    apply (simp add: upred_eq_comm)
+    apply (rule upred_eqE)
+  by simp
+  apply(rule upred_existsI[of _ _ "I"])
+  apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm]])
+  apply (rule upred_entails_trans[OF upred_sep_assoc])
+  apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm]])
+  apply (rule upred_entails_trans[OF upred_sep_assoc])+
+  apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm]])
+  apply (rule upred_entails_trans[OF upred_sep_assoc])+
+  apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm]])
+  apply (rule upred_entails_trans[OF upred_sep_assoc])
+  apply (rule upred_entails_trans[OF _ upred_entails_eq[OF upred_sep_comm]])
+  apply (rule upred_frame)
+  apply (simp add: sep_map_dom_delete del: \<epsilon>_dfset_def \<epsilon>_dset_def)
+  apply (rule upred_entails_trans[OF upred_sep_assoc])+
+  apply (rule upred_entails_trans[OF upred_sep_comm2R])
+  apply (rule upred_frame)
+  apply (rule upred_disjIR)
+  apply (rule upred_entails_trans[OF upred_sep_comm2R])
+by (rule upred_weakeningR)
+apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm2L]])
+apply (rule upred_entails_trans[OF upred_sep_assoc'])
+apply (rule upred_entails_trans[OF upred_sep_assoc_rev])
+apply (rule upred_entails_exchange[OF ownE_singleton_twice])
+by simp
 
 subsubsection \<open>Cancelable Invariants\<close>
 type_synonym cinvG = frac

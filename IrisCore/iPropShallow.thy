@@ -1,6 +1,6 @@
 theory iPropShallow                                                      
 imports DerivedConstructions "../SpanningTree/SpanningTreeCameras" Namespace
-  BaseLogicShallow "../HeapLang/PrimitiveLaws" View
+  ProofRules "../HeapLang/PrimitiveLaws" View
 begin
 
 (*
