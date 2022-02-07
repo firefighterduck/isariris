@@ -72,7 +72,7 @@ end
 context includes points_to_syntax assumes "SORT_CONSTRAINT('c::ucamera)" begin 
 
 lemma points_to_valid: 
-  "upred_holds ((l \<mapsto>{dq} v) -\<^emph> \<upharpoonleft>(valid dq))"
+  "(l \<mapsto>{dq} v) -\<^emph> \<upharpoonleft>(valid dq)"
 proof -
   have "(l \<mapsto>{dq} v) \<turnstile> \<V>(constr_heap (fragm [l\<mapsto>(dq,to_ag (Some v))]))" 
     by (auto simp: points_to_def own_valid)

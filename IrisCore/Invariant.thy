@@ -1,6 +1,6 @@
 theory Invariant
 imports DerivedConstructions BaseLogicShallow Frac AuthHeap Misc "../SpanningTree/SpanningTreeCameras"
-  Namespace iPropShallow 
+  Namespace iPropShallow EntailEnv
 begin
 
 subsection \<open> Invariants \<close>
@@ -88,12 +88,13 @@ lemma invariant_lookup:
   by (metis \<epsilon>_left_id ofe_refl prod_cases3) 
 
 lemmas invariant_lookup' = persistent_keep[OF persistent_exists[OF persistent_sep[OF persistent_pure persistent_later[OF persistent_eq]]] invariant_lookup]
-  
+
 lemma ownI_open: "wsat \<^emph> ownI i P \<^emph> ownE (DSet {i}) \<turnstile> wsat \<^emph> (\<triangleright>P) \<^emph> ownD (DFSet {|i|})"
 unfolding wsat_def
 apply (rule pull_exists_antecedent2)
 apply (rule upred_existsE')
-apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm]])
+apply (tactic \<open>sep_list_tac \<^context> 1\<close>)
+(* apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm]])
 apply (rule upred_entails_trans[OF upred_sep_assoc])
 apply (rule upred_entails_trans[OF upred_sep_assoc'])
 apply (rule upred_entails_trans[OF upred_sep_comm3M])
@@ -148,8 +149,8 @@ apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm2L]])
 apply (rule upred_entails_trans[OF upred_sep_assoc'])
 apply (rule upred_entails_trans[OF upred_sep_assoc_rev])
 apply (rule upred_entails_exchange[OF ownE_singleton_twice])
-by simp
-
+by simp *) sorry
+ 
 subsubsection \<open>Cancelable Invariants\<close>
 type_synonym cinvG = frac
 definition cinv_own :: "frac \<Rightarrow> iprop" where "cinv_own p = Own (constr_cinv (Some p))"

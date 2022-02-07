@@ -120,6 +120,9 @@ lemma upred_sep_comm3L: "P \<^emph> Q \<^emph> R \<^emph> T \<turnstile> Q \<^em
 lemma upred_sep_comm4_2: "P \<^emph> Q \<^emph> R \<^emph> T \<^emph> S \<turnstile> P \<^emph> R \<^emph> Q \<^emph> T \<^emph> S"
   by (simp add: upred_sep_comm2_eq)
 
+lemma upred_sep_assoc_eq: "(P \<^emph> Q) \<^emph> R = P \<^emph> (Q \<^emph> R)"
+  by (metis upred_sep_comm upred_sep_comm2_eq)
+  
 lemma upred_sep_mono: "\<lbrakk>P1\<turnstile>Q;P2\<turnstile>R\<rbrakk> \<Longrightarrow> P1\<^emph>P2\<turnstile>Q\<^emph>R"
   by transfer (metis camera_comm camera_valid_op n_valid_ne)
 
@@ -245,11 +248,14 @@ lemma upred_eqE: "P\<turnstile>Q \<Longrightarrow> R\<^emph>(P=\<^sub>uR)\<turns
 lemma upred_frame: "P\<turnstile>Q \<Longrightarrow> P\<^emph>R\<turnstile>Q\<^emph>R"
   by (simp add: upred_sep_mono)
 
-lemma false_sep [simp]: "P \<^emph> \<upharpoonleft>False = \<upharpoonleft>False"
+lemma false_sep [simp]: "(P \<^emph> \<upharpoonleft>False) = \<upharpoonleft>False"
   by transfer' blast
 lemma false_entails [simp]: "\<upharpoonleft>False \<turnstile> P"
   by transfer' blast
 
+lemma pure_dupl: "(\<upharpoonleft>b) = (\<upharpoonleft>b) \<^emph> (\<upharpoonleft>b)"
+  by transfer (meson n_incl_def n_incl_refl)
+  
 subsubsection \<open> Persistent predicates \<close>
 definition persistent :: "('a::ucamera) upred_f \<Rightarrow> bool" where "persistent P \<equiv> P \<turnstile> \<box>P"
 
@@ -298,6 +304,10 @@ by (simp add: persistent_def upred_sep.rep_eq upred_entails.rep_eq upred_persis.
 lemma persistent_dupl: "persistent P \<Longrightarrow> P\<^emph>P \<stileturn>\<turnstile> P"
   unfolding persistent_def upred_entail_eq_def 
   by transfer (metis camera_core_id n_incl_def ofe_refl order_refl)
+
+lemma "persistent P \<Longrightarrow> ofe_eq P (P \<^emph> P)"
+  unfolding persistent_def apply transfer
+  by (metis camera_core_id n_incl_def ofe_refl order_refl)
 
 lemma persistent_split: "\<lbrakk>persistent Q; Q\<^emph>R1 \<turnstile> R2; P\<^emph>Q\<turnstile>T\<rbrakk> \<Longrightarrow> P\<^emph>Q\<^emph>R1\<turnstile>T\<^emph>R2"
 proof -

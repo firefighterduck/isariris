@@ -252,6 +252,10 @@ end
 (* Basic view shift operator *)
 definition upred_bvs :: "('a::ucamera) upred_f \<Rightarrow> 'a upred_f \<Rightarrow> 'a upred_f" (infix "\<Rrightarrow>\<^sub>v" 70) where
   "upred_bvs P Q \<equiv> \<box>(P -\<^emph> (\<Rrightarrow>\<^sub>b Q))"
+abbreviation wand_bupd (infix "==\<^emph>" 60) where "wand_bupd P Q \<equiv> P -\<^emph> \<Rrightarrow>\<^sub>b Q"  
 
-abbreviation wand_bupd (infix "==\<^emph>" 60) where "wand_bupd P Q \<equiv> P -\<^emph> \<Rrightarrow>\<^sub>b Q"
+abbreviation "upred_emp \<equiv> \<upharpoonleft>True"
+
+declare [[coercion upred_holds, coercion_enabled = true]]
+
 end
