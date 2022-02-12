@@ -48,13 +48,18 @@ definition n_incl :: "nat \<Rightarrow> 'a \<Rightarrow> 'a \<Rightarrow> bool" 
   "n_incl n a b = (\<exists>c. n_equiv n b (a \<cdot> c))"
 
 (* Frame-preserving update *)
-definition fup :: "'a \<Rightarrow> 'a set \<Rightarrow> bool" (infixl "\<leadsto>" 50) where
-  "a\<leadsto>B \<equiv> (\<forall>x::'a. valid a \<longrightarrow> valid (a \<cdot> x) \<longrightarrow> (\<exists>b\<in>B. valid (b \<cdot> x)))"
+definition camera_upd :: "'a \<Rightarrow> 'a set \<Rightarrow> bool" (infixl "\<leadsto>" 50) where
+  "a\<leadsto>B \<equiv> (\<forall>n x. n_valid (a \<cdot> x) n \<longrightarrow> (\<exists>b\<in>B. n_valid (b \<cdot> x) n))"
+
+definition camera_updP :: "'a \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> bool" (infix "\<leadsto>:" 50) where
+  "a \<leadsto>: P \<equiv> \<forall>n x. n_valid (a \<cdot> x) n \<longrightarrow> (\<exists>b. P b \<and> n_valid (b \<cdot> x) n)"
 
 (* Auxiliary camera lemmas *)
 lemmas valid_raw_ne [elim] = non_expansiveE[OF valid_raw_non_expansive]  
 lemmas pcore_ne [elim] = non_expansiveE[OF pcore_non_expansive]
 lemmas op_ne [elim] = non_expansive2E[OF op_non_expansive]
+
+lemma camera_upd_refl: "a\<leadsto>{a}" unfolding camera_upd_def by simp
 
 lemma camera_n_incl_le: "\<lbrakk>n_incl n x y; m\<le>n\<rbrakk> \<Longrightarrow> n_incl m x y"
   by (auto simp: n_incl_def) (meson ofe_class.ofe_mono)

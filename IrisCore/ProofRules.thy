@@ -1,5 +1,5 @@
 theory ProofRules
-imports BaseLogicShallow
+imports BaseLogicShallow "HOL-Eisbach.Eisbach"
 begin
 subsubsection \<open> Basic properties of and proof rules for upred predicates. \<close>
 
@@ -23,6 +23,9 @@ lemma upred_weakeningL: "P\<^emph>Q \<turnstile> P"
   apply transfer using n_incl_def by blast
 
 lemma upred_weakeningR: "P\<^emph>Q \<turnstile> Q"
+  by transfer (metis camera_comm le_refl n_incl_def)
+
+lemma upred_weakeningR2: "P\<^emph>Q\<^emph>R\<turnstile>Q\<^emph>R"
   by transfer (metis camera_comm le_refl n_incl_def)
 
 lemma upred_entails_add: "\<lbrakk>P\<turnstile>Q; P\<and>\<^sub>uQ\<turnstile>R\<rbrakk> \<Longrightarrow> P\<turnstile>R"
@@ -120,7 +123,10 @@ lemma upred_sep_comm3L: "P \<^emph> Q \<^emph> R \<^emph> T \<turnstile> Q \<^em
 lemma upred_sep_comm4_2: "P \<^emph> Q \<^emph> R \<^emph> T \<^emph> S \<turnstile> P \<^emph> R \<^emph> Q \<^emph> T \<^emph> S"
   by (simp add: upred_sep_comm2_eq)
 
-lemma upred_sep_assoc_eq: "(P \<^emph> Q) \<^emph> R = P \<^emph> (Q \<^emph> R)"
+lemma upred_sep_comm6_2R: "P \<^emph> Q \<^emph> R \<^emph> S \<^emph> T \<^emph> U \<^emph> V \<turnstile> P \<^emph> R \<^emph> S \<^emph> T \<^emph> U \<^emph> V \<^emph> Q"
+  by (auto simp: upred_sep_comm2_eq)
+
+lemma upred_sep_assoc_eq: "P \<^emph> (Q \<^emph> R) = P \<^emph> Q \<^emph> R"
   by (metis upred_sep_comm upred_sep_comm2_eq)
   
 lemma upred_sep_mono: "\<lbrakk>P1\<turnstile>Q;P2\<turnstile>R\<rbrakk> \<Longrightarrow> P1\<^emph>P2\<turnstile>Q\<^emph>R"
@@ -181,6 +187,9 @@ lemma upred_wand_holds2E: "upred_holds (P -\<^emph> Q -\<^emph> R) \<Longrightar
 lemma upred_own_nothing_true: "Own \<epsilon> \<stileturn>\<turnstile> \<upharpoonleft>True"
   by (rule upred_entail_eqI) (auto simp: upred_pure.rep_eq upred_own.rep_eq)
 
+lemma upred_own_nothing_emp_eq: "Own \<epsilon> = upred_emp"
+  by transfer simp  
+  
 lemma upred_persis_mono: "P \<turnstile> Q \<Longrightarrow> \<box> P \<turnstile> \<box> Q"
   by (auto simp: upred_entails.rep_eq upred_persis.rep_eq camera_core_n_valid)
 
@@ -208,6 +217,9 @@ lemma upred_persis_later: "\<box>\<triangleright>P \<stileturn>\<turnstile> \<tr
 lemma pull_exists_antecedent: "(\<exists>\<^sub>u x. (P x \<^emph> Q)) \<turnstile> R \<Longrightarrow> (\<exists>\<^sub>u x. P x) \<^emph> Q \<turnstile> R"
   by transfer' blast
 
+lemma pull_exists_eq: "(\<exists>\<^sub>u x. P x) \<^emph> Q = (\<exists>\<^sub>u x. (P x \<^emph> Q))"
+  by transfer blast
+
 lemma pull_exists_antecedentR: "(\<exists>\<^sub>u x. (Q \<^emph> P x)) \<turnstile> R \<Longrightarrow> Q \<^emph> (\<exists>\<^sub>u x. P x) \<turnstile> R"
   by transfer' blast
   
@@ -225,6 +237,9 @@ lemma upred_existsE: "(\<forall>x. (P x \<turnstile> Q)) \<Longrightarrow> (\<ex
 
 lemma upred_existsE': "(\<And>x. P x \<turnstile> Q) \<Longrightarrow> (\<exists>\<^sub>u x. P x) \<turnstile> Q"
   by (rule upred_existsE) simp
+
+lemma upred_existsE_eq: "((\<exists>\<^sub>u x. P x) \<turnstile> Q) \<longleftrightarrow> (\<forall>x. P x \<turnstile> Q)"
+  by transfer blast
 
 lemma upred_existsI: "P \<turnstile> Q x \<Longrightarrow> P \<turnstile> (\<exists>\<^sub>u x. Q x)"
   by transfer blast
@@ -248,6 +263,9 @@ lemma upred_eqE: "P\<turnstile>Q \<Longrightarrow> R\<^emph>(P=\<^sub>uR)\<turns
 lemma upred_frame: "P\<turnstile>Q \<Longrightarrow> P\<^emph>R\<turnstile>Q\<^emph>R"
   by (simp add: upred_sep_mono)
 
+lemma upred_frameL: "R\<turnstile>Q \<Longrightarrow> P\<^emph>R\<turnstile>P\<^emph>Q"
+    by (simp add: upred_sep_mono)
+
 lemma false_sep [simp]: "(P \<^emph> \<upharpoonleft>False) = \<upharpoonleft>False"
   by transfer' blast
 lemma false_entails [simp]: "\<upharpoonleft>False \<turnstile> P"
@@ -255,7 +273,60 @@ lemma false_entails [simp]: "\<upharpoonleft>False \<turnstile> P"
 
 lemma pure_dupl: "(\<upharpoonleft>b) = (\<upharpoonleft>b) \<^emph> (\<upharpoonleft>b)"
   by transfer (meson n_incl_def n_incl_refl)
+
+lemma own_unit: "\<Rrightarrow>\<^sub>b (Own \<epsilon>)"
+  by transfer auto
+
+lemma bupd_emp: "P=upred_emp \<Longrightarrow> \<Rrightarrow>\<^sub>b P = P"
+  by transfer auto
+
+lemma add_holds: "\<lbrakk>upred_holds P; Q\<^emph>P\<turnstile>R\<rbrakk> \<Longrightarrow> Q\<turnstile>R" 
+  by transfer (metis \<epsilon>_left_id camera_comm camera_valid_op ofe_refl)
+
+lemma own_updateP: "a \<leadsto>: P \<Longrightarrow> Own a ==\<^emph> (\<exists>\<^sub>u a'. \<upharpoonleft>(P a') \<^emph> Own a')"
+  unfolding camera_updP_def
+  by transfer (metis \<epsilon>_left_id camera_assoc n_incl_op_extend n_valid_incl_subst ofe_refl)
+
+lemma upd_frameR: "P \<^emph> \<Rrightarrow>\<^sub>b Q \<turnstile> \<Rrightarrow>\<^sub>b (P \<^emph> Q)"
+  by transfer
+  (smt (z3) camera_assoc camera_comm n_valid_incl_subst ofe_refl ofe_sym order_refl total_n_inclI)
+
+lemma upd_frameL: "(\<Rrightarrow>\<^sub>bP) \<^emph> Q \<turnstile> \<Rrightarrow>\<^sub>b (P \<^emph> Q)"
+  by transfer
+  (metis (mono_tags, opaque_lifting) camera_assoc n_valid_incl_subst ofe_refl ofe_sym order_refl total_n_inclI)
+
+lemma upd_trans: "\<Rrightarrow>\<^sub>b \<Rrightarrow>\<^sub>b P \<turnstile> \<Rrightarrow>\<^sub>b P"
+  by transfer blast
+
+lemma upd_mono: "P\<turnstile>Q \<Longrightarrow> \<Rrightarrow>\<^sub>bP\<turnstile>\<Rrightarrow>\<^sub>bQ"
+  by transfer (meson camera_valid_op)
+
+lemma updI: "P \<turnstile> \<Rrightarrow>\<^sub>b P" by transfer auto
   
+lemma upd_frame: "(\<Rrightarrow>\<^sub>bP) \<^emph> (\<Rrightarrow>\<^sub>bQ) \<turnstile> \<Rrightarrow>\<^sub>b(P\<^emph>Q)"
+proof -
+  have step1: "(\<Rrightarrow>\<^sub>bP) \<^emph> (\<Rrightarrow>\<^sub>bQ) \<turnstile> \<Rrightarrow>\<^sub>b (P \<^emph> (\<Rrightarrow>\<^sub>bQ))" using upd_frameL by blast
+  have step2: "\<Rrightarrow>\<^sub>b (P \<^emph> (\<Rrightarrow>\<^sub>bQ)) \<turnstile> \<Rrightarrow>\<^sub>b \<Rrightarrow>\<^sub>b (P \<^emph> Q)" using upd_mono[OF upd_frameR] by auto
+  from upred_entails_trans[OF step1 step2] have "(\<Rrightarrow>\<^sub>bP) \<^emph> (\<Rrightarrow>\<^sub>bQ) \<turnstile> \<Rrightarrow>\<^sub>b \<Rrightarrow>\<^sub>b (P \<^emph> Q)" .
+  from upred_entails_trans[OF this upd_trans] show ?thesis .
+qed
+
+lemma own_alloc: "valid a \<Longrightarrow> \<Rrightarrow>\<^sub>b Own a"
+  sorry (* Axiomatized as proof in Coq is not easily reproducible. *)
+
+lemma own_update: "a\<leadsto>{b} \<Longrightarrow> Own a ==\<^emph> Own b"
+  unfolding camera_upd_def
+  by transfer (metis camera_assoc camera_comm camera_valid_op empty_iff insert_iff n_incl_refl n_valid_incl_subst)
+
+lemma add_own: "\<lbrakk>valid a; Q\<^emph>(Own a)\<turnstile>\<Rrightarrow>\<^sub>bR\<rbrakk> \<Longrightarrow> Q\<turnstile>\<Rrightarrow>\<^sub>bR"
+proof -
+  assume assms: "valid a" "Q\<^emph>(Own a)\<turnstile>\<Rrightarrow>\<^sub>bR"
+  from own_alloc[OF this(1)] have "\<Rrightarrow>\<^sub>b Own a" .
+  from assms(2) have "Q\<^emph>\<Rrightarrow>\<^sub>b Own a\<turnstile>\<Rrightarrow>\<^sub>b R"
+    by (meson upd_frameR upd_mono upd_trans upred_entails_trans)
+    from add_holds[OF \<open>\<Rrightarrow>\<^sub>b Own a\<close> this] show ?thesis .
+qed
+
 subsubsection \<open> Persistent predicates \<close>
 definition persistent :: "('a::ucamera) upred_f \<Rightarrow> bool" where "persistent P \<equiv> P \<turnstile> \<box>P"
 
@@ -264,43 +335,45 @@ lemma persistent_holds_sep:
   unfolding persistent_def upred_holds.rep_eq upred_entails.rep_eq upred_persis.rep_eq upred_sep.rep_eq
   by (smt (verit, ccfv_threshold) camera_comm camera_core_id le_cases3 n_incl_def ofe_refl upred_def_def upred_def_rep)
 
-lemma persistent_persis: "persistent (\<box>P)"
+named_theorems pers_rule
+  
+lemma persistent_persis [pers_rule]: "persistent (\<box>P)"
   by (auto simp: persistent_def upred_persis.rep_eq upred_entails.rep_eq camera_core_idem)
 
-lemma persistent_pure: "persistent (\<upharpoonleft>P)"
+lemma persistent_pure [pers_rule]: "persistent (\<upharpoonleft>P)"
   by (auto simp: persistent_def upred_persis.rep_eq upred_entails.rep_eq upred_pure.rep_eq)  
 
-lemma persistent_valid: "persistent (\<V>(a))"
+lemma persistent_valid [pers_rule]: "persistent (\<V>(a))"
   by (auto simp: persistent_def upred_persis.rep_eq upred_entails.rep_eq upred_valid.rep_eq)
   
-lemma persistent_core_own: "persistent (Own(a::'a::{core_id,ucamera}))"
+lemma persistent_core_own [pers_rule]: "persistent (Own(a::'a::{core_id,ucamera}))"
   by (auto simp: persistent_def upred_persis.rep_eq upred_entails.rep_eq upred_own.rep_eq core_id)
 
-lemma persistent_core_own2: "pcore_id_pred (a::'a::ucamera) \<Longrightarrow> persistent (Own a)"
+lemma persistent_core_own2 [pers_rule]: "pcore_id_pred (a::'a::ucamera) \<Longrightarrow> persistent (Own a)"
   unfolding persistent_def upred_persis.rep_eq upred_entails.rep_eq upred_own.rep_eq core_id_pred
   using camera_core_mono_n by fastforce
 
-lemma persistent_eq: "persistent (a=\<^sub>ub)"
+lemma persistent_eq [pers_rule]: "persistent (a=\<^sub>ub)"
   unfolding persistent_def by transfer simp
 
-lemma persistent_later: "persistent P \<Longrightarrow> persistent (\<triangleright> P)"
+lemma persistent_later [pers_rule]: "persistent P \<Longrightarrow> persistent (\<triangleright> P)"
   unfolding persistent_def
   by (rule upred_entails_trans[OF upred_later_mono[of P "\<box>P"] upred_entail_eqR[OF upred_persis_later]])
 
-lemma persistent_conj: "\<lbrakk>persistent P; persistent Q\<rbrakk> \<Longrightarrow> persistent (P \<and>\<^sub>u Q)"
+lemma persistent_conj [pers_rule]: "\<lbrakk>persistent P; persistent Q\<rbrakk> \<Longrightarrow> persistent (P \<and>\<^sub>u Q)"
   by (auto simp: persistent_def upred_conj.rep_eq upred_entails.rep_eq upred_persis.rep_eq)
 
-lemma persistent_disj: "\<lbrakk>persistent P; persistent Q\<rbrakk> \<Longrightarrow> persistent (P \<or>\<^sub>u Q)"
+lemma persistent_disj [pers_rule]: "\<lbrakk>persistent P; persistent Q\<rbrakk> \<Longrightarrow> persistent (P \<or>\<^sub>u Q)"
   by (auto simp: persistent_def upred_disj.rep_eq upred_entails.rep_eq upred_persis.rep_eq)
   
-lemma persistent_exists: "(\<And>x. persistent (P x)) \<Longrightarrow> persistent (\<exists>\<^sub>u x. P x)"
+lemma persistent_exists [pers_rule]: "(\<And>x. persistent (P x)) \<Longrightarrow> persistent (\<exists>\<^sub>u x. P x)"
   by (auto simp: upred_exists.rep_eq persistent_def upred_persis.rep_eq upred_entails.rep_eq)
 
-lemma persistent_sep: "\<lbrakk>persistent P; persistent Q\<rbrakk> \<Longrightarrow> persistent (P \<^emph> Q)"
+lemma persistent_sep [pers_rule]: "\<lbrakk>persistent P; persistent Q\<rbrakk> \<Longrightarrow> persistent (P \<^emph> Q)"
 by (simp add: persistent_def upred_sep.rep_eq upred_entails.rep_eq upred_persis.rep_eq)
   (metis camera_comm camera_core_id camera_valid_op dual_order.refl n_incl_def ofe_refl 
     upred_def_def upred_def_rep)
-
+  
 lemma persistent_dupl: "persistent P \<Longrightarrow> P\<^emph>P \<stileturn>\<turnstile> P"
   unfolding persistent_def upred_entail_eq_def 
   by transfer (metis camera_core_id n_incl_def ofe_refl order_refl)
@@ -309,7 +382,7 @@ lemma "persistent P \<Longrightarrow> ofe_eq P (P \<^emph> P)"
   unfolding persistent_def apply transfer
   by (metis camera_core_id n_incl_def ofe_refl order_refl)
 
-lemma persistent_split: "\<lbrakk>persistent Q; Q\<^emph>R1 \<turnstile> R2; P\<^emph>Q\<turnstile>T\<rbrakk> \<Longrightarrow> P\<^emph>Q\<^emph>R1\<turnstile>T\<^emph>R2"
+lemma persistent_split: "\<lbrakk>persistent Q; Q\<^emph>R1\<turnstile>R2; P\<^emph>Q\<turnstile>T\<rbrakk> \<Longrightarrow> P\<^emph>Q\<^emph>R1\<turnstile>T\<^emph>R2"
 proof -
   assume assms: "persistent Q" "Q\<^emph>R1 \<turnstile> R2" "P\<^emph>Q\<turnstile>T"
   from upred_sep_mono[OF this(3,2)] have "P\<^emph>Q\<^emph>Q\<^emph>R1 \<turnstile> T\<^emph>R2"
@@ -322,6 +395,8 @@ qed
 lemma persistent_keep: "\<lbrakk>persistent Q; P\<turnstile>Q\<rbrakk> \<Longrightarrow> P\<turnstile>P\<^emph>Q"
   unfolding persistent_def by transfer (metis camera_comm camera_core_id ofe_refl)
 
+method pers_solver = (rule pers_rule)+
+  
 subsubsection \<open> Timeless predicates \<close>
 definition except_zero :: "'a::ucamera upred_f \<Rightarrow> 'a upred_f" ("\<diamondop>_") where 
   "except_zero P \<equiv> P \<or>\<^sub>u \<triangleright>\<upharpoonleft>False"
@@ -337,4 +412,39 @@ definition timeless :: "'a::ucamera upred_f \<Rightarrow> bool" where "timeless 
 lemma own_timeless: "timeless (Own (x::'a::ducamera))"
   by (auto simp: upred_own.rep_eq upred_entails.rep_eq upred_later.rep_eq except_zero_def 
     upred_disj.rep_eq upred_pure.rep_eq n_incl_def d_equiv timeless_def)
+
+subsubsection \<open>Plain predicates\<close>
+definition plain :: "'a::ucamera upred_f \<Rightarrow> bool" where "plain P \<equiv> P\<turnstile>\<^item>P"
+
+named_theorems plain_rule
+method plain_solver = (rule plain_rule)+
+
+lemma plain_persistent: "plain P \<Longrightarrow> persistent P" 
+  unfolding plain_def persistent_def apply transfer using n_incl_\<epsilon> by blast
+
+lemma bupd_plain_sound: "\<lbrakk>plain P; \<Rrightarrow>\<^sub>b P\<rbrakk> \<Longrightarrow> P"
+  unfolding plain_def by transfer (metis \<epsilon>_right_id n_incl_\<epsilon> verit_comp_simplify1(2))
+
+lemma plain_pure [plain_rule]: "plain (\<upharpoonleft>P)" unfolding plain_def by transfer blast
+lemma plain_conj [plain_rule]: "\<lbrakk>plain P; plain Q\<rbrakk> \<Longrightarrow> plain (P\<and>\<^sub>uQ)" unfolding plain_def by transfer fast
+lemma plain_disj [plain_rule]: "\<lbrakk>plain P; plain Q\<rbrakk> \<Longrightarrow> plain (P\<or>\<^sub>uQ)" unfolding plain_def by transfer fast
+lemma plain_forall [plain_rule]: "\<forall>x. plain (P x) \<Longrightarrow> plain (\<forall>\<^sub>u x. P x)" unfolding plain_def by transfer blast
+lemma plain_exists [plain_rule]: "\<forall>x. plain (P x) \<Longrightarrow> plain (\<exists>\<^sub>u x. P x)" unfolding plain_def by transfer blast
+lemma plain_impl [plain_rule]: "\<lbrakk>plain P; plain Q\<rbrakk> \<Longrightarrow> plain (P\<longrightarrow>\<^sub>uQ)" 
+  unfolding plain_def apply transfer
+  by (smt (verit, ccfv_threshold) Rep_sprop \<epsilon>_right_id incl_def mem_Collect_eq n_incl_\<epsilon> order_refl)
+lemma plain_wand [plain_rule]: "\<lbrakk>plain P; plain Q\<rbrakk> \<Longrightarrow> plain (P-\<^emph>Q)"
+  unfolding plain_def apply transfer
+  by (metis (mono_tags, lifting) Rep_sprop \<epsilon>_left_id \<epsilon>_right_id mem_Collect_eq n_incl_op_extend order_refl)
+lemma plain_sep [plain_rule]: "\<lbrakk>plain P; plain Q\<rbrakk> \<Longrightarrow> plain (P\<^emph>Q)" 
+  unfolding plain_def apply transfer
+  by (metis \<epsilon>_left_id camera_comm n_incl_def ofe_refl order_refl)  
+lemma plain_plainly [plain_rule]: "plain (\<^item>P)" unfolding plain_def by transfer fast
+lemma plain_eq [plain_rule]: "plain (a=\<^sub>ub)" unfolding plain_def by transfer blast
+lemma plain_later [plain_rule]: "plain P \<Longrightarrow> plain (\<triangleright>P)" 
+  unfolding plain_def apply transfer using Rep_sprop diff_le_self by blast
+lemma plain_except_zero [plain_rule]: "plain P \<Longrightarrow> plain (\<diamondop>P)" unfolding except_zero_def
+  by (plain_solver, assumption)+  plain_solver
+
+method pers_solver' = (pers_solver; rule plain_persistent; plain_solver)
 end

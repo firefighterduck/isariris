@@ -71,7 +71,7 @@ lemma one_op: "1\<cdot>q > (1::frac)"
   by (auto simp: less_frac_def op_frac.rep_eq)
 
 lemma frac_not_valid: "(p::frac)=1 \<Longrightarrow> \<not> valid (p\<cdot>q)"
-  using one_op  frac_valid by auto  
+  using one_op frac_valid by auto  
 
 lemma frac_own_incl: "incl (p::frac) q \<longleftrightarrow> (p<q)"
 proof (auto simp: incl_def op_frac_def less_frac.rep_eq; transfer; auto simp: Abs_frac_inverse)
@@ -199,21 +199,23 @@ apply (metis frac_not_valid one_frac_def valid_frac)
 by (meson dual_order.asym frac_own_incl incl_def)
   
 lemma dfrac_discard_update: "dq \<leadsto> {DfracDiscarded}"
-proof (auto simp: fup_def)
-fix x
-assume assms: "valid dq" "valid (dq \<cdot> x)"
-show "valid (DfracDiscarded \<cdot> x)"
+proof (auto simp: camera_upd_def)
+fix x n
+assume assm: "n_valid (dq \<cdot> x) n"
+show "n_valid (DfracDiscarded \<cdot> x) n"
 proof (cases x)
   case (DfracOwn x1)
-  with assms(2) have "x1<Abs_frac 1" using dfrac_valid_own_r by simp
+  with assm have "x1<Abs_frac 1" using dfrac_valid_own_r by (metis one_frac_def valid_dfrac)
   with DfracOwn show ?thesis by (auto simp: op_dfrac_def valid_def valid_raw_dfrac.rep_eq)
 next
   case DfracDiscarded
   then show ?thesis by (auto simp: op_dfrac_def valid_raw_dfrac.rep_eq valid_def)
 next
   case (DfracBoth x3)
-  from assms(2) have "valid x" unfolding valid_def using camera_comm camera_valid_op by metis
+  from assm have "valid x" unfolding valid_def using camera_comm camera_valid_op by (metis assm dcamera_valid_iff)
   with DfracBoth show ?thesis by (auto simp: valid_def op_dfrac_def valid_raw_dfrac.rep_eq)
 qed
 qed
+
+lemmas [simp del] = one_frac.rep_eq one_frac_def
 end

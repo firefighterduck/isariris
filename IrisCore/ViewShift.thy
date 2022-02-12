@@ -47,4 +47,5 @@ qed
 
 lemma inv_alloc: "upred_holds ((\<triangleright>P) ={E}=\<^emph> (inv N P))"
 unfolding fancy_upd_def
+sorry
 end

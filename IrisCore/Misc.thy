@@ -1,5 +1,5 @@
 theory Misc
-imports iPropShallow
+imports iPropShallow "HOL-Library.Multiset"
 begin
 
 definition map_heap :: "('l\<rightharpoonup>'v::ofe) \<Rightarrow> ('l\<times>'v\<Rightarrow>'a\<Rightarrow>'a) \<Rightarrow> 'a \<Rightarrow> 'a" where
@@ -26,6 +26,12 @@ abbreviation sep_map_fset :: "('b\<Rightarrow>iprop) \<Rightarrow> 'b fset \<Rig
 abbreviation sep_map_fmdom :: "('b\<Rightarrow>iprop) \<Rightarrow> ('b,'a) fmap \<Rightarrow> iprop" where
   "sep_map_fmdom f m \<equiv> sep_map_fset f (fmdom m)"
 
+abbreviation sep_fold_multiset :: "iprop multiset \<Rightarrow> iprop" ("[\<^emph>\<^sub>#] _") where
+  "sep_fold_multiset m \<equiv> fold_mset (\<^emph>) upred_emp m"
+
+abbreviation sep_map_multiset :: "iprop \<Rightarrow> iprop multiset \<Rightarrow> iprop" ("[\<^emph>\<^sub># _] _") where
+  "sep_map_multiset acc m \<equiv> fold_mset (\<^emph>) acc m"
+  
 lemma sep_comp_fun_commute: "comp_fun_commute (\<^emph>)"
   apply standard apply (simp add: comp_def)
   by (metis upred_sep_assoc_eq upred_sep_comm)
@@ -33,7 +39,7 @@ lemma sep_comp_fun_commute: "comp_fun_commute (\<^emph>)"
 lemma sep_P_comp_fun_commute: "comp_fun_commute (\<lambda>x a. a \<^emph> P x)"
   apply standard apply (simp add: comp_def comp_fun_commute_def upred_sep_comm)
   by (metis (no_types, opaque_lifting) upred_sep_assoc_eq upred_sep_comm)
-
+  
 lemma sep_map_dom_delete: "fmlookup m i = Some x \<Longrightarrow> 
   sep_map_fmdom P m = P i \<^emph> sep_map_fmdom P (fmdrop i m)"
 unfolding sep_map_set_def

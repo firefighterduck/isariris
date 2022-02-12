@@ -239,7 +239,7 @@ lift_definition upred_later :: "'a upred_f \<Rightarrow> 'a upred_f" ("\<triangl
   by (smt (verit, ccfv_SIG) n_incl_def diff_0_eq_0 diff_diff_cancel diff_is_0_eq diff_right_commute diff_self_eq_0 ofe_mono)
 
 lift_definition upred_bupd :: "'a upred_f \<Rightarrow> 'a upred_f" ("\<Rrightarrow>\<^sub>b_") is
-  "\<lambda>P (a::'a) n. \<forall>m b. m\<le>n \<longrightarrow> n_valid (a \<cdot> b) m \<longrightarrow> (\<exists>c. n_valid (c \<cdot> b) m \<and> P c m)"
+  "\<lambda>P (a::'a) n. \<forall>m b. (m\<le>n \<and> n_valid (a \<cdot> b) m) \<longrightarrow> (\<exists>c. n_valid (c \<cdot> b) m \<and> P c m)"
   by (meson dual_order.trans n_incl_def n_valid_incl_subst)
   
 lift_definition upred_entails :: "'a upred_f \<Rightarrow> 'a upred_f \<Rightarrow> bool" (infix "\<turnstile>" 50) is

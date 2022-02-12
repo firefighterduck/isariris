@@ -181,17 +181,17 @@ show "pcore a = Some a" by (cases a) (auto simp: pcore_sum_ext_def pcore_id)
 qed
 
 lemma sum_update_l: "a\<leadsto>B \<Longrightarrow> (Inl a) \<leadsto> {Inl b |b. b\<in>B}"
-by (auto simp: fup_def op_sum_ext_def valid_def valid_raw_sum_ext_def split: sum_ext.splits)
+by (auto simp: camera_upd_def op_sum_ext_def valid_def valid_raw_sum_ext_def split: sum_ext.splits)
   blast
 
 lemma sum_update_r: "a\<leadsto>B \<Longrightarrow> (Inr a) \<leadsto> {Inr b |b. b\<in>B}"
-by (auto simp: fup_def op_sum_ext_def valid_def valid_raw_sum_ext_def split: sum_ext.splits)
+by (auto simp: camera_upd_def op_sum_ext_def valid_def valid_raw_sum_ext_def split: sum_ext.splits)
 
 lemma sum_swap_l: "\<lbrakk>\<forall>c n. \<not> n_valid (op a c) n; valid b\<rbrakk> \<Longrightarrow> (Inl a) \<leadsto> {Inr b}"
-by (auto simp: valid_def fup_def valid_raw_sum_ext_def op_sum_ext_def split: sum_ext.splits)
+by (auto simp: valid_def camera_upd_def valid_raw_sum_ext_def op_sum_ext_def split: sum_ext.splits)
 
 lemma sum_swap_r: "\<lbrakk>\<forall>c n. \<not> Rep_sprop (valid_raw (op a c)) n; valid b\<rbrakk> \<Longrightarrow> (Inr a) \<leadsto> {Inl b}"
-by (auto simp: valid_def fup_def valid_raw_sum_ext_def op_sum_ext_def split: sum_ext.splits)
+by (auto simp: valid_def camera_upd_def valid_raw_sum_ext_def op_sum_ext_def split: sum_ext.splits)
 
 subsubsection \<open> Option type \<close>
 fun option_op :: "('a::camera) option \<Rightarrow> 'a option \<Rightarrow> 'a option" where
@@ -286,8 +286,9 @@ instance option :: (core_id) core_id
   by standard(auto simp: pcore_option_def  pcore_id split: option.splits)
 
 instantiation option :: (camera) ucamera begin
-definition [simp]: "\<epsilon>_option \<equiv> None"
-instance by (standard; auto simp: valid_def valid_raw_option_def op_option_def pcore_option_def)
+definition "\<epsilon>_option \<equiv> None"
+instance 
+  by (standard; auto simp: valid_def valid_raw_option_def op_option_def pcore_option_def \<epsilon>_option_def)
   (metis not_Some_eq option_op.simps(3) option_op.simps(4))
 end
 
@@ -620,7 +621,9 @@ definition lup :: "('a::ucamera)\<times>'a \<Rightarrow> 'a\<times>'a \<Rightarr
 
 (* Axiomatized for now. *)
 lemma "(a,f)\<leadsto>\<^sub>L(a',f') \<Longrightarrow> (comb a f) \<leadsto> {comb a' f'}"
-apply (auto simp: lup_def fup_def valid_def op_auth_def op_prod_def split: auth.splits)
+apply (auto simp: lup_def camera_upd_def valid_def op_auth_def op_prod_def split: auth.splits)
+apply (metis n_incl_op_extend option.distinct(1) option_n_incl)
+apply (metis op_option_def option.distinct(1) option_op.elims)
 sorry
 
 subsubsection \<open> Map functors, based on a simple wrapper type \<close>
@@ -631,7 +634,7 @@ text \<open>
 \<close>
 class opt = ucamera + fixes none assumes none_\<epsilon>: "\<epsilon> = none"
 instantiation option :: (camera) opt begin definition [simp]: "none \<equiv> None" instance 
-  by standard (auto simp: ofe_eq_option_def)
+  by standard (auto simp: ofe_eq_option_def \<epsilon>_option_def)
 end
 
 lemma pcore_op_opt[simp]: "(case pcore x of None \<Rightarrow> none | Some a \<Rightarrow> a) \<cdot> (x::'b::opt) = x"
@@ -723,12 +726,12 @@ instance option :: (core_id) opt_core_id ..
 instance "fun" :: (type,opt_core_id) core_id by standard (auto simp: pcore_fun_def pcore_id)
 
 instantiation "fun" :: (type, opt) ucamera begin
-definition \<epsilon>_fun :: "'a\<Rightarrow>'b" where [simp]: "\<epsilon>_fun \<equiv> (\<lambda>_. \<epsilon>)"
+definition \<epsilon>_fun :: "'a\<Rightarrow>'b" where  "\<epsilon>_fun \<equiv> (\<lambda>_. \<epsilon>)"
 instance apply (standard)
 apply (simp_all add: valid_def valid_raw_fun_def Abs_sprop_inverse valid_raw_option_def)
-subgoal using Rep_sprop_inverse \<epsilon>_valid valid_def by auto
-subgoal by (auto simp: op_fun_def \<epsilon>_left_id)
-by (auto simp: pcore_fun_def \<epsilon>_pcore split: option.splits)
+subgoal using Rep_sprop_inverse \<epsilon>_valid valid_def by (auto simp: \<epsilon>_fun_def)
+subgoal by (auto simp: op_fun_def \<epsilon>_left_id \<epsilon>_fun_def)
+by (auto simp: pcore_fun_def \<epsilon>_pcore \<epsilon>_fun_def split: option.splits )
 end
 
 lemma map_empty_left_id: "Map.empty \<cdot> f = (f:: 'a\<rightharpoonup>'b::camera)"
@@ -772,8 +775,8 @@ lemma n_incl_single[simp]: "n_incl n {x} a = (x\<in>a)"
   by auto
   
 instantiation set :: (type) ucamera begin
-definition \<epsilon>_set :: "'a set" where [simp]: "\<epsilon>_set = {}"
-instance by (standard) (auto simp: op_set_def valid_def valid_raw_set_def pcore_set_def)
+definition \<epsilon>_set :: "'a set" where "\<epsilon>_set = {}"
+instance by (standard) (auto simp: op_set_def valid_def valid_raw_set_def pcore_set_def \<epsilon>_set_def)
 end
 
 instance set :: (type) ducamera ..
@@ -802,9 +805,9 @@ instance dset :: (type) dcamera
   by standard (auto simp: valid_def valid_raw_dset_def split: dset.splits)
 
 instantiation dset :: (type) ucamera begin
-definition \<epsilon>_dset :: "'a dset" where [simp]: "\<epsilon>_dset = DSet {}"
+definition \<epsilon>_dset :: "'a dset" where "\<epsilon>_dset = DSet {}"
 instance 
-  by standard (auto simp: valid_def valid_raw_dset_def op_dset_def pcore_dset_def split:dset.splits)
+  by standard (auto simp: valid_def valid_raw_dset_def op_dset_def pcore_dset_def \<epsilon>_dset_def split:dset.splits)
 end
 
 instance dset :: (type) ducamera ..
@@ -853,8 +856,8 @@ lemma n_incl_fsingle[simp]: "n_incl n {|x|} a = (x|\<in>|a)"
   by auto
   
 instantiation fset :: (type) ucamera begin
-definition \<epsilon>_fset :: "'a fset" where [simp]: "\<epsilon>_fset = {||}"
-instance by (standard) (auto simp: op_fset_def valid_def valid_raw_fset_def pcore_fset_def)
+definition \<epsilon>_fset :: "'a fset" where "\<epsilon>_fset = {||}"
+instance by (standard) (auto simp: op_fset_def valid_def valid_raw_fset_def pcore_fset_def \<epsilon>_fset_def)
 end
 
 subsubsection \<open> Disjoint fset camera \<close>
@@ -881,9 +884,10 @@ instance dfset :: (type) dcamera
   by standard (auto simp: valid_def valid_raw_dfset_def split: dfset.splits)
 
 instantiation dfset :: (type) ucamera begin
-definition \<epsilon>_dfset :: "'a dfset" where [simp]: "\<epsilon>_dfset = DFSet {||}"
+definition \<epsilon>_dfset :: "'a dfset" where "\<epsilon>_dfset = DFSet {||}"
 instance 
-  by standard (auto simp: valid_def valid_raw_dfset_def op_dfset_def pcore_dfset_def split:dfset.splits)
+  by standard (auto simp: valid_def \<epsilon>_dfset_def valid_raw_dfset_def op_dfset_def pcore_dfset_def 
+    split:dfset.splits)
 end
 
 instance dfset :: (type) ducamera ..

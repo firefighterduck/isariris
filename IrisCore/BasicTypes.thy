@@ -62,8 +62,8 @@ lemmas [simp, intro!] = Rep_sprop[unfolded mem_Collect_eq]
 lift_definition sPure :: "bool \<Rightarrow> sprop" is "\<lambda>b _. b" .
 lemma sPureId: "Rep_sprop (Abs_sprop ((\<lambda>b _. b) b)) n = b"
   using Abs_sprop_inverse by auto
-definition sFalse :: sprop where [simp]: "sFalse \<equiv> sPure False"
-definition sTrue :: sprop where [simp]: "sTrue \<equiv> sPure True"
+abbreviation sFalse :: sprop where "sFalse \<equiv> sPure False"
+abbreviation sTrue :: sprop where "sTrue \<equiv> sPure True"
 lemmas [simp] = sPure.rep_eq sPureId sPureId[simplified sPure.abs_eq[symmetric]]
 
 lift_definition n_subseteq :: "nat \<Rightarrow> sprop \<Rightarrow> sprop \<Rightarrow> bool" is

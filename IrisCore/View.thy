@@ -201,14 +201,14 @@ instantiation map_view :: (type,ofe) ucamera begin
 definition \<epsilon>_map_view :: "('a, 'b) map_view" where "\<epsilon>_map_view = MapView \<epsilon> \<epsilon>"
 instance proof 
   show "valid (\<epsilon>::('a,'b) map_view)"
-    by (simp add: valid_def \<epsilon>_map_view_def valid_raw_map_view.rep_eq map_view_rel_unit del: \<epsilon>_fun_def)
+    by (simp add: valid_def \<epsilon>_map_view_def valid_raw_map_view.rep_eq map_view_rel_unit \<epsilon>_option_def)
 next
   fix a :: "('a,'b) map_view"
-  show "\<epsilon> \<cdot> a = a" by (simp add: op_map_view_def \<epsilon>_map_view_def \<epsilon>_left_id del: \<epsilon>_fun_def \<epsilon>_option_def)
+  show "\<epsilon> \<cdot> a = a" by (simp add: op_map_view_def \<epsilon>_map_view_def \<epsilon>_left_id)
 next
   show "pcore \<epsilon> = Some (\<epsilon>::('a,'b) map_view)"
   unfolding pcore_map_view_def \<epsilon>_map_view_def mv_pcore_alt
-  by (simp add: \<epsilon>_pcore split: option.splits del: \<epsilon>_fun_def \<epsilon>_option_def)
+  by (simp add: \<epsilon>_pcore split: option.splits)
 qed
 end
 
@@ -219,9 +219,17 @@ lemma pcore_id_frag: "pcore dq = Some dq \<Longrightarrow> pcore_id_pred (map_vi
   apply (metis \<epsilon>_option_def not_Some_eq total_pcore)
   by (auto simp: pcore_option_def pcore_prod_def pcore_ag_def)
 
+lemma map_view_auth_valid: "valid (map_view_auth (DfracOwn 1) fmempty)"
+  apply (auto simp: map_view_auth_def valid_def valid_raw_map_view.rep_eq map_view_auth_proj_def 
+    view_auth_def)
+  using dcamera_valid_iff valid_dfrac_own apply blast
+  apply (auto simp: map_view_rel_def \<epsilon>_fun_def \<epsilon>_option_def)
+  using ofe_refl by blast
+  
 lemma view_both_valid: "n_valid (\<Zspot>V{dq} a \<cdot> \<circle>V b) n \<longleftrightarrow> map_view_rel n a b \<and> valid dq"
   unfolding view_auth_def view_frag_def valid_raw_map_view.rep_eq
-  apply (auto simp: op_map_view_def op_option_def map_empty_left_id to_ag_n_equiv split: option.splits)
+  apply (auto simp: op_map_view_def op_option_def map_empty_left_id to_ag_n_equiv op_fun_def 
+      \<epsilon>_option_def \<epsilon>_fun_def split: option.splits)
   subgoal for a' using map_view_rel_mono[of n a' b n a b] by (simp add: ofe_sym)
   using dcamera_valid_iff apply blast+
   using ofe_refl by auto
