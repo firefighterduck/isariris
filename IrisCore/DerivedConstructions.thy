@@ -801,6 +801,9 @@ show "non_expansive2 (op::'a dset \<Rightarrow> 'a dset \<Rightarrow> 'a dset)"
 qed (auto simp: pcore_dset_def op_dset_def valid_raw_dset_def d_equiv split: dset.splits)
 end
 
+lemma dsubs_op_minus: "d1 \<subseteq>\<^sub>d d2 \<Longrightarrow> d2 = d1 \<cdot> (d2 - d1)"
+unfolding op_dset_def using dsubs_dset by fastforce
+
 instance dset :: (type) dcamera 
   by standard (auto simp: valid_def valid_raw_dset_def split: dset.splits)
 

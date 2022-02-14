@@ -31,6 +31,11 @@ lemma upred_weakeningR2: "P\<^emph>Q\<^emph>R\<turnstile>Q\<^emph>R"
 lemma upred_entails_add: "\<lbrakk>P\<turnstile>Q; P\<and>\<^sub>uQ\<turnstile>R\<rbrakk> \<Longrightarrow> P\<turnstile>R"
   by transfer blast  
 
+lemma upred_entails_conjI: "\<lbrakk>P\<turnstile>Q; P\<turnstile>R\<rbrakk> \<Longrightarrow> P \<turnstile> Q \<and>\<^sub>u R"
+  by transfer blast
+lemma upred_entails_conj_sep: "P \<^emph> Q \<turnstile> P \<and>\<^sub>u Q"
+  by transfer (metis camera_comm le_refl n_incl_def)
+
 lemma upred_disjE: "\<lbrakk>P\<turnstile>R; Q\<turnstile>R\<rbrakk> \<Longrightarrow> P\<or>\<^sub>uQ\<turnstile>R"
   by transfer' blast
 lemma upred_disjE': "\<lbrakk>P\<^emph>Q\<turnstile>T; P\<^emph>R\<turnstile>T\<rbrakk> \<Longrightarrow> P\<^emph>(Q\<or>\<^sub>uR)\<turnstile>T"
@@ -122,6 +127,9 @@ lemma upred_sep_comm3L: "P \<^emph> Q \<^emph> R \<^emph> T \<turnstile> Q \<^em
 
 lemma upred_sep_comm4_2: "P \<^emph> Q \<^emph> R \<^emph> T \<^emph> S \<turnstile> P \<^emph> R \<^emph> Q \<^emph> T \<^emph> S"
   by (simp add: upred_sep_comm2_eq)
+
+lemma upred_sep_comm4_1: "P \<^emph> Q \<^emph> R \<^emph> T \<^emph> S \<turnstile> Q \<^emph> P \<^emph> R \<^emph> T \<^emph> S"
+  by (simp add: upred_sep_comm)
 
 lemma upred_sep_comm6_2R: "P \<^emph> Q \<^emph> R \<^emph> S \<^emph> T \<^emph> U \<^emph> V \<turnstile> P \<^emph> R \<^emph> S \<^emph> T \<^emph> U \<^emph> V \<^emph> Q"
   by (auto simp: upred_sep_comm2_eq)
@@ -246,7 +254,7 @@ lemma upred_existsI: "P \<turnstile> Q x \<Longrightarrow> P \<turnstile> (\<exi
 
 lemma upred_entails_exchange: "\<lbrakk>P\<turnstile>Q; R \<^emph> Q \<turnstile> T\<rbrakk> \<Longrightarrow> R \<^emph> P \<turnstile> T"
   by transfer' (metis camera_comm camera_valid_op n_valid_ne)
-
+  
 lemma upred_pure_impl: "(P \<Longrightarrow> Q \<turnstile> R) \<Longrightarrow> Q \<^emph> (\<upharpoonleft>P) \<turnstile> R"
   by (metis (full_types) entails_pure_extend upred_entails_eq upred_sep_comm upred_true_sep upred_wandE)
 
@@ -327,6 +335,12 @@ proof -
     from add_holds[OF \<open>\<Rrightarrow>\<^sub>b Own a\<close> this] show ?thesis .
 qed
 
+lemma upred_pureI: "b \<Longrightarrow> (P \<turnstile> \<upharpoonleft>b)"
+  by transfer blast
+
+lemma upred_frame_empL: "upred_emp \<turnstile> Q \<Longrightarrow> R \<turnstile> Q\<^emph>R"
+ by (metis upred_frameL upred_sep_comm upred_true_sep)
+
 subsubsection \<open> Persistent predicates \<close>
 definition persistent :: "('a::ucamera) upred_f \<Rightarrow> bool" where "persistent P \<equiv> P \<turnstile> \<box>P"
 
@@ -335,6 +349,11 @@ lemma persistent_holds_sep:
   unfolding persistent_def upred_holds.rep_eq upred_entails.rep_eq upred_persis.rep_eq upred_sep.rep_eq
   by (smt (verit, ccfv_threshold) camera_comm camera_core_id le_cases3 n_incl_def ofe_refl upred_def_def upred_def_rep)
 
+lemma persistent_holds_sep': 
+  "\<lbrakk>persistent P; persistent Q\<rbrakk> \<Longrightarrow> (P\<^emph>Q) \<stileturn>\<turnstile> P \<and>\<^sub>u Q"
+  by (rule upred_entail_eqI) (metis (no_types, lifting) camera_core_id ofe_refl persistent_def 
+    upred_conj.rep_eq upred_entailsE upred_entails_conj_sep upred_persis.rep_eq upred_sep.rep_eq)
+  
 named_theorems pers_rule
   
 lemma persistent_persis [pers_rule]: "persistent (\<box>P)"
@@ -401,6 +420,19 @@ subsubsection \<open> Timeless predicates \<close>
 definition except_zero :: "'a::ucamera upred_f \<Rightarrow> 'a upred_f" ("\<diamondop>_") where 
   "except_zero P \<equiv> P \<or>\<^sub>u \<triangleright>\<upharpoonleft>False"
 
+lemma except_zeroI: "P \<turnstile> \<diamondop> P"
+  unfolding except_zero_def by transfer blast
+
+lemma except_zero_sep: "\<diamondop>(P \<^emph> Q) \<stileturn>\<turnstile> (\<diamondop>P) \<^emph> (\<diamondop>Q)"
+  apply (auto simp: except_zero_def intro!: upred_entail_eqI; transfer)
+  using n_incl_def n_incl_refl by blast+
+
+lemma except_zero_sepR: "(\<diamondop>P) \<^emph> Q \<turnstile> \<diamondop>(P \<^emph> Q)"
+  by (auto intro: upred_entails_exchange[OF except_zeroI] upred_entail_eqR[OF except_zero_sep])
+
+lemma except_zero_sepL: "P \<^emph> (\<diamondop>Q) \<turnstile> \<diamondop>(P \<^emph> Q)"
+  by (metis except_zero_sepR upred_sep_comm)
+  
 lemma persistent_except_zero: "persistent P \<Longrightarrow> persistent (\<diamondop>P)"
 unfolding except_zero_def
 apply (rule persistent_disj)

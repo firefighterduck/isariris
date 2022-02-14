@@ -17,8 +17,8 @@ definition ownI :: "name \<Rightarrow> iprop \<Rightarrow> iprop" where
   "ownI \<iota> P = Own\<^sub>i (map_view_frag \<iota> DfracDiscarded (Next (pre P)),\<epsilon>,\<epsilon>)"
 
 definition inv :: "namespace \<Rightarrow> iprop \<Rightarrow>  iprop" where
-  "inv N P \<equiv> \<exists>\<^sub>u \<iota>. ((\<upharpoonleft>(\<iota>\<in>names N)) \<and>\<^sub>u ownI \<iota> P)"
-  
+  "inv N P \<equiv> \<exists>\<^sub>u \<iota>. ((\<upharpoonleft>(\<iota>\<in>\<^sub>d dnames N)) \<and>\<^sub>u ownI \<iota> P)"
+
 text \<open>Allocate new enabled invariant map\<close>
 definition ownE :: "name dset \<Rightarrow> iprop" where
   "ownE E = Own\<^sub>i (\<epsilon>,E,\<epsilon>)"
@@ -72,7 +72,29 @@ lemma ownD_singleton_twice: "ownD (DFSet {|i|}) \<^emph> ownD (DFSet {|i|}) \<tu
     intro!: upred_entails_trans[OF upred_entail_eqR[OF own_op]] upred_entails_trans[OF own_valid])
   apply transfer
   by (simp add: prod_n_valid_def \<epsilon>_n_valid valid_raw_dfset_def)
+  
+lemma ownE_op: "(\<exists>E1' E2'. dset_raw E1 = Some E1' \<and> dset_raw E2 = Some E2' \<and> E1' \<inter> E2' = {})
+  \<Longrightarrow> ownE (E1 \<cdot> E2) \<stileturn>\<turnstile> ownE E1 \<^emph> ownE E2"
+proof -
+  assume "\<exists>E1' E2'. dset_raw E1 = Some E1' \<and> dset_raw E2 = Some E2' \<and> E1' \<inter> E2' = {}"
+  then obtain E1' E2' where assms: "dset_raw E1 = Some E1'" "dset_raw E2 = Some E2'" "E1' \<inter> E2' = {}"
+    by auto
+  then have "E1 = DSet E1'" "E2 = DSet E2'" by (metis dset_raw.elims option.discI option.inject)+
+  with assms(3) have un_op:"DSet (E1' \<union> E2') = E1 \<cdot> E2" unfolding op_dset_def by simp
+  from own_op[of "constr_inv (\<epsilon>,E1,\<epsilon>)" "constr_inv (\<epsilon>,E2,\<epsilon>)"] 
+  have "ownE (E1 \<cdot> E2) \<stileturn>\<turnstile> ownE E1 \<^emph> ownE E2"
+    by (simp add: ownE_def own_inv_def constr_inv_def op_prod_def \<epsilon>_left_id)
+  with un_op show ?thesis by simp
+qed
 
+lemma ownE_op_minus: "E1 \<subseteq>\<^sub>d E2 \<Longrightarrow> ownE (E1 \<cdot> (E2-E1)) \<stileturn>\<turnstile> ownE E1 \<^emph> ownE (E2-E1)"
+proof -
+  assume "E1 \<subseteq>\<^sub>d E2"
+  then have "\<exists>E1' E2'. dset_raw E1 = Some E1' \<and> dset_raw (E2-E1) = Some E2' \<and> E1' \<inter> E2' = {}"
+    using dsubs_dset dsubs_minus_inter by fastforce
+  from ownE_op[OF this] show ?thesis .
+qed
+  
 lemma auth_map_both_validI: 
   "\<V>(constr_inv (map_view_auth (DfracOwn 1) m,\<epsilon>,\<epsilon>) \<cdot> constr_inv (map_view_frag k dq v,\<epsilon>,\<epsilon>)) \<turnstile>
     (fmlookup m k =\<^sub>u Some v) \<and>\<^sub>u \<upharpoonleft>(valid dq)"
@@ -199,7 +221,7 @@ by (auto intro!: upred_entails_trans[OF upred_weakeningR2]
   upred_entails_trans[OF upred_entail_eqR[OF upred_later_sep]] upred_later_mono upred_eqE)
 done
 
-lemma ownI_alloc: "(\<forall>E::name dset. \<exists>i. \<not>i\<in>\<^sub>dE \<and> \<phi> i) \<Longrightarrow> 
+lemma ownI_alloc: "(\<forall>E::name dfset. \<exists>i. \<not>i\<in>\<^sub>fE \<and> \<phi> i) \<Longrightarrow> 
   (wsat \<^emph> \<triangleright> P) ==\<^emph> (\<exists>\<^sub>u i. \<upharpoonleft>(\<phi> i) \<^emph> wsat \<^emph> ownI i P)"
 apply (auto simp: wsat_def pull_exists_eq intro!: upred_wand_holdsI upred_existsE')
 apply (rule add_holds[OF own_unit,unfolded bupd_emp[OF upred_own_nothing_emp_eq]])
@@ -207,7 +229,7 @@ apply (rule upred_entails_exchange[OF upred_wand_holdsE[OF own_updateP]])
 sorry (* Axiomatized as this requires too much low level ghost state reasoning for which I'd need to add
     way more lemmata and things. *)
 
-lemma ownI_alloc_open: "(\<forall>E::name dset. \<exists>i. \<not>i\<in>\<^sub>dE \<and> \<phi> i) \<Longrightarrow> 
+lemma ownI_alloc_open: "(\<forall>E::name dfset. \<exists>i. \<not>i\<in>\<^sub>fE \<and> \<phi> i) \<Longrightarrow> 
   wsat ==\<^emph> (\<exists>\<^sub>u i. \<upharpoonleft>(\<phi> i) \<^emph> (ownE (DSet {i}) -\<^emph> wsat) \<^emph> ownI i P \<^emph> ownD (DFSet {|i|}))"
 apply (auto simp: wsat_def pull_exists_eq intro!: upred_wand_holdsI upred_existsE')
 sorry (* Axiomatized as this requires too much low level ghost state reasoning for which I'd need to add

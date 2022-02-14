@@ -31,9 +31,66 @@ definition sinv :: "namespace \<Rightarrow> iprop \<Rightarrow> iprop" where
     ((\<Turnstile>{E,E-(dnames N)}=> (\<triangleright>P)) \<^emph> ((\<triangleright>P) ={E-(dnames N), E}=\<^emph> \<upharpoonleft>True))))"
 
 lemma inv_acc: "dnames N \<subseteq>\<^sub>d E \<Longrightarrow> 
-  upred_holds (((inv N P) ={E, E-(dnames N)}=\<^emph> (\<triangleright>P)) \<^emph> ((\<triangleright>P) ={E-(dnames N), E}=\<^emph> \<upharpoonleft>True))"
-unfolding fancy_upd_def inv_def upred_holds.rep_eq
-sorry
+  ((inv N P) ={E, E-(dnames N)}=\<^emph> ((\<triangleright>P) \<^emph> ((\<triangleright>P) ={E-(dnames N), E}=\<^emph> \<upharpoonleft>True)))"
+apply (auto simp: fancy_upd_def upred_sep_assoc_eq inv_def intro!: upred_wand_holdsI upred_existsE')
+apply (rule upred_entails_trans[OF upred_entail_eqR[OF persistent_holds_sep']], pers_solver)
+apply (auto intro!: upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm]] upred_pure_impl)
+apply (auto simp: upred_sep_assoc_eq intro!: upred_wandI)
+apply (subst dsubs_op_minus[of "dnames N"], assumption)
+apply (auto simp: upred_sep_assoc_eq intro!: upred_entails_exchange[OF upred_entail_eqL[OF ownE_op_minus]])
+subgoal for i
+unfolding delem_dsubs[of i "dnames N"]
+apply (subst dsubs_op_minus[of "DSet {i}" "dnames N"], assumption)
+apply (rule upred_entails_trans[OF upred_sep_comm2R])
+apply (auto simp: upred_sep_assoc_eq intro!: upred_entails_exchange[OF 
+    upred_entail_eqL[OF ownE_op_minus], of "DSet {i}" "dnames N"] upred_entails_trans[OF _ updI]
+    upred_entails_trans[OF _ except_zeroI])
+apply (rule upred_entails_trans[OF upred_sep_comm4_2])
+apply (rule upred_entails_trans[OF upred_sep_comm2R])
+apply (rule upred_entails_trans[OF upred_sep_comm3M])
+apply (rule upred_entails_trans[OF upred_sep_comm4_1])
+apply (rule upred_entails_trans[OF upred_sep_comm4_2])
+apply (rule upred_entails_trans[OF upred_sep_comm3M])
+apply (rule upred_entails_trans[OF upred_sep_comm2R])
+apply (rule upred_entails_exchange[OF upred_entail_eqR[OF persistent_dupl]])
+apply pers_solver
+apply (simp add: upred_sep_assoc_eq)
+apply (rule upred_entails_trans[OF upred_sep_comm3M])
+apply (rule upred_entails_trans[OF upred_sep_comm3L])
+apply (simp add: upred_sep_assoc_eq)
+apply (rule upred_entails_trans[OF upred_sep_comm2R])
+apply (rule upred_entails_exchange[OF ownI_open, unfolded upred_sep_assoc_eq])
+apply (rule upred_entails_trans[OF _ upred_sep_comm2R])
+apply (rule upred_entails_trans[OF upred_sep_comm2R])
+apply (rule upred_frame)
+apply (rule upred_entails_trans[OF _ upred_sep_comm2R])
+apply (rule upred_entails_trans[OF upred_sep_comm3L])
+apply (simp add: upred_sep_assoc_eq)
+apply (rule upred_entails_trans[OF upred_sep_comm3M])
+apply (rule upred_entails_trans[OF upred_sep_comm2R])
+apply (rule upred_frame)
+apply (rule upred_entails_trans[OF _ upred_entails_eq[OF upred_sep_comm]])
+apply (rule upred_entails_trans[OF upred_sep_comm2R])
+apply (auto simp: upred_sep_assoc_eq intro!: upred_frame upred_wandI)
+apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm]])
+apply (simp add: upred_sep_assoc_eq)
+apply (rule upred_entails_trans[OF upred_sep_comm2R])
+apply (rule upred_entails_trans[OF upred_sep_comm3M])
+apply (rule upred_entails_trans[OF upred_sep_comm2R])
+apply (rule upred_entails_trans[OF upred_sep_comm4_2])
+apply (rule upred_entails_exchange[OF ownI_close, unfolded upred_sep_assoc_eq])
+apply (rule upred_entails_trans[OF upred_sep_comm3M])
+apply (rule upred_entails_trans[OF upred_sep_comm2R])
+apply (auto simp: dsubs_op_minus[symmetric] intro!: upred_entails_exchange[OF 
+    upred_entail_eqR[OF ownE_op_minus], unfolded upred_sep_assoc_eq])
+apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm2L]])
+apply (rule upred_entails_trans[OF upred_sep_comm2R])
+apply (auto simp: dsubs_op_minus[symmetric] intro!: upred_entails_exchange[OF 
+    upred_entail_eqR[OF ownE_op_minus], unfolded upred_sep_assoc_eq] upred_entails_trans[OF _ updI]
+    upred_entails_trans[OF _ except_zeroI])
+apply (rule upred_entails_trans[OF _ upred_sep_comm2R])
+by (auto simp: upred_true_sep intro!: upred_frame)
+done
 
 lemma fresh_inv_name: "\<exists>\<iota>. \<not> (\<iota> \<in>\<^sub>f E) \<and> \<iota> \<in>\<^sub>d dnames N"
 proof -
@@ -45,7 +102,23 @@ proof -
   then show ?thesis by blast
 qed
 
-lemma inv_alloc: "upred_holds ((\<triangleright>P) ={E}=\<^emph> (inv N P))"
-unfolding fancy_upd_def
-sorry
+lemma inv_alloc: "(\<triangleright>P) ={E}=\<^emph> (inv N P)"
+apply (auto simp: fancy_upd_def upred_sep_assoc_eq intro!: upred_wand_holdsI upred_wandI)
+apply (subst upred_sep_comm2_eq[of wsat])
+apply (rule upred_entails_trans[OF _ upd_mono,OF _ except_zero_sepR])
+apply (auto intro!: upred_entails_trans[OF _ upd_frameL] upred_frame)
+apply (rule upred_wand_holdsE)
+apply (subst upred_sep_comm)
+apply (rule upred_entails_wand_holdsR[OF _ ownI_alloc[of "\<lambda>i. i \<in>\<^sub>d dnames N"], OF _ allI[OF fresh_inv_name, of id, simplified]])
+apply (rule upd_mono)
+apply (auto intro!: upred_existsE')
+apply (subst upred_sep_comm[of wsat])
+apply (subst upred_sep_comm2_eq)
+apply (auto intro!: upred_entails_trans[OF _ except_zeroI] upred_frame)
+unfolding inv_def
+subgoal for i
+apply (rule upred_existsI[of _ _ i])
+apply (subst upred_sep_comm)
+by (auto simp: dnames_def intro!:upred_pure_impl upred_entails_conjI upred_pureI)
+done
 end
