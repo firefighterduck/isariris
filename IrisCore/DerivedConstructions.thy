@@ -802,7 +802,15 @@ qed (auto simp: pcore_dset_def op_dset_def valid_raw_dset_def d_equiv split: dse
 end
 
 lemma dsubs_op_minus: "d1 \<subseteq>\<^sub>d d2 \<Longrightarrow> d2 = d1 \<cdot> (d2 - d1)"
-unfolding op_dset_def using dsubs_dset by fastforce
+  unfolding op_dset_def using dsubs_dset by fastforce
+
+lemma dsubs_disj_opL: "\<lbrakk>disj d1 d2; d1 \<cdot> d2 \<subseteq>\<^sub>d d3\<rbrakk> \<Longrightarrow> d1 \<subseteq>\<^sub>d d3"
+  unfolding disj_def apply (cases d1; cases d2; cases d3) apply auto
+  by (smt (verit, ccfv_threshold) Un_iff dset.simps(4) op_dset_def prod.simps(2) subdset_eq.simps(1) subsetD)
+
+lemma dsubs_disj_opR: "\<lbrakk>disj d1 d2; d1 \<cdot> d2 \<subseteq>\<^sub>d d3\<rbrakk> \<Longrightarrow> d2 \<subseteq>\<^sub>d d3"
+  unfolding disj_def apply (cases d1; cases d2; cases d3) apply auto
+  by (metis camera_comm disj_def disjoint_iff dsubs_disj_opL subdset_eq.simps(1) subsetD)
 
 instance dset :: (type) dcamera 
   by standard (auto simp: valid_def valid_raw_dset_def split: dset.splits)

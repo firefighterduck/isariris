@@ -30,7 +30,7 @@ end
 
 lemma delem_dsubs: "i\<in>\<^sub>d d \<longleftrightarrow> DSet {i} \<subseteq>\<^sub>d d"
   using dmember.elims(2) subdset_eq.elims(2) by fastforce
-
+  
 lemma dsubs_dset: "d1 \<subseteq>\<^sub>d d2 \<Longrightarrow> \<exists>s1 s2. d1 = DSet s1 \<and> d2 = DSet s2"
   using subdset_eq.elims(2) by fastforce
 
@@ -42,7 +42,22 @@ lemma dminus_raw: "\<lbrakk>dset_raw d1 = Some s1\<rbrakk> \<Longrightarrow> \<e
 
 lemma dsubs_minus_inter: "d1 \<subseteq>\<^sub>d d2 \<Longrightarrow> \<exists>s1 s3. Some s3 = (dset_raw (d2 - d1)) \<and> s1 \<inter> s3 = {}"
   using dsubs_raw dminus_raw by (metis inf_bot_left)
+
+definition disj :: "'a dset \<Rightarrow> 'a dset \<Rightarrow> bool" where
+  "disj d1 d2 \<equiv> \<exists>s1 s2. d1 = DSet s1 \<and> d2 = DSet s2 \<and> s1 \<inter> s2 = {}"   
+
+lemma disj_comm: "disj d1 d2 \<longleftrightarrow> disj d2 d1"
+  unfolding disj_def by auto  
   
+lemma dsubs_minus_disj: "d1 \<subseteq>\<^sub>d d2 \<Longrightarrow> disj d1 (d2-d1)"
+  unfolding disj_def using dsubs_minus_inter dsubs_dset by fastforce
+
+lemma dsubs_trans: "\<lbrakk>d1 \<subseteq>\<^sub>d d2; d2 \<subseteq>\<^sub>d d3\<rbrakk> \<Longrightarrow> d1 \<subseteq>\<^sub>d d3"
+  by (cases d1; cases d2; cases d3) auto
+
+lemma dsubs_mono_disj_minus: "\<lbrakk>d1 \<subseteq>\<^sub>d d2; disj d1 d3\<rbrakk> \<Longrightarrow> d1 \<subseteq>\<^sub>d d2-d3"
+  unfolding disj_def by (cases d1;cases d2; cases d3) auto
+
 subsubsection \<open>Disjoint finite set type\<close>
 text \<open> Finite set with extra bottom element to encode non-disjoint unions \<close>
 datatype 'a dfset = DFSet "'a fset" | DFBot

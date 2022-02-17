@@ -23,12 +23,12 @@ definition inv_raw :: "namespace \<Rightarrow> iprop \<Rightarrow>  iprop" where
   "inv_raw N P \<equiv> \<exists>\<^sub>u \<iota>. ((\<upharpoonleft>(\<iota>\<in>\<^sub>d dnames N)) \<and>\<^sub>u ownI \<iota> P)"
 
 text \<open>Allocate new enabled invariant map\<close>
-definition ownE :: "name dset \<Rightarrow> iprop" where
-  "ownE E = Own\<^sub>i (\<epsilon>,E,\<epsilon>)"
+definition ownE :: "name set \<Rightarrow> iprop" where
+  "ownE E = Own\<^sub>i (\<epsilon>,DSet E,\<epsilon>)"
 
 text \<open>Allocate new disabled invariant map\<close>
-definition ownD :: "name dfset \<Rightarrow> iprop" where
-  "ownD D = Own\<^sub>i (\<epsilon>,\<epsilon>,D)"  
+definition ownD :: "name fset \<Rightarrow> iprop" where
+  "ownD D = Own\<^sub>i (\<epsilon>,\<epsilon>,DFSet D)"
   
 definition lift_inv_fmap :: "(name,iprop) fmap \<Rightarrow> (name,pre_iprop later) fmap" where
   "lift_inv_fmap m = Abs_fmap (map_option (Next \<circ> pre) \<circ> (fmlookup m))"
@@ -40,7 +40,7 @@ text \<open>World satisfaction, i.e. the invariant that holds all invariants\<cl
 definition wsat :: iprop where
   "wsat \<equiv> \<exists>\<^sub>u (I::(name,iprop) fmap).
     ((Own\<^sub>i(map_view_auth (DfracOwn 1) (lift_inv_fmap I),\<epsilon>,\<epsilon>))
-    \<^emph> (sep_map_fmdom (\<lambda>\<iota>. (\<triangleright>(the (fmlookup I \<iota>))) \<^emph> ownD (DFSet {|\<iota>|}) \<or>\<^sub>u (ownE (DSet {\<iota>}))) I)
+    \<^emph> (sep_map_fmdom (\<lambda>\<iota>. (\<triangleright>(the (fmlookup I \<iota>))) \<^emph> ownD {|\<iota>|} \<or>\<^sub>u (ownE {\<iota>})) I)
   )"
 
 lemma pcore_id_inv: "pcore_id_pred (constr_inv (map_view_frag \<iota> DfracDiscarded (Next (pre P)), \<epsilon>, \<epsilon>))"
@@ -60,7 +60,7 @@ lemma persistent_inv_raw [pers_rule]: "persistent (inv_raw N P)"
 lemma constr_inv_valid: "\<lbrakk>valid mv; valid e; valid d\<rbrakk> \<Longrightarrow> valid (constr_inv (mv,e,d))"
   unfolding constr_inv_def by (auto simp: prod_valid_def \<epsilon>_valid)
 
-lemma ownE_singleton_twice: "ownE (DSet {i}) \<^emph> ownE (DSet {i}) \<turnstile> \<upharpoonleft>False"
+lemma ownE_singleton_twice: "ownE {i} \<^emph> ownE {i} \<turnstile> \<upharpoonleft>False"
   unfolding ownE_def own_inv_def constr_inv_def
   apply (rule upred_entails_trans[OF upred_entail_eqR[OF own_op]])
   apply (rule upred_entails_trans[OF own_valid])
@@ -68,32 +68,25 @@ lemma ownE_singleton_twice: "ownE (DSet {i}) \<^emph> ownE (DSet {i}) \<turnstil
   apply transfer
   by (simp add: prod_n_valid_def \<epsilon>_n_valid valid_raw_dset_def)
 
-lemma ownD_singleton_twice: "ownD (DFSet {|i|}) \<^emph> ownD (DFSet {|i|}) \<turnstile> \<upharpoonleft>False"
+lemma ownD_singleton_twice: "ownD {|i|} \<^emph> ownD {|i|} \<turnstile> \<upharpoonleft>False"
   unfolding ownD_def own_inv_def constr_inv_def
   apply (auto simp: op_prod_def \<epsilon>_left_id op_dfset_def
     intro!: upred_entails_trans[OF upred_entail_eqR[OF own_op]] upred_entails_trans[OF own_valid])
   apply transfer
   by (simp add: prod_n_valid_def \<epsilon>_n_valid valid_raw_dfset_def)
   
-lemma ownE_op: "(\<exists>E1' E2'. dset_raw E1 = Some E1' \<and> dset_raw E2 = Some E2' \<and> E1' \<inter> E2' = {})
-  \<Longrightarrow> ownE (E1 \<cdot> E2) \<stileturn>\<turnstile> ownE E1 \<^emph> ownE E2"
+lemma ownE_op: "E1 \<inter> E2 = {} \<Longrightarrow> ownE (E1 \<union> E2) \<stileturn>\<turnstile> ownE E1 \<^emph> ownE E2"
 proof -
-  assume "\<exists>E1' E2'. dset_raw E1 = Some E1' \<and> dset_raw E2 = Some E2' \<and> E1' \<inter> E2' = {}"
-  then obtain E1' E2' where assms: "dset_raw E1 = Some E1'" "dset_raw E2 = Some E2'" "E1' \<inter> E2' = {}"
-    by auto
-  then have "E1 = DSet E1'" "E2 = DSet E2'" by (metis dset_raw.elims option.discI option.inject)+
-  with assms(3) have un_op:"DSet (E1' \<union> E2') = E1 \<cdot> E2" unfolding op_dset_def by simp
-  from own_op[of "constr_inv (\<epsilon>,E1,\<epsilon>)" "constr_inv (\<epsilon>,E2,\<epsilon>)"] 
-  have "ownE (E1 \<cdot> E2) \<stileturn>\<turnstile> ownE E1 \<^emph> ownE E2"
-    by (simp add: ownE_def own_inv_def constr_inv_def op_prod_def \<epsilon>_left_id)
-  with un_op show ?thesis by simp
+  assume "E1 \<inter> E2 = {}"
+  then have un_op:"DSet (E1 \<union> E2) = DSet E1 \<cdot> DSet E2" unfolding op_dset_def by simp
+  from own_op[of "constr_inv (\<epsilon>,DSet E1,\<epsilon>)" "constr_inv (\<epsilon>,DSet E2,\<epsilon>)"]
+  show ?thesis by (auto simp: ownE_def own_inv_def un_op constr_inv_def op_prod_def \<epsilon>_left_id)
 qed
 
-lemma ownE_op_minus: "E1 \<subseteq>\<^sub>d E2 \<Longrightarrow> ownE (E1 \<cdot> (E2-E1)) \<stileturn>\<turnstile> ownE E1 \<^emph> ownE (E2-E1)"
+lemma ownE_op_minus: "E1 \<subseteq> E2 \<Longrightarrow> ownE (E1 \<union> (E2-E1)) \<stileturn>\<turnstile> ownE E1 \<^emph> ownE (E2-E1)"
 proof -
-  assume "E1 \<subseteq>\<^sub>d E2"
-  then have "\<exists>E1' E2'. dset_raw E1 = Some E1' \<and> dset_raw (E2-E1) = Some E2' \<and> E1' \<inter> E2' = {}"
-    using dsubs_dset dsubs_minus_inter by fastforce
+  assume "E1 \<subseteq> E2"
+  then have "E1 \<inter> (E2-E1) = {}" by simp
   from ownE_op[OF this] show ?thesis .
 qed
   
@@ -122,7 +115,7 @@ lemma invariant_lookup:
 lemma lookup_pers [pers_rule]: "persistent (\<exists>\<^sub>u Q. \<upharpoonleft>(fmlookup I \<iota> = Some Q) \<^emph> \<triangleright>(Q=\<^sub>uP))"
   by pers_solver
 
-lemma ownI_open: "wsat \<^emph> ownI i P \<^emph> ownE (DSet {i}) \<turnstile> wsat \<^emph> (\<triangleright>P) \<^emph> ownD (DFSet {|i|})"
+lemma ownI_open: "wsat \<^emph> ownI i P \<^emph> ownE {i} \<turnstile> wsat \<^emph> (\<triangleright>P) \<^emph> ownD {|i|}"
 unfolding wsat_def
 apply (rule pull_exists_antecedent2)
 apply (rule upred_existsE')
@@ -183,7 +176,7 @@ apply (rule upred_entails_trans[OF upred_sep_assoc_rev])
 apply (rule upred_entails_substE[OF ownE_singleton_twice])
 by simp
 
-lemma ownI_close: "wsat \<^emph> ownI i P \<^emph> (\<triangleright> P) \<^emph> ownD (DFSet {|i|}) \<turnstile> wsat \<^emph> ownE (DSet {i})"
+lemma ownI_close: "wsat \<^emph> ownI i P \<^emph> (\<triangleright> P) \<^emph> ownD {|i|} \<turnstile> wsat \<^emph> ownE {i}"
 apply (simp add: wsat_def)
 apply (auto simp: pull_exists_eq intro!: upred_existsE')
 apply (rule upred_entails_trans[OF upred_sep_comm3M])
@@ -223,7 +216,7 @@ by (auto intro!: upred_entails_trans[OF upred_weakeningR2]
   upred_entails_trans[OF upred_entail_eqR[OF upred_later_sep]] upred_later_mono upred_eqE)
 done
 
-lemma ownI_alloc: "(\<forall>E::name dfset. \<exists>i. \<not>i\<in>\<^sub>fE \<and> \<phi> i) \<Longrightarrow> 
+lemma ownI_alloc: "(\<forall>E::name fset. \<exists>i. \<not>i|\<in>|E \<and> \<phi> i) \<Longrightarrow> 
   (wsat \<^emph> \<triangleright> P) ==\<^emph> (\<exists>\<^sub>u i. \<upharpoonleft>(\<phi> i) \<^emph> wsat \<^emph> ownI i P)"
 apply (auto simp: wsat_def pull_exists_eq intro!: upred_wand_holdsI upred_existsE')
 apply (rule add_holds[OF own_unit,unfolded bupd_emp[OF upred_own_nothing_emp_eq]])
@@ -231,13 +224,13 @@ apply (rule upred_entails_substE[OF upred_wand_holdsE[OF own_updateP]])
 sorry (* Axiomatized as this requires too much low level ghost state reasoning for which I'd need to add
     way more lemmata and things. *)
 
-lemma ownI_alloc_open: "(\<forall>E::name dfset. \<exists>i. \<not>i\<in>\<^sub>fE \<and> \<phi> i) \<Longrightarrow> 
-  wsat ==\<^emph> (\<exists>\<^sub>u i. \<upharpoonleft>(\<phi> i) \<^emph> (ownE (DSet {i}) -\<^emph> wsat) \<^emph> ownI i P \<^emph> ownD (DFSet {|i|}))"
+lemma ownI_alloc_open: "(\<forall>E::name fset. \<exists>i. \<not>i|\<in>|E \<and> \<phi> i) \<Longrightarrow> 
+  wsat ==\<^emph> (\<exists>\<^sub>u i. \<upharpoonleft>(\<phi> i) \<^emph> (ownE {i} -\<^emph> wsat) \<^emph> ownI i P \<^emph> ownD {|i|})"
 apply (auto simp: wsat_def pull_exists_eq intro!: upred_wand_holdsI upred_existsE')
 sorry (* Axiomatized as this requires too much low level ghost state reasoning for which I'd need to add
     way more lemmata and things. *)
 
-lemma wsat_alloc: "\<Rrightarrow>\<^sub>b (\<exists>\<^sub>u _::inv. wsat \<^emph> ownE (DSet UNIV))"
+lemma wsat_alloc: "\<Rrightarrow>\<^sub>b (\<exists>\<^sub>u _::inv. wsat \<^emph> ownE UNIV)"
 apply (auto simp: upred_holds_entails)
 apply (rule add_own[of "constr_inv (map_view_auth (DfracOwn 1) fmempty,\<epsilon>,\<epsilon>)", 
   OF constr_inv_valid[OF map_view_auth_valid \<epsilon>_valid \<epsilon>_valid]])

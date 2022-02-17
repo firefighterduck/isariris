@@ -8,7 +8,7 @@ text \<open>
   the basis for the impredicative invariant API.
 \<close>
 
-type_synonym mask = "name dset"
+type_synonym mask = "name set"
 
 definition fancy_upd :: "mask \<Rightarrow> mask \<Rightarrow> iprop \<Rightarrow> iprop" ("\<Turnstile>{_,_}=>_") where
   "\<Turnstile>{\<E>\<^sub>1, \<E>\<^sub>2}=>P \<equiv> (wsat \<^emph> ownE \<E>\<^sub>1) -\<^emph> (\<Rrightarrow>\<^sub>b (\<diamondop> (wsat \<^emph> ownE \<E>\<^sub>2 \<^emph> P)))"
@@ -52,19 +52,22 @@ apply (auto intro!: upred_entails_substE[OF upred_wand_apply, unfolded upred_sep
 apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm]])
 by auto
 
+lemma fupd_frame_split:  "can_be_split P P1 P2 \<Longrightarrow> ((\<Turnstile>{E1,E2}=> P1) \<^emph> P2) ={E1,E2}=\<^emph> P"
+  unfolding can_be_split_def 
+  using fupd_frame_r fupd_mono upred_entail_eqR upred_entails_wand_holdsR by blast
+
 lemma fupd_frame_mono: "R\<^emph>P\<turnstile>Q \<Longrightarrow> R \<^emph> (\<Turnstile>{E1,E2}=> P) \<turnstile> \<Turnstile>{E1,E2}=> Q"
 apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm]])
 apply (auto intro!: upred_entails_trans[OF upred_wand_holdsE[OF fupd_frame_r]] fupd_mono)
 apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm]])
 by simp
 
-
-lemma fupd_mask_subseteq: "E2\<subseteq>\<^sub>dE1 \<Longrightarrow> \<Turnstile>{E1,E2}=>\<Turnstile>{E2,E1}=>upred_emp"
+lemma fupd_mask_subseteq: "E2 \<subseteq> E1 \<Longrightarrow> \<Turnstile>{E1,E2}=>\<Turnstile>{E2,E1}=>upred_emp"
 proof -
-  assume assm: "E2 \<subseteq>\<^sub>d E1"
-  then have e1: "E1 = (E1-E2)\<cdot>E2" by (simp add: camera_comm dsubs_op_minus)
+  assume assm: "E2 \<subseteq> E1"
+  then have e1: "E1 = (E1-E2)\<union>E2" by auto
   with assm have own_e1: "ownE E1 \<stileturn>\<turnstile> ownE (E1-E2) \<^emph> ownE E2" using ownE_op_minus
-  by (metis dsubs_op_minus upred_sep_comm)
+    by (metis inf_sup_aci(5) upred_sep_comm)  
   show ?thesis unfolding fancy_upd_def
   apply (rule upred_wand_holdsI)
   apply (auto simp: upred_sep_assoc_eq intro!: upred_entails_substE[OF upred_entail_eqL[OF own_e1]]
@@ -75,10 +78,39 @@ proof -
   apply (auto intro!: upred_entails_trans[OF _ updI] upred_entails_trans[OF _ except_zeroI])
   apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm2L]])
   apply (rule upred_entails_trans[OF upred_sep_comm2R])
-  by (auto simp: dsubs_op_minus[OF assm,symmetric] upred_true_sep intro!: upred_entails_substE[OF 
+  by (auto simp: upred_true_sep Un_absorb1 assm intro!: upred_entails_substE[OF 
       upred_entail_eqR[OF ownE_op_minus[OF assm]], unfolded upred_sep_assoc_eq])
 qed
-  
+
+lemma fupd_mask_trans: " \<Turnstile>{E1,E2}=>\<Turnstile>{E2,E3}=>P \<turnstile> \<Turnstile>{E1,E3}=>P"
+unfolding fancy_upd_def
+apply (rule upred_wandI)
+apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm]])
+apply (auto intro!: upred_entails_trans[OF upred_wand_apply] upred_entails_trans[OF upd_mono[OF 
+    except_zero_mono[OF upred_wand_apply]]] upred_entails_trans[OF upd_mono[OF except_zero_bupd]]
+    upred_entails_trans[OF upd_idem])
+by (auto intro!: upd_mono except_zero_idem)
+
+lemma fupd_mask_intro_subseteq: "E2 \<subseteq> E1 \<Longrightarrow> P \<turnstile> \<Turnstile>{E1,E2}=>\<Turnstile>{E2,E1}=>P"
+apply (rule add_holds[OF fupd_mask_subseteq], assumption)
+by (auto simp: upred_weakeningL intro!: fupd_frame_mono)
+
+lemma fupd_intro: "P ={E}=\<^emph> P"
+by (auto intro: upred_wand_holdsI upred_entails_trans[OF fupd_mask_intro_subseteq[of E E]] fupd_mask_trans)
+
+lemma fupd_mask_weaken: "E2 \<subseteq> E1 \<Longrightarrow> ((\<Turnstile>{E2,E1}=> upred_emp) ={E2,E3}=\<^emph> P) -\<^emph> \<Turnstile>{E1,E3}=> P"
+apply (rule upred_wand_holdsI)
+apply (rule add_holds[OF fupd_mask_subseteq], assumption)
+apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm]])
+by (auto intro!: upred_entails_trans[OF upred_wand_holdsE[OF fupd_frame_r]]
+  upred_entails_trans[OF fupd_mono[OF upred_wand_apply]] upred_entails_trans[OF fupd_mask_trans])
+
+lemma fupd_mask_intro: "E2 \<subseteq> E1 \<Longrightarrow> ((\<Turnstile>{E2,E1}=> upred_emp) -\<^emph> P) -\<^emph> \<Turnstile>{E1,E2}=> P"
+apply (rule upred_wand_holdsI)
+apply (auto intro!: upred_entails_trans[OF _ upred_wand_holdsE[OF fupd_mask_weaken[of E2]]])
+apply (auto intro!: upred_wandI upred_entails_trans[OF _ upred_wand_holdsE[OF fupd_intro]])
+by (auto intro: upred_wandE)
+
 lemma persistent_vs [pers_rule]: "persistent (P ={E1,E2}=> Q)"
   unfolding view_shift_def by pers_solver
 end

@@ -6,24 +6,26 @@ subsubsection \<open>Impredicative Invariants\<close>
 
 text \<open>Semantic invariant definition\<close>
 definition inv :: "namespace \<Rightarrow> iprop \<Rightarrow> iprop" where
-  "inv N P = \<box>(\<forall>\<^sub>u E. ((\<upharpoonleft>((dnames N) \<subseteq>\<^sub>d E)) \<longrightarrow>\<^sub>u 
-    (\<Turnstile>{E,E-(dnames N)}=> ((\<triangleright>P) \<^emph> ((\<triangleright>P) ={E-(dnames N), E}=\<^emph> \<upharpoonleft>True)))))"
+  "inv N P = \<box>(\<forall>\<^sub>u E. ((\<upharpoonleft>((names N) \<subseteq> E)) \<longrightarrow>\<^sub>u 
+    (\<Turnstile>{E,E-(names N)}=> ((\<triangleright>P) \<^emph> ((\<triangleright>P) ={E-(names N), E}=\<^emph> \<upharpoonleft>True)))))"
 
-lemma inv_raw_acc: "dnames N \<subseteq>\<^sub>d E \<Longrightarrow> 
-  ((inv_raw N P) ={E, E-(dnames N)}=\<^emph> ((\<triangleright>P) \<^emph> ((\<triangleright>P) ={E-(dnames N), E}=\<^emph> \<upharpoonleft>True)))"
+lemma superset_split: "s \<subseteq> t \<Longrightarrow> t = s \<union> (t-s)" by auto
+    
+lemma inv_raw_acc: "names N \<subseteq> E \<Longrightarrow> 
+  ((inv_raw N P) ={E, E-(names N)}=\<^emph> ((\<triangleright>P) \<^emph> ((\<triangleright>P) ={E-(names N), E}=\<^emph> \<upharpoonleft>True)))"
 apply (auto simp: fancy_upd_def upred_sep_assoc_eq inv_raw_def intro!: upred_wand_holdsI upred_existsE')
 apply (rule upred_entails_trans[OF upred_entail_eqR[OF persistent_holds_sep']], pers_solver)
 apply (auto intro!: upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm]] upred_pure_impl)
 apply (auto simp: upred_sep_assoc_eq intro!: upred_wandI)
-apply (subst dsubs_op_minus[of "dnames N"], assumption)
-apply (auto simp: upred_sep_assoc_eq intro!: upred_entails_substE[OF upred_entail_eqL[OF ownE_op_minus]])
+apply (subst superset_split[of "names N"], assumption)
+apply (rule upred_entails_substE[OF upred_entail_eqL[OF ownE_op_minus]])
+apply (auto simp: upred_sep_assoc_eq)
 subgoal for i
-unfolding delem_dsubs[of i "dnames N"]
-apply (subst dsubs_op_minus[of "DSet {i}" "dnames N"], assumption)
+apply (simp add: dnames_def)
+apply (subst superset_split[of "{i}" "names N"], simp)
 apply (rule upred_entails_trans[OF upred_sep_comm2R])
-apply (auto simp: upred_sep_assoc_eq intro!: upred_entails_substE[OF 
-    upred_entail_eqL[OF ownE_op_minus], of "DSet {i}" "dnames N"] upred_entails_trans[OF _ updI]
-    upred_entails_trans[OF _ except_zeroI])
+apply (rule upred_entails_substE[OF upred_entail_eqL[OF ownE_op_minus], of "{i}" "names N"])
+apply (auto simp: upred_sep_assoc_eq intro!: upred_entails_trans[OF _ updI] upred_entails_trans[OF _ except_zeroI])
 apply (rule upred_entails_trans[OF upred_sep_comm4_2])
 apply (rule upred_entails_trans[OF upred_sep_comm2R])
 apply (rule upred_entails_trans[OF upred_sep_comm3M])
@@ -60,24 +62,23 @@ apply (rule upred_entails_trans[OF upred_sep_comm4_2])
 apply (rule upred_entails_substE[OF ownI_close, unfolded upred_sep_assoc_eq])
 apply (rule upred_entails_trans[OF upred_sep_comm3M])
 apply (rule upred_entails_trans[OF upred_sep_comm2R])
-apply (auto simp: dsubs_op_minus[symmetric] intro!: upred_entails_substE[OF 
+apply (auto simp: insert_absorb intro!: upred_entails_substE[OF 
     upred_entail_eqR[OF ownE_op_minus], unfolded upred_sep_assoc_eq])
 apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm2L]])
 apply (rule upred_entails_trans[OF upred_sep_comm2R])
-apply (auto simp: dsubs_op_minus[symmetric] intro!: upred_entails_substE[OF 
+apply (auto simp: Un_absorb1 intro!: upred_entails_substE[OF 
     upred_entail_eqR[OF ownE_op_minus], unfolded upred_sep_assoc_eq] upred_entails_trans[OF _ updI]
     upred_entails_trans[OF _ except_zeroI])
 apply (rule upred_entails_trans[OF _ upred_sep_comm2R])
 by (auto simp: upred_true_sep intro!: upred_frame)
 done
 
-lemma fresh_inv_name: "\<exists>\<iota>. \<not> (\<iota> \<in>\<^sub>f E) \<and> \<iota> \<in>\<^sub>d dnames N"
+lemma fresh_inv_name: "\<exists>\<iota>. \<iota> |\<notin>| E \<and> \<iota> \<in> names N"
 proof -
-  from infinite_names dset_of_finite_finite have "dnames N - dset_of_finite E \<noteq> DSet {}"
-    unfolding dnames_def apply (cases E) apply auto using finite_fset infinite_super apply blast 
-    using not_no_names by simp
-  then obtain \<iota> where "\<iota> \<in>\<^sub>d dnames N - dset_of_finite E" unfolding dnames_def by (cases E) auto
-  then have "\<not> (\<iota> \<in>\<^sub>f E) \<and> \<iota> \<in>\<^sub>d dnames N" apply (cases E) by (auto simp add: dnames_def fmember.rep_eq)
+  from infinite_names have "names N - fset E \<noteq> {}"
+     using finite_fset infinite_super by fastforce    
+  then obtain \<iota> where "\<iota> \<in> names N - fset E" unfolding dnames_def by (cases E) auto
+  then have "\<iota> |\<notin>| E \<and> \<iota> \<in> names N" by (auto simp add: dnames_def fmember.rep_eq)
   then show ?thesis by blast
 qed
 
@@ -88,7 +89,7 @@ apply (rule upred_entails_trans[OF _ upd_mono,OF _ except_zero_sepR])
 apply (auto intro!: upred_entails_trans[OF _ upd_frameL] upred_frame)
 apply (rule upred_wand_holdsE)
 apply (subst upred_sep_comm)
-apply (rule upred_entails_wand_holdsR[OF _ ownI_alloc[of "\<lambda>i. i \<in>\<^sub>d dnames N"], 
+apply (rule upred_entails_wand_holdsR[OF _ ownI_alloc[of "\<lambda>i. i \<in> names N"], 
     OF _ allI[OF fresh_inv_name, of id, simplified]])
 apply (rule upd_mono)
 apply (auto intro!: upred_existsE')
@@ -102,12 +103,12 @@ apply (subst upred_sep_comm)
 by (auto simp: dnames_def intro!:upred_pure_impl upred_entails_conjI upred_pureI)
 done
 
-lemma inv_raw_alloc_open: "dnames N \<subseteq>\<^sub>d E \<Longrightarrow>
-  \<Turnstile>{E, E-dnames N}=> (inv_raw N P \<^emph> ((\<triangleright>P) ={E-dnames N, E}=\<^emph> upred_emp))"
+lemma inv_raw_alloc_open: "names N \<subseteq> E \<Longrightarrow>
+  \<Turnstile>{E, E-names N}=> (inv_raw N P \<^emph> ((\<triangleright>P) ={E-names N, E}=\<^emph> upred_emp))"
 unfolding fancy_upd_def
 apply (rule upred_wand_holdsI)
 apply (rule upred_wandE)
-apply (rule upred_entails_trans[OF upred_wand_holdsE[OF ownI_alloc_open[of "\<lambda>i. i \<in>\<^sub>d dnames N"]],
+apply (rule upred_entails_trans[OF upred_wand_holdsE[OF ownI_alloc_open[of "\<lambda>i. i \<in> names N"]],
   OF allI[OF fresh_inv_name, of id, simplified], of P])
 apply (auto simp: pull_exists_eq intro!: upred_wandI upred_entails_trans[OF upd_frameL] upd_mono upred_existsE')
 apply (rule upred_entails_trans[OF upred_sep_comm4_1])
@@ -118,15 +119,15 @@ apply (rule upred_pure_impl)
 apply (rule upred_entails_trans[OF upred_sep_comm3M])
 apply (rule upred_entails_trans[OF upred_sep_comm2R])
 subgoal for i
-apply (rule split_trans[of _ "ownE E \<^emph> ownI i P" "(ownE (DSet {i}) -\<^emph> wsat) \<^emph> ownD (DFSet {|i|}) \<^emph> ownI i P" 
-  "ownE (DSet {i}) \<^emph> ownE (dnames N - DSet {i}) \<^emph> ownE (E - dnames N)", unfolded upred_sep_assoc_eq])
+apply (rule split_trans[of _ "ownE E \<^emph> ownI i P" "(ownE {i} -\<^emph> wsat) \<^emph> ownD {|i|} \<^emph> ownI i P" 
+  "ownE {i} \<^emph> ownE (names N - {i}) \<^emph> ownE (E - names N)", unfolded upred_sep_assoc_eq])
 apply(rule can_be_split_R_R[OF persistent_dupl_split[OF persistent_ownI], unfolded upred_sep_assoc_eq])
 apply (rule upred_entails_trans[OF _ upred_sep_comm2R])
 apply (rule upred_entails_trans[OF _ upred_entails_eq[OF upred_sep_comm2L]])
-apply (auto simp: delem_dsubs dsubs_op_minus[symmetric] intro!: upred_entails_substI[OF 
+apply (auto simp: insert_absorb intro!: upred_entails_substI[OF 
     upred_entail_eqL[OF ownE_op_minus], unfolded upred_sep_assoc_eq])
 apply (rule upred_entails_trans[OF _ upred_entails_eq[OF upred_sep_comm]])
-apply (auto simp: delem_dsubs dsubs_op_minus[symmetric] upred_weakeningL upred_sep_assoc_eq
+apply (auto simp: Un_absorb1 upred_weakeningL upred_sep_assoc_eq
   intro!: upred_entails_trans[OF _ upred_entail_eqL[OF ownE_op_minus], unfolded upred_sep_assoc_eq] 
   upred_entails_trans[OF _ except_zeroI])
 apply (rule upred_entails_trans[OF upred_sep_comm4_2])
@@ -138,9 +139,9 @@ apply (rule upred_frame)
 apply (rule upred_entails_trans[OF upred_sep_comm3M])
 apply (rule upred_entails_trans[OF upred_sep_comm4_1])
 apply (rule upred_entails_trans[OF upred_sep_comm4_2])
-apply (rule split_frame[of _ "ownE (DSet {i}) \<^emph> (ownE (DSet {i}) -\<^emph> wsat) \<^emph> ownI i P" 
-  "ownE (dnames N - DSet {i}) \<^emph> ownD (DFSet {|i|})\<^emph> ownI i P" _ wsat
-  "inv_raw N P \<^emph> ((\<triangleright>P) -\<^emph> (wsat \<^emph> ownE (E - dnames N)) ==\<^emph> \<diamondop>(wsat \<^emph> ownE E \<^emph> upred_emp))", 
+apply (rule split_frame[of _ "ownE {i} \<^emph> (ownE {i} -\<^emph> wsat) \<^emph> ownI i P" 
+  "ownE (names N - {i}) \<^emph> ownD {|i|}\<^emph> ownI i P" _ wsat
+  "inv_raw N P \<^emph> ((\<triangleright>P) -\<^emph> (wsat \<^emph> ownE (E - names N)) ==\<^emph> \<diamondop>(wsat \<^emph> ownE E \<^emph> upred_emp))", 
   unfolded upred_sep_assoc_eq])
 apply (rule can_be_split_mono[OF _ persistent_dupl_split[OF persistent_ownI], unfolded upred_sep_assoc_eq])
 apply (rule can_be_split_rev)
@@ -151,7 +152,7 @@ apply (rule split_frame[of _ "ownI i P" _ _ "inv_raw N P"])
 apply (rule can_be_split_rev)
 apply (rule persistent_dupl_split, pers_solver)
 apply (rule can_be_split_refl)
-apply (auto simp: inv_raw_def delem_dsubs upred_true_conj' upred_sep_assoc_eq intro!: upred_existsI[of _ _ i] upred_wandI)
+apply (auto simp: inv_raw_def dnames_def upred_true_conj' upred_sep_assoc_eq intro!: upred_existsI[of _ _ i] upred_wandI)
 apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm]]; simp add: upred_sep_assoc_eq)
 apply (rule upred_entails_trans[OF upred_sep_comm4_2])
 apply (rule upred_entails_trans[OF upred_sep_comm3M])
@@ -161,11 +162,11 @@ apply (rule upred_entails_trans[OF upred_sep_comm4_2])
 apply (rule upred_entails_substE[OF ownI_close, unfolded upred_sep_assoc_eq])
 apply (rule upred_entails_trans[OF upred_sep_comm3M])
 apply (rule upred_entails_trans[OF upred_sep_comm2R])
-apply (auto simp: dsubs_op_minus[symmetric] intro!: upred_entails_substE[OF 
+apply (auto simp: insert_absorb intro!: upred_entails_substE[OF 
     upred_entail_eqR[OF ownE_op_minus], unfolded upred_sep_assoc_eq])
 apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm2L]])
 apply (rule upred_entails_trans[OF upred_sep_comm2R])
-by (auto simp: dsubs_op_minus[symmetric] upred_true_sep intro!: upred_entails_substE[OF 
+by (auto simp: Un_absorb1 upred_true_sep intro!: upred_entails_substE[OF 
     upred_entail_eqR[OF ownE_op_minus], unfolded upred_sep_assoc_eq] upred_entails_trans[OF _ updI]
     upred_entails_trans[OF _ except_zeroI])
 done
@@ -178,8 +179,7 @@ subgoal for E
 apply (rule add_holds[OF inv_raw_acc[of N E P]], assumption)
 apply (auto intro!: upred_entails_trans[OF upred_wand_apply])
 apply (auto intro!: upred_entails_trans[OF fupd_mono[OF upred_wand_apply]] 
-  upred_entails_trans[OF upred_holds_entails'[OF fupd_mask_subseteq[of "E-dnames N" E]]])
-using dsubs_dset apply fastforce
+  upred_entails_trans[OF upred_holds_entails'[OF fupd_mask_subseteq[of "E-names N" E]]])
 using upred_pers_mono[OF fupd_mono[OF upred_wand_apply]]
 sorry
 done
@@ -246,18 +246,87 @@ lemma inv_alloc: "(\<triangleright>P) ={E}=\<^emph> inv N P"
   by (auto intro!: upred_wand_holdsI upred_entails_trans[OF _ fupd_mono[OF upred_wand_holdsE[OF 
     inv_raw_to_inv]]] upred_wand_holdsE[OF inv_raw_alloc])
 
-lemma inv_alloc_open: "dnames N \<subseteq>\<^sub>d E \<Longrightarrow>
-  \<Turnstile>{E, E-dnames N}=> (inv N P \<^emph> ((\<triangleright>P) ={E-dnames N, E}=\<^emph> upred_emp))"
+lemma inv_alloc_open: "names N \<subseteq> E \<Longrightarrow>
+  \<Turnstile>{E, E-names N}=> (inv N P \<^emph> ((\<triangleright>P) ={E-names N, E}=\<^emph> upred_emp))"
 apply (auto simp: upred_holds_entails)
 apply (rule add_holds[OF inv_raw_alloc_open[of N E P]], simp)
 apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm]])
 apply (rule upred_entails_trans[OF upred_weakeningL])
 by (auto simp: upred_wand_holdsE[OF inv_raw_to_inv] intro!: fupd_mono upred_sep_mono)
 
-lemma inv_acc: "dnames N \<subseteq>\<^sub>d E \<Longrightarrow> 
-  ((inv N P) ={E, E-(dnames N)}=\<^emph> ((\<triangleright>P) \<^emph> ((\<triangleright>P) ={E-(dnames N), E}=\<^emph> \<upharpoonleft>True)))"
+lemma inv_acc: "names N \<subseteq> E \<Longrightarrow> 
+  ((inv N P) ={E, E-(names N)}=\<^emph> ((\<triangleright>P) \<^emph> ((\<triangleright>P) ={E-(names N), E}=\<^emph> \<upharpoonleft>True)))"
   by (auto simp: inv_def intro!: upred_wand_holdsI upred_entails_trans[OF upred_persisE]
     upred_entails_trans[OF upred_forall_inst[of _ E]] upred_entails_trans[OF upred_entail_eqL[OF upred_emp_impl]])
+
+lemma inv_combine: "\<lbrakk>names N1 \<inter> names N2 = {}; names N1 \<union> names N2 \<subseteq> names N\<rbrakk> \<Longrightarrow>
+    inv N1 P -\<^emph> inv N2 Q -\<^emph> inv N (P\<^emph>Q)"
+unfolding inv_def
+apply (auto intro!: upred_wand_holds2I upred_persis_frame upred_forallI upred_implI_pure, pers_solver)
+subgoal for E
+apply (auto intro!: upred_entails_substE[OF upred_forall_inst[of _ "E - names N1"]])
+apply (auto intro!: upred_entails_substE[OF upred_implE_pure, OF  _ upred_entails_refl])
+apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm]])
+apply (auto intro!: upred_entails_substE[OF upred_persisE] upred_entails_substE[OF upred_forall_inst[of _ E]])
+apply (auto intro!: upred_entails_substE[OF upred_implE_pure, OF _ upred_entails_refl])
+apply (rule upred_entails_trans[OF _ fupd_mask_trans[of _ "E-names N1"]])
+apply (rule fupd_frame_mono)
+apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm]])
+apply (rule upred_entails_trans[OF _ fupd_mask_trans[of _ "E-names N1-names N2"]])
+apply (auto simp: upred_sep_assoc_eq intro!: fupd_frame_mono upred_entails_trans[OF _ 
+  upred_wand_holdsE[OF fupd_frame_split[of _ "(\<triangleright>(P \<^emph> Q))={E - names N,E}=\<^emph>upred_emp" "\<triangleright>(P\<^emph>Q)", 
+  OF can_be_split_rev, OF can_be_split_refl]]] upred_entails_substI[OF upred_entail_eqR[OF upred_later_sep]])
+apply (rule upred_entails_trans[OF upred_sep_comm2R], rule upred_frame)
+apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm2L]])
+apply (rule upred_entails_trans[OF upred_sep_comm2R], rule upred_frame)
+apply (auto intro!: upred_entails_trans[OF _ upred_wand_holdsE[OF fupd_mask_intro]])
+apply (auto simp: upred_sep_assoc_eq intro!: upred_wandI upred_entails_substE[OF upred_entail_eqL[OF 
+    upred_later_sep]])
+apply (rule upred_entails_trans[OF upred_sep_comm3M])
+apply (rule upred_entails_trans[OF upred_sep_comm2R])
+apply (rule upred_entails_trans[OF _ fupd_mask_trans[of _ "E-names N1-names N2"]])
+apply (auto simp: upred_true_sep intro!: fupd_frame_mono)
+apply (rule upred_entails_trans[OF upred_sep_comm3M])
+apply (rule upred_entails_trans[OF upred_sep_comm2R])
+apply (rule upred_entails_substE[OF upred_wand_apply, unfolded upred_sep_assoc_eq])
+apply (rule upred_entails_trans[OF _ fupd_mask_trans[of _ "E-names N1"]])
+apply (auto simp: upred_true_sep intro!: fupd_frame_mono)
+apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm]])
+by (auto intro: upred_entails_trans[OF upred_wand_apply])
+done
+
+lemma inv_combine_dup_l: "(\<box>(P -\<^emph> (P\<^emph>P))) -\<^emph> inv N P -\<^emph> inv N Q -\<^emph> inv N (P \<^emph>Q)"
+apply (auto simp: inv_def intro!: upred_wand_holds2I upred_wandI upred_persis_frame upred_forallI 
+  upred_implI_pure, pers_solver)
+apply (rule upred_entails_trans[OF upred_sep_comm2R])
+subgoal for E
+apply (auto intro!: upred_entails_substE[OF upred_persisE] upred_entails_substE[OF upred_forall_inst[of _ E]]
+  upred_entails_substE[OF upred_entail_eqL[OF upred_emp_impl]])
+apply (rule upred_entails_trans[OF _ fupd_mask_trans[of _ "E-names N"]])
+apply (auto simp: upred_sep_assoc_eq intro!: fupd_frame_mono)
+apply (rule upred_entails_trans[OF upred_sep_comm2R])
+apply (rule upred_entails_trans[OF upred_sep_comm3L])
+apply (rule upred_entails_trans[OF upred_sep_comm3M])
+apply (rule upred_entails_trans[OF upred_sep_comm2R])
+apply (auto simp: upred_sep_assoc_eq intro!: upred_entails_substE[OF upred_persisE] upred_entails_substE[OF 
+  upred_later_mono_extL[OF upred_wand_apply], unfolded upred_sep_assoc_eq]
+  upred_entails_substE[OF upred_entail_eqL[OF upred_later_sep]])
+apply (auto simp: upred_sep_assoc_eq intro!: upred_entails_trans[OF _ upred_wand_holdsE[OF 
+  fupd_frame_split[of _ "(\<triangleright>Q)\<^emph>((\<triangleright>(P \<^emph> Q))={E - names N,E}=\<^emph>upred_emp)" "\<triangleright>P"], OF can_be_split_sepL,
+  OF can_be_split_rev, OF can_be_splitI[OF upred_later_sep]]])
+apply (rule upred_frame)
+apply (rule upred_entails_trans[OF upred_sep_comm2R])
+apply (rule upred_entails_substE[OF upred_wand_apply, unfolded upred_sep_assoc_eq])
+apply (rule upred_entails_trans[OF _ fupd_mask_trans[of _ E]])
+apply (auto simp: upred_true_sep intro!: fupd_frame_mono)
+apply (auto simp: upred_sep_assoc_eq intro!: upred_entails_trans[OF upred_forall_inst[of _ E]] 
+  upred_entails_trans[OF upred_entail_eqL[OF upred_emp_impl]] fupd_mono upred_sep_mono upred_wandI 
+  upred_entails_substE[OF upred_entail_eqL[OF upred_later_sep]])
+apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm2L]])
+apply (rule upred_entails_trans[OF upred_sep_comm2R])
+apply (rule upred_entails_substE[OF upred_wand_apply, unfolded upred_sep_assoc_eq])
+by (rule upred_weakeningR)
+done
 
 subsubsection \<open>Cancelable Invariants\<close>
 type_synonym cinvG = frac
