@@ -113,4 +113,21 @@ by (auto intro: upred_wandE)
 
 lemma persistent_vs [pers_rule]: "persistent (P ={E1,E2}=> Q)"
   unfolding view_shift_def by pers_solver
+
+abbreviation fancy_step :: "mask \<Rightarrow> mask \<Rightarrow> iprop \<Rightarrow> iprop" ("\<Turnstile>{_}[_]\<triangleright>=>_") where
+  "fancy_step Eo Ei Q \<equiv> \<Turnstile>{Eo,Ei}=> \<triangleright> \<Turnstile>{Ei,Eo}=> Q"
+abbreviation fancy_wand_step :: "iprop \<Rightarrow> mask \<Rightarrow> mask \<Rightarrow> iprop \<Rightarrow> iprop" ("_={_}[_]\<triangleright>=\<^emph>_") where
+  "fancy_wand_step P Eo Ei Q \<equiv> P -\<^emph> \<Turnstile>{Eo}[Ei]\<triangleright>=> Q"
+abbreviation fancy_linear_step :: "mask \<Rightarrow> iprop \<Rightarrow> iprop" ("\<Turnstile>{_}\<triangleright>=>_") where
+  "fancy_linear_step E Q \<equiv> \<Turnstile>{E}[E]\<triangleright>=> Q"
+abbreviation fancy_linear_wand_step :: "iprop \<Rightarrow> mask \<Rightarrow> iprop \<Rightarrow> iprop" ("_={_}\<triangleright>=\<^emph>_") where
+  "fancy_linear_wand_step P E Q \<equiv> P -\<^emph> \<Turnstile>{E}\<triangleright>=> Q"
+abbreviation fancy_steps :: "mask \<Rightarrow> mask \<Rightarrow> nat \<Rightarrow> iprop \<Rightarrow> iprop" ("\<Turnstile>{_}[_]\<triangleright>^_=>_") where
+  "fancy_steps Eo Ei n Q \<equiv> ((\<lambda>P. \<Turnstile>{Eo}[Ei]\<triangleright>=>P)^^n) Q"
+abbreviation fancy_wand_steps :: "iprop \<Rightarrow> mask \<Rightarrow> mask \<Rightarrow> nat \<Rightarrow> iprop \<Rightarrow> iprop" ("_={_}[_]\<triangleright>^_=\<^emph>_") 
+  where "fancy_wand_steps P Eo Ei n Q \<equiv> P -\<^emph> (\<Turnstile>{Eo}[Ei]\<triangleright>^n=>Q)"
+abbreviation fancy_linear_steps :: "mask \<Rightarrow> nat \<Rightarrow> iprop \<Rightarrow> iprop" ("\<Turnstile>{_}\<triangleright>^_=>_") where
+  "fancy_linear_steps E n Q \<equiv> \<Turnstile>{E}[E]\<triangleright>^n=>Q"
+abbreviation fancy_linear_wand_steps :: "iprop \<Rightarrow> mask \<Rightarrow> nat \<Rightarrow> iprop \<Rightarrow> iprop" ("_={_}\<triangleright>^_=\<^emph>_") where
+  "fancy_linear_wand_steps P E n Q \<equiv> P={E}[E]\<triangleright>^n=\<^emph>Q"
 end

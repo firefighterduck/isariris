@@ -1,5 +1,5 @@
 theory PrimitiveLaws
-imports HeapLang "../IrisCore/Frac"
+imports HeapLang "../IrisCore/Frac" "../IrisCore/ProphMap"
 begin
 
 section \<open> Basic laws for HeapLang programs \<close>
@@ -15,7 +15,10 @@ end
 
 instance expr and val :: discrete by standard auto
 
-(* Simplified heap camera, does not contain the prophecy map. *)
-type_synonym ('l,'v) heap = "('l\<rightharpoonup>(dfrac\<times>'v ag)) auth"
+text \<open>The heap does not contain invariant locations to stay as simple as possible.\<close>
+type_synonym ('l,'v) heap = "('l,'v) map_view"
 type_synonym heap_lang_heap = "(loc, val option) heap"
+type_synonym heap_lang_proph_map = "(proph_id, (val\<times>val)) proph_mapGS"
+type_synonym heap_lang_proph_map_raw = "(proph_id,(val\<times>val) list) fmap"
+type_synonym heap_lang_proph_val_list = "(proph_id\<times>(val\<times>val)) list"
 end

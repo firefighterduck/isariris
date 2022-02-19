@@ -422,6 +422,9 @@ lemma upred_emp_impl: "(upred_emp \<longrightarrow>\<^sub>u P) \<stileturn>\<tur
   apply (metis \<epsilon>_right_id incl_def order_refl)
   using incl_n_incl by blast
 
+lemma upred_holds_persis: "upred_holds P \<Longrightarrow> upred_holds (\<box>P)"
+  apply transfer using camera_core_n_valid by blast
+
 definition can_be_split :: "('a::ucamera) upred_f \<Rightarrow> 'a upred_f \<Rightarrow> 'a upred_f \<Rightarrow> bool" where
   "can_be_split PQ P Q \<equiv> PQ \<stileturn>\<turnstile> P \<^emph> Q"
 

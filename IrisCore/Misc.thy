@@ -8,9 +8,15 @@ definition map_heap :: "('l\<rightharpoonup>'v::ofe) \<Rightarrow> ('l\<times>'v
 definition sep_map_heap :: "('l\<rightharpoonup>'v::ofe) \<Rightarrow> ('l\<times>'v\<Rightarrow>iprop) \<Rightarrow> iprop" where
   "sep_map_heap h f = map_heap h (\<lambda>lv a. a \<^emph> f lv) upred_emp"
 
+definition sep_map_fmap :: "('l,'v::ofe) fmap \<Rightarrow> (('l\<times>'v)\<Rightarrow>iprop) \<Rightarrow> iprop" where
+  "sep_map_fmap m f =   map_heap (fmlookup m) (\<lambda>lv a. a \<^emph> f lv) upred_emp"
+  
 definition sep_map_set :: "('b\<Rightarrow>iprop) \<Rightarrow> 'b set \<Rightarrow> iprop" where
   "sep_map_set f s = folding_on.F (\<lambda>x a. a \<^emph> f x) upred_emp s"
 
+abbreviation sep_emp_map_list :: "'a list \<Rightarrow> ('a \<Rightarrow> iprop) \<Rightarrow> iprop" ("[\<^emph>\<^sub>l:] _ _") where
+  "sep_emp_map_list l f \<equiv> foldl (\<lambda>P x. P \<^emph> f x) upred_emp l"
+  
 abbreviation sep_emp_fold_list :: "iprop list \<Rightarrow> iprop" ("[\<^emph>\<^sub>l] _") where
   "sep_emp_fold_list l \<equiv> foldl (\<^emph>) upred_emp l"
 

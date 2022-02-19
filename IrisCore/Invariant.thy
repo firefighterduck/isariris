@@ -176,12 +176,8 @@ unfolding inv_def
 apply (auto intro!: upred_wand_holdsI upred_entails_trans[OF _ upred_entail_eqL[OF pers_forall]] 
   upred_forallI upred_entails_trans[OF _ upred_entail_eqR[OF upred_pers_impl_pure]] upred_implI_pure)
 subgoal for E
-apply (rule add_holds[OF inv_raw_acc[of N E P]], assumption)
-apply (auto intro!: upred_entails_trans[OF upred_wand_apply])
-apply (auto intro!: upred_entails_trans[OF fupd_mono[OF upred_wand_apply]] 
-  upred_entails_trans[OF upred_holds_entails'[OF fupd_mask_subseteq[of "E-names N" E]]])
-using upred_pers_mono[OF fupd_mono[OF upred_wand_apply]]
-sorry
+apply (rule add_holds[OF upred_holds_persis[OF inv_raw_acc[of N E P]]], assumption)
+by (auto intro!: upred_persis_frame[OF _ upred_wand_apply], pers_solver)
 done
 
 text \<open>

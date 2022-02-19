@@ -1,6 +1,6 @@
 theory iPropShallow                                                      
 imports DerivedConstructions "../SpanningTree/SpanningTreeCameras" Namespace
-  ProofRules "../HeapLang/PrimitiveLaws" View
+  ProofRules "../HeapLang/PrimitiveLaws" View ProphMap
 begin
 
 (*
@@ -152,7 +152,8 @@ ML \<open>
 end;
 \<close>
 
-setup \<open>mk_iprop [(\<^typ>\<open>graphUR auth\<close>, "graph"), (\<^typ>\<open>markingUR auth\<close>, "markings")]\<close>
+setup \<open>mk_iprop [(\<^typ>\<open>graphUR auth\<close>, "graph"), (\<^typ>\<open>markingUR auth\<close>, "markings"), 
+  (\<^typ>\<open>heap_lang_proph_map\<close>, "proph")]\<close>
 
 lemma iprop_fp: "iProp (pre P) = P" sorry
 declare [[coercion iProp]]

@@ -125,6 +125,14 @@ qed (auto simp: ofe_sym ofe_eq_eq intro: ofe_refl ofe_trans)
 end
 instance prod :: (discrete,discrete) discrete by standard (auto simp: d_equiv d_eq)
 
+subsubsection \<open>List type OFE\<close>
+instantiation list :: (ofe) ofe begin
+definition n_equiv_list :: "nat \<Rightarrow> 'a list \<Rightarrow> 'a list \<Rightarrow> bool" where [simp]: "n_equiv_list \<equiv> \<lambda>_. (=)"
+definition ofe_eq_list :: "'a list \<Rightarrow> 'a list \<Rightarrow> bool" where [simp]: "ofe_eq_list \<equiv> (=)"
+instance by standard auto
+end
+instance list :: (discrete) discrete by standard auto
+
 subsubsection \<open>Function type OFE\<close>
 instantiation "fun" :: (type,ofe) ofe begin
 definition n_equiv_fun :: "nat \<Rightarrow> ('a\<Rightarrow>'b) \<Rightarrow> ('a\<Rightarrow>'b) \<Rightarrow> bool" where

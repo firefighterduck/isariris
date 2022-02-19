@@ -1,33 +1,28 @@
 theory WeakestPrecondition
-imports "../IrisCore/BaseLogicShallow" "../IrisCore/AuthHeap" HeapLang State PrimitiveLaws
+imports "../IrisCore/Invariant" "../IrisCore/AuthHeap" HeapLang State PrimitiveLaws
 begin
 
 subsection \<open>Weakest Preconditions\<close>
-text \<open>
-  The functions below mirror the stepwise derivation of wp from "Iris from ground up".
-\<close>
-function wp1 :: "expr \<Rightarrow> (val \<Rightarrow> iprop) \<Rightarrow> iprop" where
-  "wp1 e \<Phi> = (case to_val e of Some v \<Rightarrow> \<Phi> v 
-    | None \<Rightarrow> (\<forall>\<^sub>u \<sigma>. ((\<upharpoonleft>(red e \<sigma>)) \<and>\<^sub>u \<triangleright>(\<forall>\<^sub>u \<kappa> e2 \<sigma>2. (\<upharpoonleft>(e \<sigma> \<kappa> \<Rightarrow>\<^sub>h e2 \<sigma>2 [])) -\<^emph> wp1 e2 \<Phi>))))"
-    by fastforce blast
 
-definition own_state_heap :: "state \<Rightarrow> iprop" where
-  "own_state_heap s = Own\<^sub>h (full (to_heap_op (heap s)))"
+definition state_interp :: "state \<Rightarrow> observation list \<Rightarrow> iprop" where
+  "state_interp \<sigma> \<kappa>s = heap_interp (heap \<sigma>) \<^emph> proph_map_interp \<kappa>s (used_proph_id \<sigma>)"
 
-function wp2 :: "expr \<Rightarrow> (val \<Rightarrow> iprop) \<Rightarrow> iprop" where
-  "wp2 e \<Phi> = (case to_val e of Some v \<Rightarrow> \<Rrightarrow>\<^sub>b (\<Phi> v)
-    | None \<Rightarrow> (\<forall>\<^sub>u \<sigma>. (own_state_heap \<sigma> -\<^emph>
-      \<Rrightarrow>\<^sub>b ((\<upharpoonleft>(red e \<sigma>)) \<and>\<^sub>u \<triangleright>(\<forall>\<^sub>u \<kappa> e2 \<sigma>2. (\<upharpoonleft>(e \<sigma> \<kappa> \<Rightarrow>\<^sub>h e2 \<sigma>2 [])) -\<^emph> 
-        \<Rrightarrow>\<^sub>b ((own_state_heap \<sigma>2) \<^emph> wp2 e2 \<Phi>))))))"
-   by fast simp
+datatype stuckness = NotStuck | MaybeStuck
 
-function wp3 :: "expr \<Rightarrow> (val \<Rightarrow> iprop) \<Rightarrow> iprop" where
-  "wp3 e \<Phi> = (case to_val e of Some v \<Rightarrow> \<Rrightarrow>\<^sub>b (\<Phi> v)
-    | None \<Rightarrow> (\<forall>\<^sub>u \<sigma>. (own_state_heap \<sigma> -\<^emph>
-      \<Rrightarrow>\<^sub>b ((\<upharpoonleft>(red e \<sigma>)) \<and>\<^sub>u \<triangleright>(\<forall>\<^sub>u \<kappa> e2 \<sigma>2 efs. (\<upharpoonleft>(e \<sigma> \<kappa> \<Rightarrow>\<^sub>h e2 \<sigma>2 efs)) -\<^emph> 
-        \<Rrightarrow>\<^sub>b ((own_state_heap \<sigma>2) \<^emph> wp3 e2 \<Phi> \<^emph> (sep_map_set (\<lambda>e'. wp3 e' (\<lambda>_. \<upharpoonleft>True)) (set efs))))))))"
-  by fast auto
+definition fill :: "ectx_item list \<Rightarrow> expr \<Rightarrow> expr"  where "fill K e =  fold fill_item K e"
 
-abbreviation wp :: "expr \<Rightarrow> (val \<Rightarrow> iprop) \<Rightarrow> iprop" where 
-  "wp \<equiv> wp3"
+inductive prim_step :: "expr \<Rightarrow> state \<Rightarrow> observation list \<Rightarrow> expr \<Rightarrow> state \<Rightarrow> expr list \<Rightarrow> bool" where
+Ectx_step:  "\<lbrakk>e1=fill K e1'; e2=fill K e2'; head_step e1' \<sigma>1 \<kappa> e2' \<sigma>2 efs\<rbrakk> \<Longrightarrow>
+   prim_step e1 \<sigma>1 \<kappa> e2 \<sigma>2 efs"
+
+function wp :: "stuckness \<Rightarrow> mask \<Rightarrow> expr \<Rightarrow> (val \<Rightarrow> iprop) \<Rightarrow> iprop" where
+  "wp s E e1 \<Phi> = (case to_val e1 of Some v \<Rightarrow> (\<Turnstile>{E}=> (\<Phi> v))
+    | None \<Rightarrow> (\<forall>\<^sub>u \<sigma>1 \<kappa> \<kappa>s.
+      ((state_interp \<sigma>1 (\<kappa>@\<kappa>s)) ={E,Set.empty}=\<^emph>
+        ((\<upharpoonleft>(case s of NotStuck \<Rightarrow> red e1 \<sigma>1 | _ \<Rightarrow> True)) \<^emph>
+        (\<forall>\<^sub>u e2 \<sigma>2 efs. ((\<upharpoonleft>(prim_step e1 \<sigma>1 \<kappa> e2 \<sigma>2 efs))
+          ={Set.empty}\<triangleright>=\<^emph> (\<Turnstile>{Set.empty,E}=> ((state_interp \<sigma>2 \<kappa>s) \<^emph>
+            (wp s E e2 \<Phi>) \<^emph> ([\<^emph>\<^sub>l:] efs (\<lambda>ef. wp s UNIV ef (\<lambda>_. upred_emp)))))))))))"
+by auto            
+
 end

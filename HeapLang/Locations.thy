@@ -29,8 +29,21 @@ lemma loc_add_0: "l +\<^sub>\<iota> 0 = l"
   by (simp add: loc_add_def)
 
 lemma loc_ranges: "{(l+\<^sub>\<iota>i) |i. i\<in>{0..<n}} = {l..<(l+\<^sub>\<iota>n)}"
-by (auto simp: less_eq_loc_def less_loc_def loc_add_def, smt (z3) loc.exhaust_sel)
-  
+  by (auto simp: less_eq_loc_def less_loc_def loc_add_def, smt (z3) loc.exhaust_sel)
+
+lemma loc_set_lift: "ls = Loc ` (loc_car ` ls)"
+  unfolding image_def by auto
+
+lemma loc_set_lift': "loc_car ` {l..<u::loc} = {loc_car l..<loc_car u}"
+  apply (auto simp: less_eq_loc_def less_loc_def)
+  by (metis atLeastLessThan_iff image_eqI less_eq_loc_def linorder_not_le loc.sel)
+
+lemma finite_atLeastLessThan_loc [iff]: "finite {l..<u::loc}"
+apply (subst loc_set_lift[of "{l..<u::loc}"])
+apply (rule finite_imageI)
+unfolding loc_set_lift'
+by (rule finite_atLeastLessThan_int)
+
 definition fresh_locs :: "loc list \<Rightarrow> loc" where
   "fresh_locs ls = Loc (fold (\<lambda>k r. max (1+loc_car k) r) ls 1)"
 
