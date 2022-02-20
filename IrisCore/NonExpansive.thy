@@ -100,6 +100,12 @@ lemma next_contr: "contractive Next"
   apply (simp add: n_equiv_later_def)
   using diff_Suc_less by blast
 
+lemma contractive_zero: "contractive f \<Longrightarrow> n_equiv 0 (f x) (f y)"
+  by (auto simp: contractive_def)
+
+lemma contractive_Suc: "\<lbrakk>contractive f; n_equiv n x y\<rbrakk> \<Longrightarrow> n_equiv (Suc n) (f x) (f y)"
+  by (auto simp: contractive_def) (meson less_Suc_eq_le ofe_down_contr)  
+  
 subsubsection \<open>Contractive function type\<close>
 text \<open>The corresponding subtype of contractive functions.\<close>
 typedef (overloaded) ('a::ofe,'b::ofe) contr = "{f::'a\<Rightarrow>'b. contractive f}"
@@ -107,4 +113,14 @@ typedef (overloaded) ('a::ofe,'b::ofe) contr = "{f::'a\<Rightarrow>'b. contracti
 setup_lifting type_definition_contr
 lemmas [simp] = Rep_contr_inverse Rep_contr_inject
 lemmas [simp, intro!] = Rep_contr[unfolded mem_Collect_eq]
+
+lemma ne_power_contr: "non_expansive ((Rep_contr (f::('a::ofe,'a)contr))^^n)"
+  apply (rule non_expansiveI) apply (induction n)
+  using Rep_contr[unfolded contractive_def] apply (auto)
+  by (smt (verit, del_insts) Rep_contr contractiveE less_le_not_le mem_Collect_eq ofe_mono)
+
+lemma ne_power_contr': "non_expansive (\<lambda>n. ((Rep_contr (f::('a::ofe,'a)contr))^^n) x)"
+  apply (rule non_expansiveI)
+  using Rep_contr[unfolded contractive_def] apply auto
+  by (simp add: ofe_eq_limit)
 end

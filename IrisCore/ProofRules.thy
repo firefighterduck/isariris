@@ -55,6 +55,7 @@ lemma upred_disjIR: "P\<turnstile>R \<Longrightarrow> P\<turnstile>Q\<or>\<^sub>
   by transfer blast
   
 lemma upred_entails_refl [simp]: "P\<turnstile>P" by (auto simp: upred_entails_def)
+lemma upred_entail_eq_refl [simp]: "P \<stileturn>\<turnstile> P" by (auto simp: upred_entail_eq_def)
 
 lemma upred_entails_eq: "P=Q \<Longrightarrow> P\<turnstile>Q" by simp
 lemma upred_entails_eq_eq: "P=Q \<Longrightarrow> P\<stileturn>\<turnstile>Q" using upred_entails_eq upred_entail_eq_def by blast
@@ -248,6 +249,8 @@ lemma upred_later_mono_extL: "P\<^emph>R\<turnstile>Q \<Longrightarrow> (\<trian
   by transfer
   (meson diff_le_self n_incl_refl ne_sprop_weaken ofe_down_contr ofe_eq_limit valid_raw_non_expansive)
 
+lemma upred_laterI: "P \<turnstile> \<triangleright>P" by transfer simp
+
 lemma upred_later_sep: "\<triangleright>(P\<^emph>Q) \<stileturn>\<turnstile> (\<triangleright>P) \<^emph> \<triangleright>Q"
   apply (rule upred_entail_eqI) 
   apply transfer 
@@ -256,6 +259,10 @@ lemma upred_later_sep: "\<triangleright>(P\<^emph>Q) \<stileturn>\<turnstile> (\
   apply (smt (verit, ccfv_threshold) Rep_sprop camera_extend diff_le_self mem_Collect_eq ofe_refl 
     ofe_sym order_refl upred_def_def upred_weaken)
   by (meson diff_le_self ofe_mono)
+
+lemma upred_later_impl: "(\<triangleright> (P \<longrightarrow>\<^sub>u Q)) \<turnstile> ((\<triangleright>P) \<longrightarrow>\<^sub>u (\<triangleright>Q))"
+  by transfer
+    (smt (verit, ccfv_threshold) Rep_sprop diff_le_mono diff_le_self le_zero_eq mem_Collect_eq)
 
 lemma upred_persis_later: "\<box>\<triangleright>P \<stileturn>\<turnstile> \<triangleright>\<box>P"
   by (rule upred_entail_eqI)
@@ -333,6 +340,9 @@ lemma false_sep [simp]: "(P \<^emph> \<upharpoonleft>False) = \<upharpoonleft>Fa
 lemma false_entails [simp]: "\<upharpoonleft>False \<turnstile> P"
   by transfer' blast
 
+lemma false_wand [simp]: "((\<upharpoonleft>False) -\<^emph> P) = upred_emp"
+  by transfer simp
+
 lemma pure_dupl: "(\<upharpoonleft>b) = (\<upharpoonleft>b) \<^emph> (\<upharpoonleft>b)"
   by transfer (meson n_incl_def n_incl_refl)
 
@@ -407,6 +417,9 @@ lemma upred_pers_impl_pure: "\<box>((\<upharpoonleft>P)\<longrightarrow>\<^sub>u
 lemma upred_implI: "P\<and>\<^sub>uQ\<turnstile>R \<Longrightarrow> P\<turnstile>(Q\<longrightarrow>\<^sub>uR)"
   by transfer (meson incl_n_incl)
 
+lemma upred_implI': "P\<turnstile>(Q\<longrightarrow>\<^sub>uR) \<Longrightarrow> P\<and>\<^sub>uQ\<turnstile>R"
+  by transfer (metis \<epsilon>_right_id incl_def order_refl)
+
 lemma upred_implI_pure: "(P \<Longrightarrow> Q\<turnstile>R) \<Longrightarrow> Q\<turnstile>((\<upharpoonleft>P)\<longrightarrow>\<^sub>uR)"
   apply transfer using incl_n_incl by blast 
 
@@ -425,6 +438,61 @@ lemma upred_emp_impl: "(upred_emp \<longrightarrow>\<^sub>u P) \<stileturn>\<tur
 lemma upred_holds_persis: "upred_holds P \<Longrightarrow> upred_holds (\<box>P)"
   apply transfer using camera_core_n_valid by blast
 
+lemma entails_impl_true: "(P \<turnstile> Q) \<longleftrightarrow> (upred_emp \<turnstile> (P\<longrightarrow>\<^sub>uQ))"
+  by transfer (metis camera_core_id camera_core_n_valid incl_def order_refl)
+
+lemma upred_conj_dupl: "P \<stileturn>\<turnstile> P \<and>\<^sub>u P"
+  apply (rule upred_entail_eqI)
+  by transfer simp
+
+lemma loeb_weak: "((\<triangleright>P) \<turnstile> (P::'a::ucamera upred_f)) \<Longrightarrow> (upred_emp \<turnstile> P)"
+proof -
+  assume assm: "(\<triangleright>P) \<turnstile> P"
+  define floeb_pre where floeb: "floeb_pre \<equiv> \<lambda>P (Q::'a upred_f). ((\<triangleright>Q) \<longrightarrow>\<^sub>u P)"
+  have "\<And>Q. contractive (floeb_pre Q)" apply (auto simp: contractive_def floeb) apply transfer
+    apply auto
+    apply (smt (verit, best) Rep_sprop Suc_less_eq Suc_pred Zero_not_Suc diff_Suc_Suc diff_self_eq_0 
+      diff_zero le_antisym le_imp_less_Suc lessI less_Suc_eq_le less_nat_zero_code mem_Collect_eq 
+      nat.inject nat_le_linear not0_implies_Suc not_gr_zero not_less_eq_eq order.trans order_refl zero_less_diff)
+    by (smt (verit, best) Rep_sprop Suc_pred bot_nat_0.not_eq_extremum diff_is_0_eq lessI 
+      less_or_eq_imp_le mem_Collect_eq order.trans zero_less_diff)
+  then have floeb_contr: "\<And>Q. (floeb_pre Q) \<in> {f. contractive f}" by simp
+  define Q where q: "Q = fixpoint (Abs_contr (floeb_pre P))"
+  have q_eq: "Q \<stileturn>\<turnstile> ((\<triangleright>Q) \<longrightarrow>\<^sub>u P)" 
+    apply (rule upred_entail_eqI)
+    using banachs_fixed_point1[of "(Abs_contr (floeb_pre P))", unfolded q[symmetric] 
+      Abs_contr_inverse[OF floeb_contr] ofe_eq_upred_f.rep_eq, unfolded floeb]
+    by blast
+  have "\<triangleright>Q \<turnstile> P" 
+    apply (rule upred_entails_trans[OF upred_entail_eqL[OF upred_conj_dupl]])
+    apply (rule upred_entails_substE'[OF upred_laterI])
+    apply (rule upred_entails_trans[OF _ assm])
+    apply (rule upred_implI')
+    apply (rule upred_entails_trans[OF _ upred_later_impl])
+    apply (rule upred_later_mono)
+    by (rule upred_entail_eqL[OF q_eq])
+  show ?thesis 
+    apply (rule upred_entails_trans[OF _ assm])
+    apply (rule upred_entails_trans[OF _ upred_later_mono[OF \<open>\<triangleright>Q\<turnstile>P\<close>]])
+    apply (rule upred_entails_trans[OF _ upred_laterI])+
+    apply (rule upred_entails_trans[OF _ upred_entail_eqR[OF q_eq]])
+    by (auto simp: entails_impl_true[symmetric] \<open>\<triangleright>Q\<turnstile>P\<close>)
+qed
+
+lemma loeb: "((\<triangleright>P) \<longrightarrow>\<^sub>u P ) \<turnstile> P"
+  apply (subst entails_impl_true)
+  apply (rule loeb_weak)
+  apply (rule upred_implI)
+  apply (rule upred_entails_substE'[OF upred_entail_eqL[OF upred_conj_dupl]])
+  apply (subst upred_conj_assoc)
+  apply (rule upred_entails_substE'[OF upred_laterI])
+  apply (subst upred_conj_comm)
+  apply (subst upred_conj_comm2R)
+  apply (rule upred_entails_substE'[OF upred_later_impl])
+  apply (rule upred_entails_substE'[OF upred_impl_apply, unfolded upred_conj_assoc])
+  apply (subst upred_conj_comm)
+  by (auto intro: upred_entails_trans[OF upred_impl_apply])
+  
 definition can_be_split :: "('a::ucamera) upred_f \<Rightarrow> 'a upred_f \<Rightarrow> 'a upred_f \<Rightarrow> bool" where
   "can_be_split PQ P Q \<equiv> PQ \<stileturn>\<turnstile> P \<^emph> Q"
 
@@ -611,8 +679,10 @@ lemma bupd_plain: "plain P \<Longrightarrow> \<Rrightarrow>\<^sub>b P \<turnstil
 lemma plain_pure [plain_rule]: "plain (\<upharpoonleft>P)" unfolding plain_def by transfer blast
 lemma plain_conj [plain_rule]: "\<lbrakk>plain P; plain Q\<rbrakk> \<Longrightarrow> plain (P\<and>\<^sub>uQ)" unfolding plain_def by transfer fast
 lemma plain_disj [plain_rule]: "\<lbrakk>plain P; plain Q\<rbrakk> \<Longrightarrow> plain (P\<or>\<^sub>uQ)" unfolding plain_def by transfer fast
-lemma plain_forall [plain_rule]: "(\<And>x. plain (P x)) \<Longrightarrow> plain (\<forall>\<^sub>u x. P x)" unfolding plain_def by transfer blast
-lemma plain_exists [plain_rule]: "(\<And>x. plain (P x)) \<Longrightarrow> plain (\<exists>\<^sub>u x. P x)" unfolding plain_def by transfer blast
+lemma plain_forall [plain_rule]: "(\<And>x. plain (P x)) \<Longrightarrow> plain (\<forall>\<^sub>u x. P x)" 
+  unfolding plain_def by transfer blast
+lemma plain_exists [plain_rule]: "(\<And>x. plain (P x)) \<Longrightarrow> plain (\<exists>\<^sub>u x. P x)" 
+  unfolding plain_def by transfer blast
 lemma plain_impl [plain_rule]: "\<lbrakk>plain P; plain Q\<rbrakk> \<Longrightarrow> plain (P\<longrightarrow>\<^sub>uQ)" 
   unfolding plain_def apply transfer
   by (smt (verit, ccfv_threshold) Rep_sprop \<epsilon>_right_id incl_def mem_Collect_eq n_incl_\<epsilon> order_refl)

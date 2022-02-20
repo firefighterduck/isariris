@@ -35,32 +35,32 @@ notation Var ("V_")
 class to_val = fixes to_val :: "'a \<Rightarrow> val" ("#[_]")
 
 instantiation int :: to_val begin
-  definition to_val_int :: "int \<Rightarrow> val" where "to_val_int i = LitV (LitInt i)"
+  definition to_val_int :: "int \<Rightarrow> val" where [simp]: "to_val_int i = LitV (LitInt i)"
 instance ..
 end
 
 instantiation bool :: to_val begin
-  definition to_val_bool :: "bool \<Rightarrow> val" where "to_val_bool b = LitV (LitBool b)"
+  definition to_val_bool :: "bool \<Rightarrow> val" where [simp]: "to_val_bool b = LitV (LitBool b)"
 instance ..
 end
 
 instantiation val :: to_val begin
-  definition to_val_val :: "val \<Rightarrow> val" where "to_val_val v = v"
+  definition to_val_val :: "val \<Rightarrow> val" where [simp]: "to_val_val v = v"
 instance ..
 end
 
 instantiation loc :: to_val begin
-  definition to_val_loc :: "loc \<Rightarrow> val" where "to_val_loc l = LitV (LitLoc l)"
+  definition to_val_loc :: "loc \<Rightarrow> val" where [simp]: "to_val_loc l = LitV (LitLoc l)"
 instance ..
 end
 
 instantiation unit :: to_val begin
-  definition to_val_unit :: "unit \<Rightarrow> val" where "to_val_unit _ = LitV LitUnit"
+  definition to_val_unit :: "unit \<Rightarrow> val" where [simp]: "to_val_unit _ = LitV LitUnit"
 instance ..
 end
 
 instantiation prod :: (to_val,to_val) to_val begin
-  definition to_val_prod :: "('a\<times>'b) \<Rightarrow> val" where "to_val_prod \<equiv> \<lambda>(x,y). PairV #[x] #[y]"
+  definition to_val_prod :: "('a\<times>'b) \<Rightarrow> val" where [simp]: "to_val_prod \<equiv> \<lambda>(x,y). PairV #[x] #[y]"
 instance ..
 end
 

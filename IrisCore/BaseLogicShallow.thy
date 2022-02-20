@@ -23,6 +23,7 @@ instantiation upred_f :: (ucamera) ofe begin
     "\<lambda>P Q. \<forall>a n. n_valid a n \<longrightarrow> (P a n \<longleftrightarrow> Q a n)" .
 instance by (standard) (auto simp: n_equiv_upred_f.rep_eq ofe_eq_upred_f.rep_eq)
 end
+
 instantiation upred_f :: (ucamera) cofe begin
   lift_definition lim_upred_f :: "'a upred_f chain \<Rightarrow> 'a upred_f" is
     "\<lambda>(c::'a upred_f chain) (a::'a) n. \<forall>m\<le>n. n_valid a m \<longrightarrow> Rep_upred_f (Rep_chain c m) a m"

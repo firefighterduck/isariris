@@ -325,6 +325,12 @@ lemma head_step_to_val: "\<lbrakk>e1 \<sigma>1 \<kappa> \<Rightarrow>\<^sub>h e2
 definition red :: "expr \<Rightarrow> state \<Rightarrow> bool" where
   "red e1 \<sigma>1 \<equiv> \<exists>\<kappa> e2 \<sigma>2 efs. (e1 \<sigma>1 \<kappa> \<Rightarrow>\<^sub>h e2 \<sigma>2 efs)"
 
+lemma red_val: "red (of_val v) \<sigma> = False"
+  unfolding red_def by auto (metis option.simps(3) to_val.simps(1) val_head_stuck)
+
+lemma fill_item_not_val: "False \<longleftrightarrow> (of_val v = fill_item K e)"
+  by (induction K) auto
+
 definition atomic :: "expr \<Rightarrow> bool" where
   "atomic e \<equiv> \<forall>\<sigma>1 \<kappa> e2 \<sigma>2 efs. ((e \<sigma>1 \<kappa> \<Rightarrow>\<^sub>h e2 \<sigma>2 efs) \<longrightarrow> \<not>red e2 \<sigma>2)"
 

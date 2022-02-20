@@ -25,6 +25,17 @@ class discrete = ofe + assumes d_equiv: "n_equiv n a b = (a=b)" and d_eq: "ofe_e
 lemma ofe_down_contr: "n_equiv n x y \<longleftrightarrow> (\<forall>m\<le>n. n_equiv m x y)"
   by (auto simp: ofe_trans ofe_sym intro: ofe_mono)
 
+lemma ofe_trans_eqL: "n_equiv n x y \<Longrightarrow> n_equiv n x z \<longleftrightarrow> n_equiv n y z"
+  using ofe_sym ofe_trans by blast
+
+lemma ofe_trans_eqR: "n_equiv n x y \<Longrightarrow> n_equiv n z x \<longleftrightarrow> n_equiv n z y"
+  using ofe_sym ofe_trans by blast
+
+lemma ofe_trans': "\<lbrakk>ofe_eq x y; ofe_eq y z\<rbrakk> \<Longrightarrow> ofe_eq x z"
+  by (auto simp: ofe_limit intro: ofe_trans)
+
+lemma ofe_eq_equiv: "ofe_eq x y \<Longrightarrow> n_equiv n x y" by (simp add: ofe_limit)
+  
 subsection \<open> Basic OFE instances \<close>
 subsubsection \<open>unit OFE\<close>
 instantiation unit :: ofe begin

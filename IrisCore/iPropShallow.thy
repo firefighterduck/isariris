@@ -67,7 +67,7 @@ ML \<open>
     let fun mk_getter name cmraT = Free (getter_prefix ^ name, (the (#cmraPT cmras_data))-->cmraT)
         fun mk_own name cmraT = Free (constructor_prefix ^ name, cmraT-->(the (#cmraPT cmras_data)))$
           Free (Binding.name_of resN, cmraT)
-    in 
+    in
       Library.foldl (fn (lthy, cmra_data:camera_data) => 
         (mk_def (curry HOLogic.mk_eq (mk_getter (#name cmra_data) (#camera cmra_data)) 
           (the (#getter cmra_data))) 

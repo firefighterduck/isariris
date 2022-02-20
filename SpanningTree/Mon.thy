@@ -3,6 +3,7 @@ imports SpanningTreeCameras
   "../IrisCore/Invariant"
   "../HeapLang/Notation"
   "../IrisCore/Misc"
+  "../IrisCore/AuthHeap"
 begin
 
 subsection \<open> The underlying structures of the spanning tree \<close>
