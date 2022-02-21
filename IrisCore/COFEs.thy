@@ -62,7 +62,7 @@ subgoal for n'
   done
 done
 
-lemma banachs_fixes_point2: "ofe_eq x (Rep_contr f x) \<Longrightarrow> ofe_eq x (fixpoint f)"
+lemma fixpoint_unique: "ofe_eq x (Rep_contr f x) \<Longrightarrow> ofe_eq x (fixpoint f)"
 apply (auto simp: ofe_limit)
 subgoal for n
 proof (induction n)

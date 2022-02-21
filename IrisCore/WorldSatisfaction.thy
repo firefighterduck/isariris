@@ -83,6 +83,16 @@ proof -
   show ?thesis by (auto simp: ownE_def own_inv_def un_op constr_inv_def op_prod_def \<epsilon>_left_id)
 qed
 
+lemma ownE_op': "(\<upharpoonleft>(E1 \<inter> E2 = {})) \<and>\<^sub>u ownE (E1 \<union> E2) \<stileturn>\<turnstile> ownE E1 \<^emph> ownE E2"
+  apply (auto simp: upred_entail_eq_def)
+  apply (subst upred_conj_comm)
+  apply (auto intro!: upred_pure_impl' upred_entail_eqL[OF ownE_op])
+  apply (auto simp: ownE_def own_inv_def constr_inv_def op_prod_def \<epsilon>_left_id
+    intro!: upred_entails_trans[OF upred_entail_eqR[OF own_op]])
+  apply transfer
+  apply (auto simp: op_dset_def prod_n_valid_def \<epsilon>_n_valid valid_raw_dset_def split: dset.splits)
+  by (auto simp: n_incl_def op_dset_def n_equiv_dset_def)
+
 lemma ownE_op_minus: "E1 \<subseteq> E2 \<Longrightarrow> ownE (E1 \<union> (E2-E1)) \<stileturn>\<turnstile> ownE E1 \<^emph> ownE (E2-E1)"
 proof -
   assume "E1 \<subseteq> E2"

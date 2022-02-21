@@ -69,6 +69,8 @@ lemma upred_holds_entails: "upred_holds P \<longleftrightarrow> ((upred_emp) \<t
 lemma upred_holds_entails': "upred_holds P \<Longrightarrow> P \<turnstile> upred_emp"
   by (simp add: upred_entails.rep_eq upred_pure.rep_eq)
 
+lemma upred_emp_entailed [simp]: "P \<turnstile> upred_emp" by transfer simp
+  
 lemma upred_entailsE: "P \<turnstile> Q \<Longrightarrow> (\<And>a n. \<lbrakk>n_valid a n; Rep_upred_f P a n\<rbrakk> \<Longrightarrow> Rep_upred_f Q a n)"
   by (auto simp: upred_entails.rep_eq)
 
@@ -91,7 +93,10 @@ lemma upred_true_conj: "(P \<and>\<^sub>u upred_emp) = P"
 
 lemma upred_true_conj': "(upred_emp \<and>\<^sub>u P) = P" 
   by transfer simp
-  
+
+lemma upred_true_wand: "(upred_emp -\<^emph> P) \<turnstile> P"
+  by transfer (metis \<epsilon>_right_id order_refl)
+
 lemma upred_conj_comm: "P \<and>\<^sub>u Q = Q \<and>\<^sub>u P"
   by transfer fast  
 
@@ -237,6 +242,15 @@ lemma upred_persisE: "\<box> P \<turnstile> P"
   by (auto simp: upred_entails.rep_eq upred_persis.rep_eq)
     (metis camera_core_id n_incl_def nle_le ofe_refl upred_def_def upred_def_rep)
 
+lemma upred_persis_conj_sep: "(\<box>P) \<and>\<^sub>u (\<box>Q) \<turnstile> (\<box>P) \<^emph> \<box>Q"
+  by transfer (metis camera_core_id camera_core_idem ofe_refl)
+
+lemma upred_persis_sep:"(\<box>P) \<^emph> (\<box>Q) \<turnstile> \<box>(P\<^emph>Q)"
+  by transfer (metis camera_comm camera_core_id camera_core_idem camera_core_mono_n n_incl_def ofe_refl order_refl)  
+
+lemma upred_persis_idem: "\<box>P \<turnstile> \<box>\<box>P"
+  by transfer (metis camera_core_idem)
+    
 lemma upred_later_mono: "P\<turnstile>Q \<Longrightarrow> \<triangleright>P \<turnstile> \<triangleright>  Q"
   apply transfer
   using Rep_sprop diff_le_self by blast
@@ -318,6 +332,13 @@ lemma upred_entails_substI: "\<lbrakk>P\<turnstile>Q; R\<turnstile>T\<^emph>P\<r
 
 lemma upred_pure_impl: "(P \<Longrightarrow> Q \<turnstile> R) \<Longrightarrow> Q \<^emph> (\<upharpoonleft>P) \<turnstile> R"
   by (metis (full_types) entails_pure_extend upred_entails_eq upred_sep_comm upred_true_sep upred_wandE)
+
+lemma upred_pure_impl': "(P \<Longrightarrow> Q \<turnstile> R) \<Longrightarrow> Q \<and>\<^sub>u (\<upharpoonleft>P) \<turnstile> R"
+  by transfer simp
+
+lemma upred_pure_sep_conj: "(\<upharpoonleft>b) \<^emph> P \<stileturn>\<turnstile> \<upharpoonleft>b \<and>\<^sub>u P"
+  apply (rule upred_entail_eqI)
+  by transfer (metis camera_comm n_incl_def n_incl_refl order_refl)
 
 lemma upred_eqI: "\<upharpoonleft>(a=b) \<turnstile> a=\<^sub>ub"
   by transfer (simp add: ofe_refl)
@@ -426,9 +447,6 @@ lemma upred_implI_pure: "(P \<Longrightarrow> Q\<turnstile>R) \<Longrightarrow> 
 lemma upred_implE_pure: "\<lbrakk>P; R\<turnstile>Q\<rbrakk> \<Longrightarrow> ((\<upharpoonleft>P)\<longrightarrow>\<^sub>uR)\<turnstile>Q"
   by transfer (metis \<epsilon>_right_id incl_def order_refl)
 
-lemma upred_pers_mono: "P\<turnstile>Q \<Longrightarrow> \<box>P \<turnstile> \<box>Q"
-  apply transfer using camera_core_n_valid by blast
-
 lemma upred_emp_impl: "(upred_emp \<longrightarrow>\<^sub>u P) \<stileturn>\<turnstile> P"
   apply (rule upred_entail_eqI)  
   apply transfer apply auto
@@ -437,6 +455,9 @@ lemma upred_emp_impl: "(upred_emp \<longrightarrow>\<^sub>u P) \<stileturn>\<tur
 
 lemma upred_holds_persis: "upred_holds P \<Longrightarrow> upred_holds (\<box>P)"
   apply transfer using camera_core_n_valid by blast
+
+lemma upred_holds_persis': "upred_holds P \<Longrightarrow> P \<turnstile> \<box>P"
+apply transfer using camera_core_n_valid by blast
 
 lemma entails_impl_true: "(P \<turnstile> Q) \<longleftrightarrow> (upred_emp \<turnstile> (P\<longrightarrow>\<^sub>uQ))"
   by transfer (metis camera_core_id camera_core_n_valid incl_def order_refl)
@@ -460,7 +481,7 @@ proof -
   define Q where q: "Q = fixpoint (Abs_contr (floeb_pre P))"
   have q_eq: "Q \<stileturn>\<turnstile> ((\<triangleright>Q) \<longrightarrow>\<^sub>u P)" 
     apply (rule upred_entail_eqI)
-    using banachs_fixed_point1[of "(Abs_contr (floeb_pre P))", unfolded q[symmetric] 
+    using fixpoint_unfold[of "(Abs_contr (floeb_pre P))", unfolded q[symmetric] 
       Abs_contr_inverse[OF floeb_contr] ofe_eq_upred_f.rep_eq, unfolded floeb]
     by blast
   have "\<triangleright>Q \<turnstile> P" 
@@ -492,6 +513,24 @@ lemma loeb: "((\<triangleright>P) \<longrightarrow>\<^sub>u P ) \<turnstile> P"
   apply (rule upred_entails_substE'[OF upred_impl_apply, unfolded upred_conj_assoc])
   apply (subst upred_conj_comm)
   by (auto intro: upred_entails_trans[OF upred_impl_apply])
+
+lemma loeb_persis: "\<box>((\<box>\<triangleright>P) \<longrightarrow>\<^sub>u P ) \<turnstile> P"
+  apply (rule upred_entails_trans[OF _ upred_persisE])
+  apply (rule upred_entails_trans[OF _ loeb])
+  apply (rule upred_implI)
+  apply (rule upred_entails_substE'[OF upred_entail_eqR[OF upred_persis_later]])
+  apply (rule upred_entails_trans[OF upred_persis_conj_sep])
+  apply (rule upred_entails_substE[OF upred_persis_idem])
+  apply (subst upred_sep_comm)
+  apply (rule upred_entails_trans[OF upred_persis_sep])
+  by (auto intro!: upred_entails_trans[OF upred_persis_mono[OF upred_entails_conj_sep]] 
+    upred_entails_trans[OF upred_persis_mono[OF upred_impl_apply]] )
+
+lemma upred_persisIR:"\<box>P \<turnstile> Q \<Longrightarrow> \<box>P \<turnstile> \<box>Q"
+  by (simp add: camera_core_idem camera_core_n_valid upred_entails.rep_eq upred_persis.rep_eq)
+
+lemma upred_holds_subst: "\<lbrakk>P\<turnstile>Q; upred_holds P\<rbrakk> \<Longrightarrow> upred_holds Q"
+  by transfer simp
   
 definition can_be_split :: "('a::ucamera) upred_f \<Rightarrow> 'a upred_f \<Rightarrow> 'a upred_f \<Rightarrow> bool" where
   "can_be_split PQ P Q \<equiv> PQ \<stileturn>\<turnstile> P \<^emph> Q"
@@ -540,7 +579,8 @@ lemma persistent_holds_sep':
     upred_conj.rep_eq upred_entailsE upred_entails_conj_sep upred_persis.rep_eq upred_sep.rep_eq)
   
 named_theorems pers_rule
-  
+method pers_solver = (rule pers_rule)+
+
 lemma persistent_persis [pers_rule]: "persistent (\<box>P)"
   by (auto simp: persistent_def upred_persis.rep_eq upred_entails.rep_eq camera_core_idem)
 
@@ -617,8 +657,21 @@ lemma persistent_persisI: "\<lbrakk>persistent P; P\<turnstile>Q\<rbrakk> \<Long
 
 lemma upred_persis_frame: "\<lbrakk>persistent P; P\<^emph>Q\<turnstile>R\<rbrakk> \<Longrightarrow> P\<^emph>\<box>Q\<turnstile>\<box>R"
   by (meson persistent_persis persistent_persisI persistent_sep upred_entails_substE upred_persisE)
-  
-method pers_solver = (rule pers_rule)+
+
+lemma persistent_sep_conj: "\<lbrakk>persistent P; persistent Q\<rbrakk> \<Longrightarrow> P \<and>\<^sub>u Q \<turnstile> P \<^emph> Q"
+  unfolding persistent_def by transfer (metis camera_core_id ofe_refl)
+
+lemma persistent_loebI: "\<lbrakk>persistent P; P\<^emph>(\<box>\<triangleright>Q)\<turnstile>Q\<rbrakk> \<Longrightarrow> P\<turnstile>Q"
+  apply (rule upred_entails_trans[OF _ loeb_persis])
+  apply (rule upred_entails_trans[OF persistentI])
+  by (auto intro!: upred_persis_mono upred_entails_trans[OF upred_entails_refl upred_implI] 
+    upred_entails_trans[OF persistent_sep_conj], pers_solver)
+
+lemma loebI: "\<box>\<triangleright>Q\<turnstile>Q \<Longrightarrow> upred_holds Q"
+  apply (subst upred_holds_entails)
+  apply (rule persistent_loebI, pers_solver)
+  apply (subst upred_sep_comm)
+  by (auto simp: upred_true_sep)
   
 subsubsection \<open> Timeless predicates \<close>
 definition except_zero :: "'a::ucamera upred_f \<Rightarrow> 'a upred_f" ("\<diamondop>_") where 

@@ -54,12 +54,121 @@ lemma wp_value:
   by (auto simp: wp.psimps[OF assms] fupd_intro upred_wand_holdsE)
 
 lemma wp_strong_mono: 
-  assumes "wp_dom (s1, E1, e, P)" "wp_dom (s2, E2, e, Q)"
-    "s1 \<le> s2" "E1 \<subseteq> E2" 
-  shows "wp s1 E1 e P -\<^emph> (\<forall>\<^sub>u v. (P v ={E2}=\<^emph> Q v)) -\<^emph> wp s2 E2 e Q"
-  apply (rule upred_wand_holds2I)
-  sorry
-
+  assumes "\<And>E1 e P. wp_dom (s1, E1, e, P)" "\<And>E2 e Q. wp_dom (s2, E2, e, Q)"
+    "s1 \<le> s2" 
+  shows "\<forall>\<^sub>uE1 E2 e P Q. (\<upharpoonleft>(E1 \<subseteq> E2)) \<longrightarrow>\<^sub>u (wp s1 E1 e P -\<^emph> (\<forall>\<^sub>u v. (P v ={E2}=\<^emph> Q v)) -\<^emph> wp s2 E2 e Q)"
+  (is "upred_holds ?goal")  
+  apply (rule loebI)
+  apply (auto intro!: upred_forallI upred_implI_pure upred_wandI)
+  subgoal for E1 E2 e P Q
+  apply (subst wp.psimps[OF assms(1)[of E1]])
+  apply (subst wp.psimps[OF assms(2)[of E2]])
+  apply (cases "HeapLang.to_val e")
+  apply auto
+  apply (auto intro!: upred_forallI upred_wandI)
+    subgoal for \<sigma>1 \<kappa> \<kappa>s
+    apply (rule add_holds[OF fupd_mask_subseteq], assumption)
+    apply (rule upred_entails_trans[OF _ fupd_mask_trans[of E2 E1]])
+    apply (rule fupd_frame_mono)
+    apply (rule upred_entails_trans[OF upred_sep_comm2R])
+    apply (rule upred_entails_trans[OF upred_sep_comm4_2])
+    apply (rule upred_entails_trans[OF upred_sep_comm3M])
+    apply (rule upred_entails_trans[OF upred_sep_comm2R])
+    apply (rule upred_entails_substE[OF upred_forall_inst[of _ \<sigma>1]])
+    apply (rule upred_entails_substE[OF upred_forall_inst[of _ \<kappa>]])
+    apply (rule upred_entails_substE[OF upred_forall_inst[of _ \<kappa>s]])
+    apply (rule upred_entails_substE[OF upred_wand_apply, unfolded upred_sep_assoc_eq])
+    apply (rule upred_entails_trans[OF _ fupd_mask_trans[of E1 "{}"]])
+    apply (rule fupd_frame_mono)
+    apply (simp add: upred_sep_assoc_eq)
+    apply (rule upred_entails_trans[OF upred_sep_comm2R])
+    apply (rule upred_pure_impl)
+    apply (rule upred_entails_trans[OF _ fupd_empty])
+    apply (rule upred_entails_trans[OF _ upred_entails_eq[OF upred_sep_comm]])
+    apply (rule upred_sep_pure)
+    apply (auto intro!: upred_forallI upred_wandI upred_pure_impl)
+    subgoal for e2 \<sigma>2 efs
+      apply (rule upred_entails_substE[OF upred_forall_inst[of _ e2]])
+      apply (rule upred_entails_substE[OF upred_forall_inst[of _ \<sigma>2]])
+      apply (rule upred_entails_substE[OF upred_forall_inst[of _ efs]])
+      apply simp
+      apply (rule upred_entails_substE[OF upred_true_wand])
+      apply (rule upred_entails_trans[OF upred_sep_comm3L])
+      apply (rule upred_entails_trans[OF upred_sep_comm3M])
+      apply (rule upred_entails_trans[OF upred_sep_comm2R])
+      apply (rule upred_entails_substE[OF upred_entail_eqL[OF upred_persis_later]])
+      apply (rule upred_entails_trans[OF upred_sep_comm2R])
+      apply (rule upred_entails_trans[OF upred_sep_comm3M])
+      apply (rule upred_entails_trans[OF upred_sep_comm3L])
+      apply (rule fupd_frame_mono)
+      apply (rule upred_entails_trans[OF upred_sep_comm3L])
+      apply (rule upred_entails_trans[OF upred_sep_comm3M])
+      apply (rule upred_entails_substE[OF upred_entail_eqR[OF upred_later_sep], unfolded upred_sep_assoc_eq])
+      apply (rule upred_later_mono_extR)
+      apply (simp add: upred_sep_assoc_eq)
+      apply (rule upred_entails_trans[OF upred_sep_comm3M])
+      apply (rule upred_entails_trans[OF upred_sep_comm3L])
+      apply (rule fupd_frame_mono)
+      apply (rule upred_entails_trans[OF _ fupd_mask_trans[of "{}" E1]])
+      apply (rule fupd_frame_mono)
+      apply (simp add: upred_sep_assoc_eq)
+      apply (rule upred_entails_trans[OF _ fupd_mono[OF upred_entails_eq[OF upred_sep_comm2L]]])
+      apply (rule upred_entails_trans[OF _ fupd_mono[OF upred_sep_comm2R]])
+      apply (rule upred_entails_trans[OF _ upred_wand_holdsE[OF fupd_frame_r]])
+      apply (rule upred_entails_trans[OF upred_sep_comm3M])
+      apply (rule upred_entails_trans[OF upred_sep_comm2R])
+      apply (rule upred_frame)
+      apply (rule upred_entails_trans[OF upred_sep_comm3M])
+      apply (rule upred_entails_trans[OF upred_sep_comm2R])
+      apply (auto simp: upred_true_sep intro!: fupd_frame_mono)
+      apply (rule split_frame[of _ "(\<box> ?goal) \<^emph> _ \<^emph> _"  "(\<box> ?goal) \<^emph> [\<^emph>\<^sub>l:] efs \<lambda>x. wp s1 UNIV x (\<lambda>_. upred_emp)"])
+      apply (rule can_be_split_sepR)
+      apply (rule can_be_split_sepL)
+      apply (rule can_be_split_sepL)
+      apply (rule persistent_dupl', pers_solver)
+      apply (rule can_be_split_refl)
+      subgoal 
+        apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm2L]])
+        apply (rule upred_entails_trans[OF upred_sep_comm2R])
+        apply (rule upred_entails_substE[OF upred_persisE])
+        apply (rule upred_entails_substE[OF upred_forall_inst[of _ E1]])
+        apply (rule upred_entails_substE[OF upred_forall_inst[of _ E2]])
+        apply (rule upred_entails_substE[OF upred_forall_inst[of _ e2]])
+        apply (rule upred_entails_substE[OF upred_forall_inst[of _ P]])
+        apply (rule upred_entails_substE[OF upred_forall_inst[of _ Q]])
+        by (auto intro!: upred_entails_substE[OF upred_entail_eqL[OF upred_emp_impl]]
+          upred_entails_substE[OF upred_wand_apply, unfolded upred_sep_assoc_eq]
+          upred_entails_trans[OF upred_wand_apply, unfolded upred_sep_assoc_eq])
+      apply (rule upred_wandE)
+      apply (rule upred_entails_trans[OF _ upred_wand_holdsE[OF sep_emp_map_list_entails']])
+      apply (rule upred_persis_mono)
+      apply (rule upred_entails_trans[OF upred_forall_inst[of _ UNIV]])
+      apply (rule upred_entails_trans[OF upred_forall_inst[of _ UNIV]])
+      apply (rule upred_forallI)
+      subgoal for x
+      apply (rule upred_entails_trans[OF upred_forall_inst[of _ x]])
+      apply (rule upred_entails_trans[OF upred_forall_inst[of _ "(\<lambda>_. upred_emp)"]])
+      apply (rule upred_entails_trans[OF upred_forall_inst[of _ "(\<lambda>_. upred_emp)"]])
+      apply (auto intro!: upred_entails_trans[OF upred_entail_eqL[OF upred_emp_impl]])
+      apply (rule upred_wandI)
+      apply (subst upred_sep_comm)
+      apply (rule upred_entails_trans[OF upred_wand_apply])
+      apply (rule add_holds[OF wp_fupd_helper])
+      apply (subst upred_sep_comm)
+      by (auto intro: upred_entails_trans[OF upred_wand_apply])
+      done
+    apply (rule upred_pureI)
+    using assms(3)
+    apply (cases s1; cases s2)
+    by auto
+  subgoal for v
+    apply (rule upred_entails_substE[OF upred_forall_inst[of _ v]])
+    apply (rule upred_wandE)
+    apply (rule upred_entails_trans[OF _ fupd_ext])
+  by (auto intro!: upred_entails_trans[OF upred_weakeningR] upred_wand_holdsE[OF fupd_mask_mono])
+  done
+done
+  
 lemma wp_lift_step_fupdN: 
 assumes "HeapLang.to_val e1 = None"
 shows "(\<forall>\<^sub>u \<sigma>1 \<kappa> \<kappa>s. ((state_interp \<sigma>1 (\<kappa>@\<kappa>s)) ={E,Set.empty}=\<^emph>

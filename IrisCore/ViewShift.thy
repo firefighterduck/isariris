@@ -40,6 +40,12 @@ proof -
   then show ?thesis by (simp add: fancy_upd_def)
 qed  
 
+lemma fupd_empty: "P \<turnstile> \<Turnstile>{ {} }=>P"
+apply (auto simp: fancy_upd_def intro!: upred_wandI upred_entails_trans[OF _ updI]
+  upred_entails_trans[OF _ except_zeroI])
+apply (subst upred_sep_comm)
+by simp
+
 lemma fupd_frame_r: "((\<Turnstile>{E1,E2}=> P) \<^emph> R) ={E1,E2}=\<^emph> (P \<^emph> R)"
 apply (rule upred_wand_holdsI)
 unfolding fancy_upd_def
@@ -113,6 +119,57 @@ by (auto intro: upred_wandE)
 
 lemma persistent_vs [pers_rule]: "persistent (P ={E1,E2}=> Q)"
   unfolding view_shift_def by pers_solver
+
+lemma fupd_ext: "(\<Turnstile>{E1,E2}=>P) \<turnstile> (P={E2,E3}=\<^emph>Q)={E1,E3}=\<^emph>Q"
+  apply (rule upred_wandI)
+  apply (subst upred_sep_comm)
+  apply (rule upred_entails_trans[OF fupd_frame_mono[OF upred_entails_trans[OF upred_entails_eq[OF 
+    upred_sep_comm] upred_wand_apply]]])
+  by (auto intro: upred_entails_trans[OF fupd_mask_trans])
+
+lemma fupd_mask_frameR': "E1 \<inter> Ef = {} \<Longrightarrow> (\<Turnstile>{E1,E2}=> ((\<upharpoonleft>(E2 \<inter> Ef = {})) \<longrightarrow>\<^sub>u P)) ={E1\<union>Ef,E2\<union>Ef}=\<^emph>P"
+apply (rule upred_wand_holdsI)
+unfolding fancy_upd_def
+apply (auto simp: upred_sep_assoc_eq intro!: upred_wandI upred_entails_substE[OF upred_entail_eqL[OF ownE_op]])
+apply (subst upred_sep_assoc_eq[symmetric, of _ wsat "ownE E1"])
+apply (rule upred_entails_trans[OF upred_sep_comm2R])
+apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm2L]])
+apply (rule upred_entails_trans[OF upred_sep_comm2R])
+apply (rule upred_entails_substE[OF upred_wand_apply, unfolded upred_sep_assoc_eq])
+apply (auto simp: upred_sep_assoc_eq intro!: upd_mono_ext except_zero_mono_ext)
+apply (rule upred_entails_trans[OF _ upred_entails_eq[OF upred_sep_comm2L]])
+apply (rule upred_entails_trans[OF _ upred_sep_comm2R])
+apply (rule upred_entails_trans[OF upred_sep_comm3M])
+apply (rule upred_entails_trans[OF upred_sep_comm2R])
+apply (rule upred_frame)
+apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm2L]])
+apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm]])
+apply (rule upred_entails_substE[OF upred_entail_eqR[OF ownE_op']])
+apply (rule upred_entails_substE[OF upred_entail_eqR[OF upred_pure_sep_conj]])
+apply (subst upred_sep_assoc_eq)
+apply (rule upred_entails_trans[OF upred_sep_comm2R])
+apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm2L]])
+apply (rule upred_entails_trans[OF upred_sep_comm2R])
+apply (rule upred_entails_substE[OF upred_entail_eqL[OF upred_pure_sep_conj], unfolded upred_sep_assoc_eq])
+by (auto intro: upred_entails_substE[OF upred_impl_apply])
+
+lemma fupd_mask_frameR: "E1 \<inter> Ef = {} \<Longrightarrow> (\<Turnstile>{E1,E2}=> P) ={E1\<union>Ef,E2\<union>Ef}=\<^emph>P"
+apply (rule upred_wand_holdsI)
+by (auto intro!: upred_entails_trans[OF _ upred_wand_holdsE[OF fupd_mask_frameR']] fupd_mono upred_implI_pure)
+
+lemma fupd_mask_mono: "E1 \<subseteq> E2 \<Longrightarrow> (\<Turnstile>{E1}=>P) ={E2}=\<^emph>P"
+proof -
+  assume assm: "E1 \<subseteq> E2"
+  then have "E1\<union>E2 = E2" by auto
+  then have "E1 \<inter> (E2-E1) = {}" by simp
+  from fupd_mask_frameR[OF this, of E1 P, simplified, unfolded \<open>E1\<union>E2 = E2\<close>]
+  show ?thesis .
+qed
+
+lemma wp_fupd_helper: "\<forall>\<^sub>u v. (upred_emp ={E}=\<^emph> upred_emp)"
+apply (subst upred_holds_entails)
+apply (rule upred_forallI)
+using fupd_intro upred_holds_entails by auto
 
 abbreviation fancy_step :: "mask \<Rightarrow> mask \<Rightarrow> iprop \<Rightarrow> iprop" ("\<Turnstile>{_}[_]\<triangleright>=>_") where
   "fancy_step Eo Ei Q \<equiv> \<Turnstile>{Eo,Ei}=> \<triangleright> \<Turnstile>{Ei,Eo}=> Q"

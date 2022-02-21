@@ -37,6 +37,56 @@ abbreviation sep_fold_multiset :: "iprop multiset \<Rightarrow> iprop" ("[\<^emp
 
 abbreviation sep_map_multiset :: "iprop \<Rightarrow> iprop multiset \<Rightarrow> iprop" ("[\<^emph>\<^sub># _] _") where
   "sep_map_multiset acc m \<equiv> fold_mset (\<^emph>) acc m"
+
+lemma sep_emp_map_list_entails:
+  "\<lbrakk>\<And>x. f x \<turnstile> g x; acc1 \<turnstile> acc2\<rbrakk> \<Longrightarrow> (foldl (\<lambda>P x. P \<^emph> f x) acc1 l) \<turnstile> (foldl (\<lambda>P x. P \<^emph> g x) acc2 l)"
+proof (induction l arbitrary: acc1 acc2)
+  case Nil
+  then show ?case by auto
+next
+  case (Cons a l)
+  have "acc1 \<^emph> f a \<turnstile> acc2 \<^emph> g a" apply (rule upred_sep_mono)
+    using Cons by auto
+  from Cons(1)[OF Cons(2) this] show ?case by auto
+qed
+
+lemma fold_sep_end: "foldl (\<lambda>P x. P \<^emph> f x) acc (a#l) = (foldl (\<lambda>P x. P \<^emph> f x) acc l) \<^emph> (f a)"
+  by (induction l arbitrary: acc) (auto simp: upred_sep_comm2_eq)
+
+lemma fold_sep_end2: "foldl (\<lambda>P x. P \<^emph> f x \<^emph> g x) acc (a#l) = (foldl (\<lambda>P x. P \<^emph> f x \<^emph> g x) acc l) \<^emph> (f a) \<^emph> (g a)"
+  apply (induction l arbitrary: acc) apply auto
+  by (smt (verit, best) upred_sep_comm2_eq)
+
+lemma sep_emp_map_list_intro: "\<box>(\<forall>\<^sub>u x. f x) \<turnstile> (foldl (\<lambda>P x. P \<^emph> f x) upred_emp l)"
+  apply (induction l)
+  unfolding fold_sep_end
+  apply auto 
+  apply (rule upred_entails_trans[OF upred_entail_eqR[OF persistent_dupl]], pers_solver)
+  apply (auto intro!: upred_sep_mono)
+  subgoal for a
+  by (auto intro!: upred_entails_trans[OF upred_persisE] upred_entails_trans[OF upred_forall_inst[of _ a]])
+  done
+
+lemma sep_emp_map_list_sep: "foldl (\<lambda>P x. P \<^emph> f x \<^emph> g x) upred_emp l \<stileturn>\<turnstile> foldl (\<lambda>P x. P \<^emph> f x) upred_emp l \<^emph>
+  foldl (\<lambda>P x. P \<^emph> g x) upred_emp l"
+  apply (induction l)
+  unfolding fold_sep_end fold_sep_end2
+  apply (auto simp: upred_entail_eq_def upred_true_sep)
+  apply (smt (verit, del_insts) upred_frame upred_sep_assoc_eq upred_sep_comm2_eq)
+  by (smt (verit, del_insts) upred_frame upred_sep_assoc_eq upred_sep_comm2_eq)
+  
+lemma sep_emp_map_list_entails': 
+  "(\<box>(\<forall>\<^sub>u x. ((f x) -\<^emph> (g x)))) -\<^emph> (foldl (\<lambda>P x. P \<^emph> f x) upred_emp l) -\<^emph> (foldl (\<lambda>P x. P \<^emph> g x) upred_emp l)"
+  apply (rule upred_wand_holdsI)
+  apply (rule upred_entails_trans[OF sep_emp_map_list_intro,of _ l])
+  apply (rule upred_wandI)
+  apply (rule upred_entails_trans[OF upred_entail_eqR[OF sep_emp_map_list_sep]])
+  apply (induction l)
+  unfolding fold_sep_end fold_sep_end2
+  apply auto
+  apply (rule upred_entails_trans[OF upred_sep_comm2R])
+  apply (rule upred_entails_substE[OF upred_wand_apply, unfolded upred_sep_assoc_eq])
+  by (auto intro: upred_frame)
   
 lemma sep_comp_fun_commute: "comp_fun_commute (\<^emph>)"
   apply standard apply (simp add: comp_def)
