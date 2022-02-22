@@ -531,7 +531,10 @@ lemma upred_persisIR:"\<box>P \<turnstile> Q \<Longrightarrow> \<box>P \<turnsti
 
 lemma upred_holds_subst: "\<lbrakk>P\<turnstile>Q; upred_holds P\<rbrakk> \<Longrightarrow> upred_holds Q"
   by transfer simp
-  
+
+lemma upred_holds_forall: "(\<And>x. upred_holds (P x)) \<Longrightarrow> upred_holds (\<forall>\<^sub>u x. P x)"
+  by transfer' auto
+
 definition can_be_split :: "('a::ucamera) upred_f \<Rightarrow> 'a upred_f \<Rightarrow> 'a upred_f \<Rightarrow> bool" where
   "can_be_split PQ P Q \<equiv> PQ \<stileturn>\<turnstile> P \<^emph> Q"
 

@@ -104,6 +104,9 @@ by (auto simp: upred_weakeningL intro!: fupd_frame_mono)
 lemma fupd_intro: "P ={E}=\<^emph> P"
 by (auto intro: upred_wand_holdsI upred_entails_trans[OF fupd_mask_intro_subseteq[of E E]] fupd_mask_trans)
 
+lemma fupd_intro': "P\<turnstile>Q \<Longrightarrow> P ={E}=\<^emph> Q"
+  by (simp add: fupd_intro upred_entails_wand_holdsL)
+
 lemma fupd_mask_weaken: "E2 \<subseteq> E1 \<Longrightarrow> ((\<Turnstile>{E2,E1}=> upred_emp) ={E2,E3}=\<^emph> P) -\<^emph> \<Turnstile>{E1,E3}=> P"
 apply (rule upred_wand_holdsI)
 apply (rule add_holds[OF fupd_mask_subseteq], assumption)
@@ -165,11 +168,6 @@ proof -
   from fupd_mask_frameR[OF this, of E1 P, simplified, unfolded \<open>E1\<union>E2 = E2\<close>]
   show ?thesis .
 qed
-
-lemma wp_fupd_helper: "\<forall>\<^sub>u v. (upred_emp ={E}=\<^emph> upred_emp)"
-apply (subst upred_holds_entails)
-apply (rule upred_forallI)
-using fupd_intro upred_holds_entails by auto
 
 abbreviation fancy_step :: "mask \<Rightarrow> mask \<Rightarrow> iprop \<Rightarrow> iprop" ("\<Turnstile>{_}[_]\<triangleright>=>_") where
   "fancy_step Eo Ei Q \<equiv> \<Turnstile>{Eo,Ei}=> \<triangleright> \<Turnstile>{Ei,Eo}=> Q"

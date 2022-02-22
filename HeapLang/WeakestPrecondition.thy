@@ -8,7 +8,7 @@ definition state_interp :: "state \<Rightarrow> observation list \<Rightarrow> i
   "state_interp \<sigma> \<kappa>s = heap_interp (heap \<sigma>) \<^emph> proph_map_interp \<kappa>s (used_proph_id \<sigma>)"
 
 datatype stuckness = NotStuck | MaybeStuck
-instantiation stuckness :: ord begin
+instantiation stuckness :: order begin
 fun less_eq_stuckness :: "stuckness \<Rightarrow> stuckness \<Rightarrow> bool" where
   "less_eq_stuckness MaybeStuck NotStuck = False"
 | "less_eq_stuckness _ _ = True"
@@ -17,7 +17,19 @@ fun less_stuckness :: "stuckness \<Rightarrow> stuckness \<Rightarrow> bool" whe
 | "less_stuckness MaybeStuck MaybeStuck = False"
 | "less_stuckness NotStuck NotStuck = False"
 | "less_stuckness _ _ = True"
-instance ..
+instance proof
+fix x y :: stuckness
+show "(x < y) = (x \<le> y \<and> \<not> y \<le> x)" by (cases x; cases y) auto
+next
+fix x :: stuckness
+show "x\<le>x" by (cases x) auto
+next
+fix x y z :: stuckness
+show "x \<le> y \<Longrightarrow> y \<le> z \<Longrightarrow> x \<le> z" by (cases x; cases y; cases z) auto
+next
+fix x y :: stuckness
+show "x \<le> y \<Longrightarrow> y \<le> x \<Longrightarrow> x = y" by (cases x; cases y) auto
+qed
 end
 
 definition fill :: "ectx_item list \<Rightarrow> expr \<Rightarrow> expr"  where "fill K e =  fold fill_item K e"
@@ -53,6 +65,11 @@ lemma wp_value:
   shows "P v \<turnstile> wp s E (Val v) P"
   by (auto simp: wp.psimps[OF assms] fupd_intro upred_wand_holdsE)
 
+lemma wp_fupd_helper: "\<forall>\<^sub>u v. (upred_emp ={E}=\<^emph> upred_emp)"
+  apply (subst upred_holds_entails)
+  apply (rule upred_forallI)
+  using fupd_intro upred_holds_entails by auto
+  
 lemma wp_strong_mono: 
   assumes "\<And>E1 e P. wp_dom (s1, E1, e, P)" "\<And>E2 e Q. wp_dom (s2, E2, e, Q)"
     "s1 \<le> s2" 
@@ -168,7 +185,55 @@ lemma wp_strong_mono:
   by (auto intro!: upred_entails_trans[OF upred_weakeningR] upred_wand_holdsE[OF fupd_mask_mono])
   done
 done
+
+lemma fupd_wp: 
+  assumes "wp_dom (s, E, e, P)"
+  shows "\<Turnstile>{E}=> (wp s E e P) \<turnstile> wp s E e P"
+  unfolding wp.psimps[OF assms]
+  apply (cases "HeapLang.to_val e")
+  apply auto
+  apply (auto intro!: upred_forallI)
+  subgoal for \<sigma>1 \<kappa> \<kappa>s
+    apply (rule upred_wandI)
+    apply (rule upred_entails_trans[OF _ fupd_mask_trans[of E E]])
+    apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm]])
+    apply (rule fupd_frame_mono)
+    apply (rule upred_entails_substE[OF upred_forall_inst[of _ \<sigma>1]])
+    apply (rule upred_entails_substE[OF upred_forall_inst[of _ \<kappa>]])
+    apply (rule upred_entails_substE[OF upred_forall_inst[of _ \<kappa>s]])
+    by (auto intro: upred_entails_trans[OF upred_wand_apply])
+  by (simp add: fupd_mask_trans)
+
+lemma wp_fupd:
+  assumes "\<And>E e P. wp_dom (s, E, e, P)"
+  shows "wp s E e (\<lambda>v. \<Turnstile>{E}=> P v) \<turnstile> wp s E e P"
+  apply (rule add_holds[OF wp_strong_mono[OF assms assms, simplified]])
+  apply (rule upred_entails_substE[OF upred_forall_inst[of _ E]])
+  apply (rule upred_entails_substE[OF upred_forall_inst[of _ E]])
+  apply (rule upred_entails_substE[OF upred_forall_inst[of _ e]])
+  apply (rule upred_entails_substE[OF upred_forall_inst[of _ "(\<lambda>v. \<Turnstile>{E}=> P v)"]])
+  apply (rule upred_entails_substE[OF upred_forall_inst[of _ P]])
+  apply (auto intro!: upred_entails_substE[OF upred_entail_eqL[OF upred_emp_impl]]
+    upred_entails_trans[OF upred_wand_apply])
+  apply (rule add_holds[OF upred_holds_forall[OF fupd_mask_mono[of E E, simplified], of P]])
+  apply (subst upred_sep_comm)
+  by (rule upred_wand_apply)
   
+lemma wp_mono:
+  assumes "\<And>E e P. wp_dom (s, E, e, P)" "(\<And>v. P v \<turnstile> Q v)"
+  shows "wp s E e P \<turnstile> wp s E e Q"
+  apply (rule add_holds[OF wp_strong_mono[OF assms(1) assms(1), simplified]])
+  apply (rule upred_entails_substE[OF upred_forall_inst[of _ E]])
+  apply (rule upred_entails_substE[OF upred_forall_inst[of _ E]])
+  apply (rule upred_entails_substE[OF upred_forall_inst[of _ e]])
+  apply (rule upred_entails_substE[OF upred_forall_inst[of _ P]])
+  apply (rule upred_entails_substE[OF upred_forall_inst[of _ Q]])
+  apply (auto intro!: upred_entails_substE[OF upred_entail_eqL[OF upred_emp_impl]]
+    upred_entails_trans[OF upred_wand_apply])
+  apply (rule add_holds[OF upred_holds_forall[OF fupd_intro'[OF assms(2), of _ E]], of _ id, simplified])
+  apply (subst upred_sep_comm)
+  by (rule upred_wand_apply)
+          
 lemma wp_lift_step_fupdN: 
 assumes "HeapLang.to_val e1 = None"
 shows "(\<forall>\<^sub>u \<sigma>1 \<kappa> \<kappa>s. ((state_interp \<sigma>1 (\<kappa>@\<kappa>s)) ={E,Set.empty}=\<^emph>
