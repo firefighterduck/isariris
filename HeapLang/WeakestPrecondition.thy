@@ -1,47 +1,14 @@
 theory WeakestPrecondition
-imports "../IrisCore/Invariant" "../IrisCore/AuthHeap" HeapLang State PrimitiveLaws Notation
+imports "../IrisCore/Invariant" Notation LanguageDefs
 begin
 
 subsection \<open>Weakest Preconditions\<close>
-
-definition state_interp :: "state \<Rightarrow> observation list \<Rightarrow> iprop" where
-  "state_interp \<sigma> \<kappa>s = heap_interp (heap \<sigma>) \<^emph> proph_map_interp \<kappa>s (used_proph_id \<sigma>)"
-
-datatype stuckness = NotStuck | MaybeStuck
-instantiation stuckness :: order begin
-fun less_eq_stuckness :: "stuckness \<Rightarrow> stuckness \<Rightarrow> bool" where
-  "less_eq_stuckness MaybeStuck NotStuck = False"
-| "less_eq_stuckness _ _ = True"
-fun less_stuckness :: "stuckness \<Rightarrow> stuckness \<Rightarrow> bool" where
-  "less_stuckness MaybeStuck NotStuck = False"
-| "less_stuckness MaybeStuck MaybeStuck = False"
-| "less_stuckness NotStuck NotStuck = False"
-| "less_stuckness _ _ = True"
-instance proof
-fix x y :: stuckness
-show "(x < y) = (x \<le> y \<and> \<not> y \<le> x)" by (cases x; cases y) auto
-next
-fix x :: stuckness
-show "x\<le>x" by (cases x) auto
-next
-fix x y z :: stuckness
-show "x \<le> y \<Longrightarrow> y \<le> z \<Longrightarrow> x \<le> z" by (cases x; cases y; cases z) auto
-next
-fix x y :: stuckness
-show "x \<le> y \<Longrightarrow> y \<le> x \<Longrightarrow> x = y" by (cases x; cases y) auto
-qed
-end
-
-definition fill :: "ectx_item list \<Rightarrow> expr \<Rightarrow> expr"  where "fill K e =  fold fill_item K e"
-
-definition prim_step :: "expr \<Rightarrow> state \<Rightarrow> observation list \<Rightarrow> expr \<Rightarrow> state \<Rightarrow> expr list \<Rightarrow> bool" where
-  "prim_step e1 \<sigma>1 \<kappa> e2 \<sigma>2 efs \<equiv> \<exists>K e1' e2'. ((e1=fill K e1') \<and> (e2=fill K e2') \<and> head_step e1' \<sigma>1 \<kappa> e2' \<sigma>2 efs)"
-
+ 
 function wp :: "stuckness \<Rightarrow> mask \<Rightarrow> expr \<Rightarrow> (val \<Rightarrow> iprop) \<Rightarrow> iprop" where
   "wp s E e1 \<Phi> = (case HeapLang.to_val e1 of Some v \<Rightarrow> \<Turnstile>{E}=> (\<Phi> v)
     | None \<Rightarrow> (\<forall>\<^sub>u \<sigma>1 \<kappa> \<kappa>s.
       ((state_interp \<sigma>1 (\<kappa>@\<kappa>s)) ={E,Set.empty}=\<^emph>
-        ((\<upharpoonleft>(case s of NotStuck \<Rightarrow> red e1 \<sigma>1 | _ \<Rightarrow> True)) \<^emph>
+        ((\<upharpoonleft>(case s of NotStuck \<Rightarrow> reducible e1 \<sigma>1 | _ \<Rightarrow> True)) \<^emph>
         (\<forall>\<^sub>u e2 \<sigma>2 efs. ((\<upharpoonleft>(prim_step e1 \<sigma>1 \<kappa> e2 \<sigma>2 efs))
           ={Set.empty}\<triangleright>=\<^emph> (\<Turnstile>{Set.empty,E}=> ((state_interp \<sigma>2 \<kappa>s) \<^emph>
             (wp s E e2 \<Phi>) \<^emph> ([\<^emph>\<^sub>l:] efs (\<lambda>ef. wp s UNIV ef (\<lambda>_. upred_emp)))))))))))"
@@ -56,13 +23,13 @@ text \<open>
 \<close>
 context begin
 lemma wp_value_fupd: 
-  assumes "wp_dom (s, E, Val v, P)"
-  shows "wp s E (of_val v) P \<stileturn>\<turnstile> \<Turnstile>{E}=> P v"
+assumes "wp_dom (s, E, Val v, P)"
+shows "wp s E (of_val v) P \<stileturn>\<turnstile> \<Turnstile>{E}=> P v"
   by (auto simp: wp.psimps[OF assms])
 
 lemma wp_value: 
-  assumes "wp_dom (s, E, Val v, P)"
-  shows "P v \<turnstile> wp s E (Val v) P"
+assumes "wp_dom (s, E, Val v, P)"
+shows "P v \<turnstile> wp s E (Val v) P"
   by (auto simp: wp.psimps[OF assms] fupd_intro upred_wand_holdsE)
 
 lemma wp_fupd_helper: "\<forall>\<^sub>u v. (upred_emp ={E}=\<^emph> upred_emp)"
@@ -71,9 +38,9 @@ lemma wp_fupd_helper: "\<forall>\<^sub>u v. (upred_emp ={E}=\<^emph> upred_emp)"
   using fupd_intro upred_holds_entails by auto
   
 lemma wp_strong_mono: 
-  assumes "\<And>E1 e P. wp_dom (s1, E1, e, P)" "\<And>E2 e Q. wp_dom (s2, E2, e, Q)"
-    "s1 \<le> s2" 
-  shows "\<forall>\<^sub>uE1 E2 e P Q. (\<upharpoonleft>(E1 \<subseteq> E2)) \<longrightarrow>\<^sub>u (wp s1 E1 e P -\<^emph> (\<forall>\<^sub>u v. (P v ={E2}=\<^emph> Q v)) -\<^emph> wp s2 E2 e Q)"
+assumes "\<And>E1 e P. wp_dom (s1, E1, e, P)" "\<And>E2 e Q. wp_dom (s2, E2, e, Q)"
+  "s1 \<le> s2" 
+shows "\<forall>\<^sub>uE1 E2 e P Q. (\<upharpoonleft>(E1 \<subseteq> E2)) \<longrightarrow>\<^sub>u (wp s1 E1 e P -\<^emph> (\<forall>\<^sub>u v. (P v ={E2}=\<^emph> Q v)) -\<^emph> wp s2 E2 e Q)"
   (is "upred_holds ?goal")  
   apply (rule loebI)
   apply (auto intro!: upred_forallI upred_implI_pure upred_wandI)
@@ -187,8 +154,8 @@ lemma wp_strong_mono:
 done
 
 lemma fupd_wp: 
-  assumes "wp_dom (s, E, e, P)"
-  shows "\<Turnstile>{E}=> (wp s E e P) \<turnstile> wp s E e P"
+assumes "wp_dom (s, E, e, P)"
+shows "\<Turnstile>{E}=> (wp s E e P) \<turnstile> wp s E e P"
   unfolding wp.psimps[OF assms]
   apply (cases "HeapLang.to_val e")
   apply auto
@@ -205,8 +172,8 @@ lemma fupd_wp:
   by (simp add: fupd_mask_trans)
 
 lemma wp_fupd:
-  assumes "\<And>E e P. wp_dom (s, E, e, P)"
-  shows "wp s E e (\<lambda>v. \<Turnstile>{E}=> P v) \<turnstile> wp s E e P"
+assumes "\<And>E e P. wp_dom (s, E, e, P)"
+shows "wp s E e (\<lambda>v. \<Turnstile>{E}=> P v) \<turnstile> wp s E e P"
   apply (rule add_holds[OF wp_strong_mono[OF assms assms, simplified]])
   apply (rule upred_entails_substE[OF upred_forall_inst[of _ E]])
   apply (rule upred_entails_substE[OF upred_forall_inst[of _ E]])
@@ -220,8 +187,8 @@ lemma wp_fupd:
   by (rule upred_wand_apply)
   
 lemma wp_mono:
-  assumes "\<And>E e P. wp_dom (s, E, e, P)" "(\<And>v. P v \<turnstile> Q v)"
-  shows "wp s E e P \<turnstile> wp s E e Q"
+assumes "\<And>E e P. wp_dom (s, E, e, P)" "(\<And>v. P v \<turnstile> Q v)"
+shows "wp s E e P \<turnstile> wp s E e Q"
   apply (rule add_holds[OF wp_strong_mono[OF assms(1) assms(1), simplified]])
   apply (rule upred_entails_substE[OF upred_forall_inst[of _ E]])
   apply (rule upred_entails_substE[OF upred_forall_inst[of _ E]])
@@ -233,7 +200,29 @@ lemma wp_mono:
   apply (rule add_holds[OF upred_holds_forall[OF fupd_intro'[OF assms(2), of _ E]], of _ id, simplified])
   apply (subst upred_sep_comm)
   by (rule upred_wand_apply)
-          
+end
+
+lemma wp_dom_axiom [simp]: "wp_dom (s E e P)" sorry
+
+lemma wp_atomic: "atomic (stuckness_to_atomicity s) e \<Longrightarrow>
+  \<Turnstile>{E1,E2}=> wp s E2 e (\<lambda>v. \<Turnstile>{E2,E1}=> P v) \<turnstile> wp s E1 e P" sorry
+
+lemma wp_bind: "wp s E e (\<lambda>v. wp s E (lang_ctxt K (of_val v)) P) \<turnstile> wp s E (lang_ctxt K e) P" sorry
+lemma wp_bind_inv: "wp s E (lang_ctxt K e) P \<turnstile> wp s E e (\<lambda>v. wp s E (lang_ctxt K (of_val v)) P)" sorry
+lemma wp_stuck_mono: "s1 \<le> s2 \<Longrightarrow> wp s1 E e P \<turnstile> wp s2 E e P" sorry
+lemma wp_stuck_weaken: "wp s E e P \<turnstile> wp MaybeStuck E e P" using wp_stuck_mono[of s MaybeStuck] by simp
+lemma wp_frame: "P \<^emph> wp s E e (\<lambda>v. Q v) \<turnstile> wp s E e (\<lambda>v. P \<^emph> Q v)" sorry
+
+lemma wp_frame_step:
+assumes "HeapLang.to_val e = None" "E2\<subseteq>E1"
+shows "(\<Turnstile>{E1}[E2]\<triangleright>=> Q) \<^emph> wp s E2 e (\<lambda>v. P v) \<turnstile> wp s E1 e (\<lambda>v. P v \<^emph> Q)" 
+  sorry
+
+lemma wp_frame_step':
+assumes "HeapLang.to_val e = None"
+shows "(\<triangleright>Q) \<^emph> wp s E e (\<lambda>v. P v) \<turnstile> wp s E e (\<lambda>v. P v \<^emph> Q)"
+  sorry
+  
 lemma wp_lift_step_fupdN: 
 assumes "HeapLang.to_val e1 = None"
 shows "(\<forall>\<^sub>u \<sigma>1 \<kappa> \<kappa>s. ((state_interp \<sigma>1 (\<kappa>@\<kappa>s)) ={E,Set.empty}=\<^emph>
@@ -241,7 +230,5 @@ shows "(\<forall>\<^sub>u \<sigma>1 \<kappa> \<kappa>s. ((state_interp \<sigma>1
   (\<forall>\<^sub>u e2 \<sigma>2 efs. ((\<upharpoonleft>(prim_step e1 \<sigma>1 \<kappa> e2 \<sigma>2 efs)) ={Set.empty}\<triangleright>=\<^emph> 
     (\<Turnstile>{Set.empty,E}=> ((state_interp \<sigma>2 \<kappa>s) \<^emph>
       (wp s E e2 \<Phi>) \<^emph> ([\<^emph>\<^sub>l:] efs (\<lambda>ef. wp s UNIV ef (\<lambda>_. upred_emp))))))))))
-   \<turnstile> wp s E e1 \<Phi>"
- sorry (* Axiomatized as reasoning with wp_dom is quite hard.*)
+   \<turnstile> wp s E e1 \<Phi>" sorry
 end   
-end
