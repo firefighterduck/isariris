@@ -563,7 +563,6 @@ lemma split_trans: "\<lbrakk>can_be_split P P1 P2; P1 \<turnstile> Q; Q\<^emph>P
   unfolding can_be_split_def by (meson upred_entail_eqL upred_entails_trans upred_frame)
 
 lemma split_frame: "\<lbrakk>can_be_split P P1 P2; can_be_split Q Q1 Q2; P1\<turnstile>Q1; P2\<turnstile>Q2\<rbrakk> \<Longrightarrow> P\<turnstile>Q"
-  unfolding can_be_split_def 
   by (meson can_be_split_def split_trans upred_entail_eqR upred_entails_refl upred_entails_trans upred_sep_mono)
 
 subsubsection \<open> Persistent predicates \<close>
@@ -693,11 +692,10 @@ lemma except_zero_sepR: "(\<diamondop>P) \<^emph> Q \<turnstile> \<diamondop>(P 
 lemma except_zero_sepL: "P \<^emph> (\<diamondop>Q) \<turnstile> \<diamondop>(P \<^emph> Q)"
   by (metis except_zero_sepR upred_sep_comm)
   
-lemma persistent_except_zero: "persistent P \<Longrightarrow> persistent (\<diamondop>P)"
-unfolding except_zero_def
-apply (rule persistent_disj)
-apply assumption
-by (rule persistent_later[OF persistent_pure])
+lemma persistent_except_zero [pers_rule]: "persistent P \<Longrightarrow> persistent (\<diamondop>P)"
+  unfolding except_zero_def
+  apply (pers_solver, assumption)
+  by pers_solver
 
 lemma except_zero_mono: "P\<turnstile>Q \<Longrightarrow> \<diamondop>P\<turnstile>\<diamondop>Q"
   unfolding except_zero_def by transfer  blast

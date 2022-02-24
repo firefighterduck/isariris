@@ -109,6 +109,18 @@ proof -
   with drop_minus have "ffold (\<lambda>x a. a \<^emph> P x) (\<upharpoonleft>True) (fmdom m) =
     ffold (\<lambda>x a. a \<^emph> P x) upred_emp (fmdom (fmdrop i m)) \<^emph> (P i)" by simp
   then show "sep_map_fmdom P m = P i \<^emph> sep_map_fmdom P (fmdrop i m)" 
-    unfolding sep_fold_fset_def using upred_sep_comm by auto
+  unfolding sep_fold_fset_def using upred_sep_comm by auto
 qed
+
+inductive rel_nsteps :: "('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> nat \<Rightarrow> 'a \<Rightarrow> 'a \<Rightarrow> bool" where
+  zero_steps: "rel_nsteps R 0 x x"
+| rel_step: "\<lbrakk>R x y; rel_nsteps R n y z\<rbrakk> \<Longrightarrow> rel_nsteps R (Suc n) x z"
+
+declare rel_nsteps.intros[intro]
+inductive_cases rel_nstepsE[elim!]: "rel_nsteps R 0 x y"
+  "rel_nsteps R (Suc n) x y"
+
+lemma rel_one_step: "R x y \<Longrightarrow> rel_nsteps R (Suc 0) x y"
+  by auto  
+  
 end

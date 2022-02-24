@@ -81,7 +81,7 @@ definition graph_inv :: "loc graph \<Rightarrow> (loc\<rightharpoonup>loc) \<Rig
 definition graph_ctxt :: "loc graph \<Rightarrow> (loc\<rightharpoonup>loc) \<Rightarrow> iprop" where 
   "graph_ctxt g Mrk \<equiv> cinv graphN (graph_inv g Mrk)"
 
-lemma graph_ctxt_persistent: "persistent (graph_ctxt g Mrk)"
+lemma graph_ctxt_persistent [pers_rule]: "persistent (graph_ctxt g Mrk)"
   unfolding graph_ctxt_def by (rule cinv_persistent)
 
 definition gmon_map :: "loc \<Rightarrow> chl \<Rightarrow> gmon" where "gmon_map l v = [l\<mapsto>Ex v]"

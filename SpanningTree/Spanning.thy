@@ -33,13 +33,17 @@ definition span :: val where "span \<equiv>
   endmatch"
 
 subsubsection \<open>Proofs\<close>
+context wp_rules begin  
 lemma wp_try_mark:
 assumes "x\<in>dom g" 
 shows "(graph_ctxt g Mrk) \<^emph> (own_graphUR q Map.empty) \<^emph> (cinv_own k) \<turnstile>
   WP (App (of_val try_mark) (of_val #[x])) 
-  {{ \<lambda>v. 
+  {{ \<lambda>v.
     ((\<upharpoonleft>(v=#[True])) \<^emph> (\<exists>\<^sub>u u. (((\<upharpoonleft>(g x = Some u)) \<^emph> own_graphUR q (x [\<mapsto>\<^sub>g] u)) \<^emph> is_marked x \<^emph> cinv_own k)))
     \<or>\<^sub>u ((\<upharpoonleft>(v=#[False])) \<^emph> own_graphUR q Map.empty \<^emph> is_marked x \<^emph> cinv_own k) 
   }}"
-sorry
+  unfolding try_mark_def
+  apply (auto simp: subst'_def intro!: wp_pure[OF pure_exec_beta] wp_let_bind)
+  unfolding graph_ctxt_def
+qed
 end

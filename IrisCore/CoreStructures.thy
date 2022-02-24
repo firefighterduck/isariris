@@ -207,6 +207,9 @@ lemma core_id_pred: "pcore_id_pred a \<longleftrightarrow> core a = a"
 lemma \<epsilon>_pcore_id_def: "pcore_id_pred \<epsilon>"
   by (auto simp: pcore_id_pred_def \<epsilon>_pcore)
 
+lemma core_id_pcore_idpred [simp]: "pcore_id_pred (a::'a::{core_id,total_camera})"
+  by (simp add: pcore_id_pred_def pcore_id)
+  
 text \<open>Discrete Camera - A camera based on a discrete OFE with non-step indexed validity.\<close>
 class dcamera = camera + discrete + assumes d_valid: "n_valid x 0 \<Longrightarrow> valid x"
 begin

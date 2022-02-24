@@ -12,23 +12,26 @@ text \<open>
   (i.e. disabled/hold for all threads).
 \<close>
 
-definition own_inv :: "inv \<Rightarrow> iprop" ("Own\<^sub>i _") where
-  "own_inv i = Own(constr_inv i)"
+locale invGS = fixes invariant_name :: gname and enabled_name :: gname and disabled_name :: gname
+begin
+
+definition own_inv :: "gname \<Rightarrow> inv \<Rightarrow> iprop" ("Own\<^sub>i _ _") where
+  "own_inv \<gamma> i = Own(constr_inv \<gamma> i)"
 
 text \<open>Allocate new invariant map\<close>
 definition ownI :: "name \<Rightarrow> iprop \<Rightarrow> iprop" where
-  "ownI \<iota> P = Own\<^sub>i (map_view_frag \<iota> DfracDiscarded (Next (pre P)),\<epsilon>,\<epsilon>)"
+  "ownI \<iota> P = Own\<^sub>i invariant_name (map_view_frag \<iota> DfracDiscarded (Next (pre P)),\<epsilon>,\<epsilon>)"
 
 definition inv_raw :: "namespace \<Rightarrow> iprop \<Rightarrow>  iprop" where
   "inv_raw N P \<equiv> \<exists>\<^sub>u \<iota>. ((\<upharpoonleft>(\<iota>\<in>\<^sub>d dnames N)) \<and>\<^sub>u ownI \<iota> P)"
 
 text \<open>Allocate new enabled invariant map\<close>
 definition ownE :: "name set \<Rightarrow> iprop" where
-  "ownE E = Own\<^sub>i (\<epsilon>,DSet E,\<epsilon>)"
+  "ownE E = Own\<^sub>i enabled_name (\<epsilon>,DSet E,\<epsilon>)"
 
 text \<open>Allocate new disabled invariant map\<close>
 definition ownD :: "name fset \<Rightarrow> iprop" where
-  "ownD D = Own\<^sub>i (\<epsilon>,\<epsilon>,DFSet D)"
+  "ownD D = Own\<^sub>i disabled_name (\<epsilon>,\<epsilon>,DFSet D)"
   
 definition lift_inv_fmap :: "(name,iprop) fmap \<Rightarrow> (name,pre_iprop later) fmap" where
   "lift_inv_fmap m = Abs_fmap (map_option (Next \<circ> pre) \<circ> (fmlookup m))"
@@ -39,13 +42,14 @@ lemma lift_inf_fmap_finite: "(map_option (Next \<circ> pre) \<circ> (fmlookup m)
 text \<open>World satisfaction, i.e. the invariant that holds all invariants\<close>
 definition wsat :: iprop where
   "wsat \<equiv> \<exists>\<^sub>u (I::(name,iprop) fmap).
-    ((Own\<^sub>i(map_view_auth (DfracOwn 1) (lift_inv_fmap I),\<epsilon>,\<epsilon>))
+    ((Own\<^sub>i invariant_name (map_view_auth (DfracOwn 1) (lift_inv_fmap I),\<epsilon>,\<epsilon>))
     \<^emph> (sep_map_fmdom (\<lambda>\<iota>. (\<triangleright>(the (fmlookup I \<iota>))) \<^emph> ownD {|\<iota>|} \<or>\<^sub>u (ownE {\<iota>})) I)
   )"
 
-lemma pcore_id_inv: "pcore_id_pred (constr_inv (map_view_frag \<iota> DfracDiscarded (Next (pre P)), \<epsilon>, \<epsilon>))"
-  unfolding constr_inv_def prod_pcore_id_pred
-  by (simp add: \<epsilon>_pcore_id_def) (rule pcore_id_frag[OF discarded_core_id])
+lemma pcore_id_inv: "pcore_id_pred (constr_inv \<gamma> (map_view_frag \<iota> DfracDiscarded (Next (pre P)), \<epsilon>, \<epsilon>))"
+  unfolding constr_inv_def prod_pcore_id_pred apply (simp add: \<epsilon>_pcore_id_def)
+  apply (rule ran_pcore_id_pred) unfolding ran_def apply simp
+  using pcore_id_frag[OF discarded_core_id] by (smt (verit, del_insts) \<epsilon>_pcore_id_def prod_pcore_id_pred)
 
 lemma persistent_ownI [pers_rule]: "persistent (ownI \<iota> P)"
   unfolding ownI_def own_inv_def by (rule persistent_core_own2[OF pcore_id_inv])
@@ -57,7 +61,7 @@ lemma persistent_inv_raw [pers_rule]: "persistent (inv_raw N P)"
   apply (rule persistent_pure)
   by (rule persistent_ownI)
 
-lemma constr_inv_valid: "\<lbrakk>valid mv; valid e; valid d\<rbrakk> \<Longrightarrow> valid (constr_inv (mv,e,d))"
+lemma constr_inv_valid: "\<lbrakk>valid mv; valid e; valid d\<rbrakk> \<Longrightarrow> valid (constr_inv \<gamma> (mv,e,d))"
   unfolding constr_inv_def by (auto simp: prod_valid_def \<epsilon>_valid)
 
 lemma ownE_singleton_twice: "ownE {i} \<^emph> ownE {i} \<turnstile> \<upharpoonleft>False"
@@ -66,8 +70,8 @@ lemma ownE_singleton_twice: "ownE {i} \<^emph> ownE {i} \<turnstile> \<upharpoon
   apply (rule upred_entails_trans[OF own_valid])
   apply (simp add: op_prod_def \<epsilon>_left_id op_dset_def)
   apply transfer
-  by (simp add: prod_n_valid_def \<epsilon>_n_valid valid_raw_dset_def)
-
+  by (auto simp: prod_n_valid_def \<epsilon>_n_valid valid_raw_dset_def)  
+  
 lemma ownD_singleton_twice: "ownD {|i|} \<^emph> ownD {|i|} \<turnstile> \<upharpoonleft>False"
   unfolding ownD_def own_inv_def constr_inv_def
   apply (auto simp: op_prod_def \<epsilon>_left_id op_dfset_def
@@ -79,7 +83,7 @@ lemma ownE_op: "E1 \<inter> E2 = {} \<Longrightarrow> ownE (E1 \<union> E2) \<st
 proof -
   assume "E1 \<inter> E2 = {}"
   then have un_op:"DSet (E1 \<union> E2) = DSet E1 \<cdot> DSet E2" unfolding op_dset_def by simp
-  from own_op[of "constr_inv (\<epsilon>,DSet E1,\<epsilon>)" "constr_inv (\<epsilon>,DSet E2,\<epsilon>)"]
+  from own_op[of "constr_inv enabled_name (\<epsilon>,DSet E1,\<epsilon>)" "constr_inv enabled_name (\<epsilon>,DSet E2,\<epsilon>)"]
   show ?thesis by (auto simp: ownE_def own_inv_def un_op constr_inv_def op_prod_def \<epsilon>_left_id)
 qed
 
@@ -91,8 +95,17 @@ lemma ownE_op': "(\<upharpoonleft>(E1 \<inter> E2 = {})) \<and>\<^sub>u ownE (E1
     intro!: upred_entails_trans[OF upred_entail_eqR[OF own_op]])
   apply transfer
   apply (auto simp: op_dset_def prod_n_valid_def \<epsilon>_n_valid valid_raw_dset_def split: dset.splits)
-  by (auto simp: n_incl_def op_dset_def n_equiv_dset_def)
-
+  apply (auto simp: n_equiv_dset_def singleton_map_n_incl op_option_def n_equiv_option_def)
+  unfolding valid_raw_fun.rep_eq prod_n_valid_def
+  subgoal for en E1 E2 a b c d e f n x I E D g I' D'
+proof -
+  assume assm: "\<forall>i. n_valid (e i) n" "e en = Some (I, E, D)" "option_op (Some (\<epsilon>, DBot, \<epsilon>)) g = Some (I', E, D')"
+  then have "n_valid E n" by (auto simp: valid_raw_option_def prod_n_valid_def split: option.splits)
+  moreover from assm(3) have "E = DBot" by (cases g) (auto simp: op_prod_def op_dset_def)
+  ultimately show False unfolding valid_raw_dset_def by simp
+qed
+done  
+  
 lemma ownE_op_minus: "E1 \<subseteq> E2 \<Longrightarrow> ownE (E1 \<union> (E2-E1)) \<stileturn>\<turnstile> ownE E1 \<^emph> ownE (E2-E1)"
 proof -
   assume "E1 \<subseteq> E2"
@@ -101,16 +114,16 @@ proof -
 qed
   
 lemma auth_map_both_validI: 
-  "\<V>(constr_inv (map_view_auth (DfracOwn 1) m,\<epsilon>,\<epsilon>) \<cdot> constr_inv (map_view_frag k dq v,\<epsilon>,\<epsilon>)) \<turnstile>
+  "\<V>(constr_inv \<gamma> (map_view_auth (DfracOwn 1) m,\<epsilon>,\<epsilon>) \<cdot> constr_inv \<gamma> (map_view_frag k dq v,\<epsilon>,\<epsilon>)) \<turnstile>
     (fmlookup m k =\<^sub>u Some v) \<and>\<^sub>u \<upharpoonleft>(valid dq)"
 unfolding constr_inv_def op_prod_def
-apply (simp add: \<epsilon>_left_id auth_comb_opL split: prod.splits)
+apply (simp add: \<epsilon>_left_id auth_comb_opL op_prod_def split: prod.splits)
 apply transfer'
 apply (simp add: prod_n_valid_def \<epsilon>_n_valid valid_raw_option_def \<epsilon>_option_def)
-using map_view_both_valid by fastforce
+using map_view_both_valid by metis
 
 lemma invariant_lookup: 
-  "Own\<^sub>i (map_view_auth (DfracOwn 1) (lift_inv_fmap I),\<epsilon>,\<epsilon>) \<^emph> ownI \<iota> P \<turnstile> 
+  "Own\<^sub>i invariant_name (map_view_auth (DfracOwn 1) (lift_inv_fmap I),\<epsilon>,\<epsilon>) \<^emph> ownI \<iota> P \<turnstile> 
   (\<exists>\<^sub>u Q. \<upharpoonleft>(fmlookup I \<iota> = Some Q) \<^emph> \<triangleright>(Q=\<^sub>uP))"
   unfolding ownI_def own_inv_def
   apply (rule upred_entails_trans[OF upred_entail_eqR[OF own_op]])
@@ -242,12 +255,12 @@ sorry (* Axiomatized as this requires too much low level ghost state reasoning f
 
 lemma wsat_alloc: "\<Rrightarrow>\<^sub>b (\<exists>\<^sub>u _::inv. wsat \<^emph> ownE UNIV)"
 apply (auto simp: upred_holds_entails)
-apply (rule add_own[of "constr_inv (map_view_auth (DfracOwn 1) fmempty,\<epsilon>,\<epsilon>)", 
+apply (rule add_own[of "constr_inv invariant_name (map_view_auth (DfracOwn 1) fmempty,\<epsilon>,\<epsilon>)", 
   OF constr_inv_valid[OF map_view_auth_valid \<epsilon>_valid \<epsilon>_valid]])
-apply (rule add_own[of "constr_inv (\<epsilon>,DSet UNIV,\<epsilon>)", 
+apply (rule add_own[of "constr_inv enabled_name (\<epsilon>,DSet UNIV,\<epsilon>)", 
   OF constr_inv_valid[OF \<epsilon>_valid _ \<epsilon>_valid]])
 apply (simp add: valid_raw_dset_def valid_def)
-apply (rule add_own[of "constr_inv (\<epsilon>,\<epsilon>,DFSet {||})", 
+apply (rule add_own[of "constr_inv disabled_name (\<epsilon>,\<epsilon>,DFSet {||})", 
   OF constr_inv_valid[OF \<epsilon>_valid \<epsilon>_valid _], unfolded \<epsilon>_dfset_def[symmetric], OF \<epsilon>_valid])
 apply (auto simp: wsat_def pull_exists_eq own_inv_def ownE_def ownD_def 
   intro!: upred_entails_trans[OF _ updI])
@@ -261,4 +274,5 @@ apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm2L]])
 apply (rule upred_entails_trans[OF upred_sep_comm2R])
 by (auto simp: upred_weakeningL intro!: upred_frame)
 
+end
 end

@@ -18,19 +18,20 @@ abbreviation WP :: "expr \<Rightarrow> (val \<Rightarrow> iprop) \<Rightarrow> i
   "WP e {{ \<Phi> }} \<equiv> wp NotStuck {} e \<Phi>"
 
 text \<open>
-  First we show that all basic properties of wp hold for inputs in the domain, then we 
-  always assume all values to lie in the domain.
+  First we show that some basic properties of wp hold for inputs in the domain, then we 
+  always assume that all values lie in the domain.
 \<close>
-context begin
-lemma wp_value_fupd: 
-assumes "wp_dom (s, E, Val v, P)"
-shows "wp s E (of_val v) P \<stileturn>\<turnstile> \<Turnstile>{E}=> P v"
-  by (auto simp: wp.psimps[OF assms])
+locale wp_rules =
+  assumes wp_dom_axiom: "wp_dom (s, E, e, P)"
+begin
 
-lemma wp_value: 
-assumes "wp_dom (s, E, Val v, P)"
-shows "P v \<turnstile> wp s E (Val v) P"
-  by (auto simp: wp.psimps[OF assms] fupd_intro upred_wand_holdsE)
+lemmas wp_simp = wp.psimps[OF wp_dom_axiom]
+
+lemma wp_value_fupd: "wp s E (of_val v) P \<stileturn>\<turnstile> \<Turnstile>{E}=> P v"
+  by (auto simp: wp_simp)
+
+lemma wp_value: "P v \<turnstile> wp s E (Val v) P"
+  by (auto simp: wp_simp fupd_intro upred_wand_holdsE)
 
 lemma wp_fupd_helper: "\<forall>\<^sub>u v. (upred_emp ={E}=\<^emph> upred_emp)"
   apply (subst upred_holds_entails)
@@ -38,15 +39,14 @@ lemma wp_fupd_helper: "\<forall>\<^sub>u v. (upred_emp ={E}=\<^emph> upred_emp)"
   using fupd_intro upred_holds_entails by auto
   
 lemma wp_strong_mono: 
-assumes "\<And>E1 e P. wp_dom (s1, E1, e, P)" "\<And>E2 e Q. wp_dom (s2, E2, e, Q)"
-  "s1 \<le> s2" 
+assumes "s1 \<le> s2" 
 shows "\<forall>\<^sub>uE1 E2 e P Q. (\<upharpoonleft>(E1 \<subseteq> E2)) \<longrightarrow>\<^sub>u (wp s1 E1 e P -\<^emph> (\<forall>\<^sub>u v. (P v ={E2}=\<^emph> Q v)) -\<^emph> wp s2 E2 e Q)"
   (is "upred_holds ?goal")  
   apply (rule loebI)
   apply (auto intro!: upred_forallI upred_implI_pure upred_wandI)
   subgoal for E1 E2 e P Q
-  apply (subst wp.psimps[OF assms(1)[of E1]])
-  apply (subst wp.psimps[OF assms(2)[of E2]])
+  apply (subst wp_simp[of _ E1])
+  apply (subst wp_simp[of _ E2])
   apply (cases "HeapLang.to_val e")
   apply auto
   apply (auto intro!: upred_forallI upred_wandI)
@@ -142,7 +142,7 @@ shows "\<forall>\<^sub>uE1 E2 e P Q. (\<upharpoonleft>(E1 \<subseteq> E2)) \<lon
       by (auto intro: upred_entails_trans[OF upred_wand_apply])
       done
     apply (rule upred_pureI)
-    using assms(3)
+    using assms
     apply (cases s1; cases s2)
     by auto
   subgoal for v
@@ -153,10 +153,9 @@ shows "\<forall>\<^sub>uE1 E2 e P Q. (\<upharpoonleft>(E1 \<subseteq> E2)) \<lon
   done
 done
 
-lemma fupd_wp: 
-assumes "wp_dom (s, E, e, P)"
-shows "\<Turnstile>{E}=> (wp s E e P) \<turnstile> wp s E e P"
-  unfolding wp.psimps[OF assms]
+lemma fupd_wp: "\<Turnstile>{E}=> (wp s E e P) \<turnstile> wp s E e P"
+  apply (subst wp_simp)
+  apply (subst wp_simp[of s E e P])
   apply (cases "HeapLang.to_val e")
   apply auto
   apply (auto intro!: upred_forallI)
@@ -171,10 +170,8 @@ shows "\<Turnstile>{E}=> (wp s E e P) \<turnstile> wp s E e P"
     by (auto intro: upred_entails_trans[OF upred_wand_apply])
   by (simp add: fupd_mask_trans)
 
-lemma wp_fupd:
-assumes "\<And>E e P. wp_dom (s, E, e, P)"
-shows "wp s E e (\<lambda>v. \<Turnstile>{E}=> P v) \<turnstile> wp s E e P"
-  apply (rule add_holds[OF wp_strong_mono[OF assms assms, simplified]])
+lemma wp_fupd: "wp s E e (\<lambda>v. \<Turnstile>{E}=> P v) \<turnstile> wp s E e P"
+  apply (rule add_holds[OF wp_strong_mono[of s s, simplified]])
   apply (rule upred_entails_substE[OF upred_forall_inst[of _ E]])
   apply (rule upred_entails_substE[OF upred_forall_inst[of _ E]])
   apply (rule upred_entails_substE[OF upred_forall_inst[of _ e]])
@@ -187,9 +184,9 @@ shows "wp s E e (\<lambda>v. \<Turnstile>{E}=> P v) \<turnstile> wp s E e P"
   by (rule upred_wand_apply)
   
 lemma wp_mono:
-assumes "\<And>E e P. wp_dom (s, E, e, P)" "(\<And>v. P v \<turnstile> Q v)"
+assumes "(\<And>v. P v \<turnstile> Q v)"
 shows "wp s E e P \<turnstile> wp s E e Q"
-  apply (rule add_holds[OF wp_strong_mono[OF assms(1) assms(1), simplified]])
+  apply (rule add_holds[OF wp_strong_mono[of s s, simplified]])
   apply (rule upred_entails_substE[OF upred_forall_inst[of _ E]])
   apply (rule upred_entails_substE[OF upred_forall_inst[of _ E]])
   apply (rule upred_entails_substE[OF upred_forall_inst[of _ e]])
@@ -197,12 +194,9 @@ shows "wp s E e P \<turnstile> wp s E e Q"
   apply (rule upred_entails_substE[OF upred_forall_inst[of _ Q]])
   apply (auto intro!: upred_entails_substE[OF upred_entail_eqL[OF upred_emp_impl]]
     upred_entails_trans[OF upred_wand_apply])
-  apply (rule add_holds[OF upred_holds_forall[OF fupd_intro'[OF assms(2), of _ E]], of _ id, simplified])
+  apply (rule add_holds[OF upred_holds_forall[OF fupd_intro'[OF assms, of _ E]], of _ id, simplified])
   apply (subst upred_sep_comm)
   by (rule upred_wand_apply)
-end
-
-lemma wp_dom_axiom [simp]: "wp_dom (s E e P)" sorry
 
 lemma wp_atomic: "atomic (stuckness_to_atomicity s) e \<Longrightarrow>
   \<Turnstile>{E1,E2}=> wp s E2 e (\<lambda>v. \<Turnstile>{E2,E1}=> P v) \<turnstile> wp s E1 e P" sorry
@@ -231,4 +225,15 @@ shows "(\<forall>\<^sub>u \<sigma>1 \<kappa> \<kappa>s. ((state_interp \<sigma>1
     (\<Turnstile>{Set.empty,E}=> ((state_interp \<sigma>2 \<kappa>s) \<^emph>
       (wp s E e2 \<Phi>) \<^emph> ([\<^emph>\<^sub>l:] efs (\<lambda>ef. wp s UNIV ef (\<lambda>_. upred_emp))))))))))
    \<turnstile> wp s E e1 \<Phi>" sorry
+
+
+lemma wp_pure': "\<lbrakk>pure_exec b n e1 e2; b; P \<turnstile> wp s E (fill K e2) Q\<rbrakk> \<Longrightarrow>
+  P \<turnstile> wp s E (fill K e1) Q" sorry
+
+lemma wp_pure: "\<lbrakk>pure_exec b n e1 e2; b; P \<turnstile> wp s E e2 Q\<rbrakk> \<Longrightarrow>
+  P \<turnstile> wp s E e1 Q" sorry
+
+lemma wp_let_bind: "Q \<turnstile> wp s E e (\<lambda>v. wp s E (let: x := (of_val v) in e2 endlet) P) \<Longrightarrow> 
+  Q \<turnstile> wp s E (let: x := e in e2 endlet) P" sorry (* Would follow from wp_bind *)
+end
 end   

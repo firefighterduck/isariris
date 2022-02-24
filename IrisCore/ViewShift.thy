@@ -2,6 +2,7 @@ theory ViewShift
 imports WorldSatisfaction
 begin
 
+context invGS begin
 subsubsection \<open>Fancy updates\<close>
 text \<open>
   Fancy updates describe steps between different sets of opened/closed invariants and are thus
@@ -185,4 +186,5 @@ abbreviation fancy_linear_steps :: "mask \<Rightarrow> nat \<Rightarrow> iprop \
   "fancy_linear_steps E n Q \<equiv> \<Turnstile>{E}[E]\<triangleright>^n=>Q"
 abbreviation fancy_linear_wand_steps :: "iprop \<Rightarrow> mask \<Rightarrow> nat \<Rightarrow> iprop \<Rightarrow> iprop" ("_={_}\<triangleright>^_=\<^emph>_") where
   "fancy_linear_wand_steps P E n Q \<equiv> P={E}[E]\<triangleright>^n=\<^emph>Q"
+end
 end

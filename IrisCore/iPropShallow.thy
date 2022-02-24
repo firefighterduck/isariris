@@ -16,6 +16,9 @@ begin
 
 type_synonym 'a pre_inv = "(name, 'a later) map_view \<times> name dset \<times> name dfset"
 
+(* Index into resource maps to allow more than one instance of a camera *)
+type_synonym gname = nat
+
 ML \<open>
   local
   type camera_data = {
@@ -31,7 +34,7 @@ ML \<open>
     cmraPT: typ option
   }
 
-    (* Names *)
+  (* Names *)
   val iPropN = Binding.name "iProp"
   val preN = Binding.name "pre"
   val pre_ipropN = Binding.name "pre_iprop"
@@ -41,13 +44,19 @@ ML \<open>
   val ipropN = Binding.name "iprop"
   val getter_prefix = "get_"
   val constructor_prefix = "constr_"
+  val gnameN = "name"
+  val mapN = "map_res"
 
   (* Types *)
+  val gnameT = \<^typ>\<open>gname\<close>
+  fun mk_opt T = Type (\<^type_name>\<open>option\<close>, [T])
+  fun mk_res_mapT res = gnameT --> mk_opt res (* This might need to be (gname,res) fmap *)
   val invT = \<^typ>\<open>'a pre_inv\<close>
   val heapT = \<^typ>\<open>heap_lang_heap\<close>
   val cinvT = \<^typ>\<open>frac option\<close>
   val aT = \<^typ>\<open>'a\<close>
-  val base_cameraT = HOLogic.mk_prodT (cinvT, HOLogic.mk_prodT (invT, heapT))
+  val base_cameraT = HOLogic.mk_prodT (mk_res_mapT cinvT, 
+    HOLogic.mk_prodT (mk_res_mapT invT, mk_res_mapT heapT))
   
   fun mk_pred cmraT = typ_subst_atomic [(aT,cmraT)] \<^typ>\<open>'a upred_f\<close>
   fun subst_aT fp cmraT = typ_subst_atomic [(aT,fp)] cmraT
@@ -58,20 +67,24 @@ ML \<open>
     {camera = heapT, name = "heap", getter = NONE, constructor = NONE}
    ]
   val mk_cmraT = curry (Library.foldr (uncurry add_cameraT))
+  val mk_maps = map mk_res_mapT
 
   (* Setup to generate getters for single cameras from the camera product *)
+  val gname_param = Free (gnameN, gnameT)
   fun mk_def trm lthy = let val prop_trm = HOLogic.mk_Trueprop trm
     in Specification.definition NONE [] [] ((Binding.empty,[]), prop_trm) lthy |> snd end
 
   fun mk_defs (cmras_data:cameras_data) lthy =
-    let fun mk_getter name cmraT = Free (getter_prefix ^ name, (the (#cmraPT cmras_data))-->cmraT)
-        fun mk_own name cmraT = Free (constructor_prefix ^ name, cmraT-->(the (#cmraPT cmras_data)))$
+    let fun mk_getter name cmraT = 
+          Free (getter_prefix ^ name, [gnameT, the (#cmraPT cmras_data)]--->mk_opt cmraT)$gname_param
+        fun mk_own name cmraT = 
+          Free (constructor_prefix ^ name, [gnameT,cmraT]--->(the (#cmraPT cmras_data)))$gname_param$
           Free (Binding.name_of resN, cmraT)
     in
       Library.foldl (fn (lthy, cmra_data:camera_data) => 
-        (mk_def (curry HOLogic.mk_eq (mk_getter (#name cmra_data) (#camera cmra_data)) 
+        (mk_def (curry HOLogic.mk_eq (mk_getter (#name cmra_data) (#camera cmra_data))
           (the (#getter cmra_data))) 
-       #> mk_def (curry HOLogic.mk_eq (mk_own (#name cmra_data) (#camera cmra_data)) 
+       #> mk_def (curry HOLogic.mk_eq (mk_own (#name cmra_data) (#camera cmra_data))
           (the (#constructor cmra_data))))
        lthy)
       (lthy, #cameras cmras_data)
@@ -83,12 +96,20 @@ ML \<open>
   val dummy_I = Const (\<^const_name>\<open>id\<close>, dummyT)
   val dummy_eps = Const (\<^const_name>\<open>\<epsilon>\<close>, dummyT)
   val dummy_cmra_object = Free (Binding.name_of resN, dummyT)
+  val map_param = Bound 0
+  val lookup_name = Abs (mapN, dummyT, map_param$gname_param)
+  fun mk_some trm = Const (\<^const_name>\<open>Some\<close>, dummyT-->mk_opt dummyT)$trm
+  fun mk_singleton_map res = 
+    Const (\<^const_name>\<open>fun_upd\<close>, [mk_res_mapT dummyT,gnameT,dummyT]--->mk_res_mapT dummyT)
+    $Const ("Map.empty", mk_res_mapT dummyT)
+    $gname_param$(mk_some res)
+  fun mk_comp_lookup getter = Const (\<^const_name>\<open>comp\<close>, dummyT)$lookup_name$getter
 
   fun mk_getter levels is_heap = 
     let val base = if is_heap then dummy_I else dummy_fst
       fun add_level 0 = base
         | add_level n = dummy_comp$(add_level (n-1))$dummy_snd
-    in add_level levels end
+    in mk_comp_lookup (add_level levels) end
 
   fun mk_getters ({ number, cameras, cmraPT}: cameras_data) = let
     fun mk_getters_levels _ _ [] = []
@@ -101,8 +122,8 @@ ML \<open>
     end
 
   fun mk_own levels is_heap =
-    let val base = if is_heap then dummy_cmra_object 
-      else curry HOLogic.mk_prod dummy_cmra_object dummy_eps
+    let val base = if is_heap then mk_singleton_map dummy_cmra_object 
+      else curry HOLogic.mk_prod (mk_singleton_map dummy_cmra_object) dummy_eps
       fun add_level 0 = base
         | add_level n = curry HOLogic.mk_prod dummy_eps (add_level (n-1))
     in add_level levels end
@@ -140,7 +161,7 @@ ML \<open>
       val cmra_data = {number = length cmras+3, cameras = cmras_raw@fixed_cmras preT, cmraPT = NONE}
       val cmra_data = mk_getters cmra_data
       val cmra_data = mk_owns cmra_data
-      val cmraT = subst_aT preT base_cameraT |> mk_cmraT (map fst cmras)
+      val cmraT = subst_aT preT base_cameraT |> mk_cmraT (mk_maps (map fst cmras))
       val propT = mk_pred cmraT 
       val axs = mk_axioms preT propT
       val cmra_data = {number = #number cmra_data, cameras = #cameras cmra_data, cmraPT = SOME cmraT}

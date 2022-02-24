@@ -2,6 +2,7 @@ theory Invariant
 imports ViewShift
 begin
 
+context invGS begin
 subsubsection \<open>Impredicative Invariants\<close>
 
 text \<open>Semantic invariant definition\<close>
@@ -326,17 +327,17 @@ done
 
 subsubsection \<open>Cancelable Invariants\<close>
 type_synonym cinvG = frac
-definition cinv_own :: "frac \<Rightarrow> iprop" where "cinv_own p = Own (constr_cinv (Some p))"
-definition cinv :: "namespace \<Rightarrow> iprop \<Rightarrow> iprop" where "cinv N P = inv N (P \<or>\<^sub>u cinv_own 1)"
+definition cinv_own :: "gname \<Rightarrow> frac \<Rightarrow> iprop" where "cinv_own \<gamma> p = Own (constr_cinv \<gamma> (Some p))"
+definition cinv :: "namespace \<Rightarrow> gname \<Rightarrow> iprop \<Rightarrow> iprop" where "cinv N \<gamma> P = inv N (P \<or>\<^sub>u cinv_own \<gamma> 1)"
 
-lemma cinv_persistent: "persistent (cinv N P)"
+lemma cinv_persistent: "persistent (cinv N \<gamma> P)"
   unfolding cinv_def by (rule persistent_inv)
 
-lemma timeless_cinv_own: "timeless (cinv_own p)"
+lemma timeless_cinv_own: "timeless (cinv_own \<gamma> p)"
   unfolding timeless_def cinv_own_def constr_cinv_def except_zero_def
   by transfer (simp add: n_incl_incl)
 
-lemma cinv_own_valid: "upred_holds (cinv_own q1 -\<^emph> cinv_own q2 -\<^emph> \<upharpoonleft>(q1\<cdot>q2\<le>1))"
+lemma cinv_own_valid: "cinv_own \<gamma> q1 -\<^emph> cinv_own \<gamma> q2 -\<^emph> \<upharpoonleft>(q1\<cdot>q2\<le>1)"
 unfolding cinv_own_def
 apply (rule upred_entails_wand_holdsR2[OF _ own_valid2])
 apply (simp add: constr_cinv_def op_prod_def \<epsilon>_left_id op_option_def)
@@ -344,9 +345,16 @@ apply (simp add: upred_entails.rep_eq upred_valid.rep_eq upred_pure.rep_eq prod_
 apply (simp add: valid_raw_option_def valid_frac[symmetric] split: option.splits)
 by (metis dcamera_valid_iff less_eq_frac.rep_eq one_frac.rep_eq valid_raw_frac.rep_eq)
 
-lemma cinv_own_1_l: "upred_holds (cinv_own 1 -\<^emph> cinv_own q -\<^emph> \<upharpoonleft>False)"
+lemma cinv_own_1_l: "cinv_own \<gamma> 1 -\<^emph> cinv_own \<gamma> q -\<^emph> \<upharpoonleft>False"
 proof (rule upred_wand_holds2I)
   from one_op have "(1\<cdot>q \<le> 1) \<longleftrightarrow> False" by (simp add: less_le_not_le)
-  with upred_wand_holds2E[OF cinv_own_valid, of 1 q] show "cinv_own 1 \<^emph> cinv_own q \<turnstile> \<upharpoonleft>False" by simp
+  with upred_wand_holds2E[OF cinv_own_valid, of \<gamma> 1 q] show "cinv_own \<gamma> 1 \<^emph> cinv_own \<gamma> q \<turnstile> \<upharpoonleft>False" 
+    by simp
 qed
+
+lemma cinv_acc_strong: "names N \<subseteq> E \<Longrightarrow>
+  (cinv N \<gamma> P) -\<^emph> (cinv_own \<gamma> p ={E,E-names N}=\<^emph>
+  ((\<triangleright>P) \<^emph> cinv_own \<gamma> p \<^emph> (\<forall>\<^sub>u E'. (((\<triangleright>P) \<or>\<^sub>u cinv_own \<gamma> 1) ={E',names N \<union> E'}=\<^emph> upred_emp))))"
+  sorry
+end
 end

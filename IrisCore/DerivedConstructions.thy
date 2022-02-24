@@ -267,6 +267,10 @@ show "Rep_sprop (valid_raw a) n \<Longrightarrow> n_equiv n a (b \<cdot> c) \<Lo
 qed
 end
 
+lemma option_n_equiv_Some_op: "n_equiv n z (Some x \<cdot> y) \<Longrightarrow> \<exists>z'. z = Some z'"
+  apply (cases y)
+  by (auto simp: n_equiv_option_def op_option_def)
+
 lemma option_n_incl: "n_incl n o1 o2 \<longleftrightarrow> 
   (o1 = None \<or> (\<exists>x y. o1 = Some x \<and> o2 = Some y \<and> (n_equiv n x y \<or> n_incl n x y)))"
   apply (cases o1; cases o2)
@@ -713,6 +717,33 @@ then show "\<exists>c1 c2. a = c1 \<cdot> c2 \<and> n_equiv n c1 b \<and> n_equi
 qed
 end
 
+lemma singleton_map_n_valid [simp]: "n_valid [k\<mapsto>v] n \<longleftrightarrow> n_valid v n"
+  by (simp add: valid_raw_fun.rep_eq valid_raw_option_def)
+
+lemma singleton_map_valid [simp]: "valid [k\<mapsto>v] \<longleftrightarrow> valid v"
+  by (simp add: valid_def)
+
+lemma singleton_map_op [simp]: "[k\<mapsto>v] \<cdot> [k\<mapsto>v'] = [k\<mapsto>(v\<cdot>v')]"
+  by (auto simp: op_fun_def op_option_def)
+
+lemma singleton_map_n_incl: "n_incl n [k\<mapsto>v] m \<longleftrightarrow> (\<exists> v' c. m k = Some v' \<and> n_equiv n (Some v') (Some v\<cdot>c))"
+proof 
+  assume "n_incl n [k\<mapsto>v] m"
+  then obtain m' where "n_equiv n m ([k\<mapsto>v]\<cdot>m')" unfolding n_incl_def by blast
+  then have "\<forall>i. n_equiv n (m i) (([k\<mapsto>v]\<cdot>m') i)" unfolding n_equiv_fun_def .
+  then have "n_equiv n (m k) (Some v \<cdot> (m' k))" unfolding op_fun_def by (metis fun_upd_same)
+  moreover from option_n_equiv_Some_op[OF this] obtain v' where "m k = Some v'" by auto
+  ultimately show "\<exists> v' c. m k = Some v' \<and> n_equiv n (Some v') (Some v\<cdot>c)" by auto
+next
+  assume "\<exists> v' c. m k = Some v' \<and> n_equiv n (Some v') (Some v\<cdot>c)"
+  then obtain v' c where "m k = Some v'" "n_equiv n (m k) (Some v \<cdot> c)" by auto
+  then have "n_equiv n (m k) (([k\<mapsto>v]\<cdot> (m(k:=c))) k)" unfolding op_fun_def by simp
+  then have "n_equiv n m ([k\<mapsto>v]\<cdot> (m(k:=c)))" 
+    apply (auto simp: n_equiv_fun_def op_fun_def op_option_def)
+    subgoal for i apply (cases "m i") by (auto simp: ofe_refl) done
+  then show "n_incl n [k\<mapsto>v] m" by (auto simp: n_incl_def)
+qed
+  
 class d_opt = opt + dcamera
 instance option :: (dcamera) d_opt ..
 
@@ -740,6 +771,14 @@ proof
 fix x show "option_op None (f x) = f x" by (cases "f x") auto
 qed
 
+lemma ran_pcore_id_pred: "(\<forall>x \<in> ran m. pcore_id_pred x) \<Longrightarrow> pcore_id_pred m"
+proof -
+  assume assm: "\<forall>x \<in> ran m. pcore_id_pred x"
+  then have "\<forall>y. pcore (m y) = Some (m y)" 
+    by (auto simp: pcore_id_pred_def ran_def pcore_option_def split: option.splits)
+  then show ?thesis unfolding pcore_id_pred_def pcore_fun_def comp_def by simp
+qed
+  
 instance "fun" :: (type,d_opt) ducamera ..
 
 lemma fun_n_incl:
