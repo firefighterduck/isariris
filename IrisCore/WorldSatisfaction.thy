@@ -11,9 +11,10 @@ text \<open>
   (i.e. enabled/can be used thread-locally and might not hold) and which are closed 
   (i.e. disabled/hold for all threads).
 \<close>
-
-locale invGS = fixes invariant_name :: gname and enabled_name :: gname and disabled_name :: gname
-begin
+text \<open>Arbitrary but unique names for singleton cameras\<close>
+definition "invariant_name :: gname \<equiv> 1" 
+definition "enabled_name :: gname \<equiv> 2" 
+definition "disabled_name :: gname \<equiv> 3"
 
 definition own_inv :: "gname \<Rightarrow> inv \<Rightarrow> iprop" ("Own\<^sub>i _ _") where
   "own_inv \<gamma> i = Own(constr_inv \<gamma> i)"
@@ -97,9 +98,10 @@ lemma ownE_op': "(\<upharpoonleft>(E1 \<inter> E2 = {})) \<and>\<^sub>u ownE (E1
   apply (auto simp: op_dset_def prod_n_valid_def \<epsilon>_n_valid valid_raw_dset_def split: dset.splits)
   apply (auto simp: n_equiv_dset_def singleton_map_n_incl op_option_def n_equiv_option_def)
   unfolding valid_raw_fun.rep_eq prod_n_valid_def
-  subgoal for en E1 E2 a b c d e f n x I E D g I' D'
+  subgoal for E1 E2 a b c d e f n x I E D g I' D'
 proof -
-  assume assm: "\<forall>i. n_valid (e i) n" "e en = Some (I, E, D)" "option_op (Some (\<epsilon>, DBot, \<epsilon>)) g = Some (I', E, D')"
+  assume assm: "\<forall>i. n_valid (e i) n" "e enabled_name = Some (I, E, D)" 
+    "option_op (Some (\<epsilon>, DBot, \<epsilon>)) g = Some (I', E, D')"
   then have "n_valid E n" by (auto simp: valid_raw_option_def prod_n_valid_def split: option.splits)
   moreover from assm(3) have "E = DBot" by (cases g) (auto simp: op_prod_def op_dset_def)
   ultimately show False unfolding valid_raw_dset_def by simp
@@ -274,5 +276,4 @@ apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm2L]])
 apply (rule upred_entails_trans[OF upred_sep_comm2R])
 by (auto simp: upred_weakeningL intro!: upred_frame)
 
-end
 end

@@ -2,7 +2,6 @@ theory ViewShift
 imports WorldSatisfaction
 begin
 
-context invGS begin
 subsubsection \<open>Fancy updates\<close>
 text \<open>
   Fancy updates describe steps between different sets of opened/closed invariants and are thus
@@ -124,6 +123,16 @@ by (auto intro: upred_wandE)
 lemma persistent_vs [pers_rule]: "persistent (P ={E1,E2}=> Q)"
   unfolding view_shift_def by pers_solver
 
+lemma is_except_zero_fupd: "is_except_zero (\<Turnstile>{E1,E2}=> P)"
+  unfolding is_except_zero_def fancy_upd_def
+  apply (subst except_zero_def)
+  apply (rule upred_disjE)
+  apply (rule upred_wandI)
+  apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm]])
+  apply (rule upred_wand_apply)
+  by (metis (no_types, opaque_lifting) bupd_emp except_zero_def upd_mono_ext upred_disjIR 
+    upred_true_sep upred_wandI upred_weakeningL)
+
 lemma fupd_ext: "(\<Turnstile>{E1,E2}=>P) \<turnstile> (P={E2,E3}=\<^emph>Q)={E1,E3}=\<^emph>Q"
   apply (rule upred_wandI)
   apply (subst upred_sep_comm)
@@ -186,5 +195,4 @@ abbreviation fancy_linear_steps :: "mask \<Rightarrow> nat \<Rightarrow> iprop \
   "fancy_linear_steps E n Q \<equiv> \<Turnstile>{E}[E]\<triangleright>^n=>Q"
 abbreviation fancy_linear_wand_steps :: "iprop \<Rightarrow> mask \<Rightarrow> nat \<Rightarrow> iprop \<Rightarrow> iprop" ("_={_}\<triangleright>^_=\<^emph>_") where
   "fancy_linear_wand_steps P E n Q \<equiv> P={E}[E]\<triangleright>^n=\<^emph>Q"
-end
 end

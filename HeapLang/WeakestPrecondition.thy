@@ -3,7 +3,7 @@ imports "../IrisCore/Invariant" Notation LanguageDefs
 begin
 
 subsection \<open>Weakest Preconditions\<close>
- 
+
 function wp :: "stuckness \<Rightarrow> mask \<Rightarrow> expr \<Rightarrow> (val \<Rightarrow> iprop) \<Rightarrow> iprop" where
   "wp s E e1 \<Phi> = (case HeapLang.to_val e1 of Some v \<Rightarrow> \<Turnstile>{E}=> (\<Phi> v)
     | None \<Rightarrow> (\<forall>\<^sub>u \<sigma>1 \<kappa> \<kappa>s.

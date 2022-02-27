@@ -150,6 +150,11 @@ ML \<open>
   fun def_res cmraT = (#2 o Typedecl.abbrev_global (resN,[],NoSyn) cmraT)
   fun def_iprop cmraT = (#2 o Typedecl.abbrev_global (ipropN,[],NoSyn) (mk_pred cmraT))
 
+  fun wrap_quick_and_dirtys_mode f thy =
+    let val qad = Config.get_global thy quick_and_dirty in
+      thy |> Config.put_global quick_and_dirty true |> f |> Config.put_global quick_and_dirty qad 
+    end
+
   (* Axiomatize that pre_iprop is of class ofe. This will mark the command with a red background. *)
   fun pre_inst thy = Class.instance_arity_cmd ([Binding.name_of pre_ipropN], [], "ofe") thy
     |> Proof.global_skip_proof false |> Proof_Context.theory_of
@@ -165,10 +170,11 @@ ML \<open>
       val propT = mk_pred cmraT 
       val axs = mk_axioms preT propT
       val cmra_data = {number = #number cmra_data, cameras = #cameras cmra_data, cmraPT = SOME cmraT}
-    in thy' |> Config.put_global quick_and_dirty true
-      |> def_axioms axs |> def_resF cmraT |> def_inv preT |> def_res cmraT |> def_iprop cmraT
-      |> pre_inst |> Named_Target.theory_map (mk_defs cmra_data)
-      |> Config.put_global quick_and_dirty false
+    in thy' |> 
+      wrap_quick_and_dirtys_mode (fn thy => thy
+        |> def_axioms axs |> def_resF cmraT |> def_inv preT |> def_res cmraT |> def_iprop cmraT
+        |> pre_inst |> Named_Target.theory_map (mk_defs cmra_data)
+      )
     end
 end;
 \<close>

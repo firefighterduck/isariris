@@ -9,11 +9,14 @@ begin
 subsection \<open> The underlying structures of the spanning tree \<close>
 text \<open> Based on \<^url>\<open>https://gitlab.mpi-sws.org/iris/examples/-/blob/master/theories/spanning_tree/mon.v\<close> \<close>
 
+definition "graph_name :: gname \<equiv> 5"
+definition "marking_name :: gname \<equiv> 6"
+
 definition graphN :: namespace where "graphN = add_name nroot (string_to_name ''SPT_graph'')"
 abbreviation own_graph :: "graphUR auth \<Rightarrow> iprop" ("Own\<^sub>g _" 85) where
-  "own_graph g \<equiv> Own(constr_graph g)"
+  "own_graph g \<equiv> Own(constr_graph graph_name g)"
 abbreviation own_marking :: "markingUR auth \<Rightarrow> iprop" ("Own\<^sub>m _" 85) where
-  "own_marking m \<equiv> Own(constr_markings m)"
+  "own_marking m \<equiv> Own(constr_markings marking_name m)"
 
 lemma n_incl_fragm_l: "n_incl n (fragm {l}) a = (case a of Auth (b,c) \<Rightarrow> l\<in>c)"
   by (auto split: auth.splits)
@@ -26,11 +29,11 @@ lemma is_marked_split: "Own\<^sub>m(fragm {l}) = Own\<^sub>m(fragm {l} \<cdot> f
 
 lemma dup_marked: "is_marked l \<stileturn>\<turnstile> is_marked l \<^emph> is_marked l"
 proof -
-from own_op have "Own (constr_markings (fragm {l}) \<cdot> constr_markings (fragm {l})) 
+from own_op have "Own (constr_markings marking_name (fragm {l}) \<cdot> constr_markings marking_name (fragm {l})) 
     \<stileturn>\<turnstile> (Own\<^sub>m(fragm {l})) \<^emph> Own\<^sub>m(fragm {l})" 
   by auto
-then have "Own(constr_markings (fragm {l}\<cdot>fragm {l})) \<stileturn>\<turnstile> Own\<^sub>m(fragm {l}) \<^emph> Own\<^sub>m(fragm {l})" 
-  by (auto simp add: op_prod_def \<epsilon>_left_id constr_markings_def simp del: \<epsilon>_dset_def \<epsilon>_dfset_def \<epsilon>_option_def)
+then have "Own(constr_markings marking_name (fragm {l}\<cdot>fragm {l})) \<stileturn>\<turnstile> Own\<^sub>m(fragm {l}) \<^emph> Own\<^sub>m(fragm {l})" 
+  by (auto simp add: op_prod_def \<epsilon>_left_id constr_markings_def)
 then show ?thesis unfolding is_marked_split[symmetric] by (simp add: is_marked_def)
 qed
 
@@ -64,24 +67,22 @@ definition of_graph :: "loc graph \<Rightarrow> gmon \<Rightarrow> marked_graph"
 definition own_graphUR :: "frac \<Rightarrow> gmon \<Rightarrow> iprop" where
   "own_graphUR q G = Own\<^sub>g(fragm (Some (G,q)))"
 
-context includes points_to_syntax begin
 definition heap_owns :: "marked_graph \<Rightarrow> (loc\<rightharpoonup>loc) \<Rightarrow> iprop" where
   "heap_owns M markings = 
   sep_map_set (\<lambda>(l,(b,cl)). (\<exists>\<^sub>u m. ((\<upharpoonleft>(markings l = Some m))
     \<^emph> (l\<mapsto>\<^sub>u#[(m, children_to_val cl)])
     \<^emph> (m\<mapsto>\<^sub>u#[b]))))
   {(l,node) | l node. M l = Some node}"
-end
 
 definition graph_inv :: "loc graph \<Rightarrow> (loc\<rightharpoonup>loc) \<Rightarrow> iprop" where
   "graph_inv g markings \<equiv> \<exists>\<^sub>u (G::gmon). ((Own\<^sub>g(full (Some (G, 1))))
     \<^emph> (Own\<^sub>m(full (dom G))) \<^emph> (heap_owns (of_graph g G) markings) 
     \<^emph> (\<upharpoonleft>(strict_subgraph g (gmon_graph G))))"
 
-definition graph_ctxt :: "loc graph \<Rightarrow> (loc\<rightharpoonup>loc) \<Rightarrow> iprop" where 
-  "graph_ctxt g Mrk \<equiv> cinv graphN (graph_inv g Mrk)"
+definition graph_ctxt :: "gname \<Rightarrow> loc graph \<Rightarrow> (loc\<rightharpoonup>loc) \<Rightarrow> iprop" where 
+  "graph_ctxt \<kappa> g Mrk \<equiv> cinv graphN \<kappa> (graph_inv g Mrk)"
 
-lemma graph_ctxt_persistent [pers_rule]: "persistent (graph_ctxt g Mrk)"
+lemma graph_ctxt_persistent [pers_rule]: "persistent (graph_ctxt \<kappa> g Mrk)"
   unfolding graph_ctxt_def by (rule cinv_persistent)
 
 definition gmon_map :: "loc \<Rightarrow> chl \<Rightarrow> gmon" where "gmon_map l v = [l\<mapsto>Ex v]"

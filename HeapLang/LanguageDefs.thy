@@ -1,5 +1,5 @@
 theory LanguageDefs
-imports PrimitiveLaws State "../IrisCore/AuthHeap"
+imports PrimitiveLaws State "../IrisCore/AuthHeap" "../IrisCore/Invariant"
 begin
 
 text \<open>Auxiliary language specific definitions\<close>

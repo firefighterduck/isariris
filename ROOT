@@ -1,10 +1,10 @@
 chapter IsarIris
 
-session IsarIris = "HOL-Library" +
+session IsarIris = "HOL-Eisbach" +
     description "
         Experimental partial port of Iris
     "
-    options [timeout = 200, quick_and_dirty = true]
+    options [ quick_and_dirty ]
     directories
       "HeapLang"
       "IrisCore"

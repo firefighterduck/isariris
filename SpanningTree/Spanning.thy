@@ -36,14 +36,23 @@ subsubsection \<open>Proofs\<close>
 context wp_rules begin  
 lemma wp_try_mark:
 assumes "x\<in>dom g" 
-shows "(graph_ctxt g Mrk) \<^emph> (own_graphUR q Map.empty) \<^emph> (cinv_own k) \<turnstile>
+shows "(graph_ctxt \<kappa> g Mrk) \<^emph> (own_graphUR q Map.empty) \<^emph> (cinv_own \<kappa> k) \<turnstile>
   WP (App (of_val try_mark) (of_val #[x])) 
   {{ \<lambda>v.
-    ((\<upharpoonleft>(v=#[True])) \<^emph> (\<exists>\<^sub>u u. (((\<upharpoonleft>(g x = Some u)) \<^emph> own_graphUR q (x [\<mapsto>\<^sub>g] u)) \<^emph> is_marked x \<^emph> cinv_own k)))
-    \<or>\<^sub>u ((\<upharpoonleft>(v=#[False])) \<^emph> own_graphUR q Map.empty \<^emph> is_marked x \<^emph> cinv_own k) 
+    ((\<upharpoonleft>(v=#[True])) \<^emph> (\<exists>\<^sub>u u. (((\<upharpoonleft>(g x = Some u)) \<^emph> own_graphUR q (x [\<mapsto>\<^sub>g] u)) \<^emph> is_marked x \<^emph> cinv_own \<kappa> k)))
+    \<or>\<^sub>u ((\<upharpoonleft>(v=#[False])) \<^emph> own_graphUR q Map.empty \<^emph> is_marked x \<^emph> cinv_own \<kappa> k) 
   }}"
   unfolding try_mark_def
   apply (auto simp: subst'_def intro!: wp_pure[OF pure_exec_beta] wp_let_bind)
   unfolding graph_ctxt_def
-qed
+  apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm2L]])
+  apply (rule upred_entails_trans[OF upred_sep_comm2R])
+  apply (rule upred_entails_substE[OF upred_entail_eqR[OF persistent_dupl]], pers_solver)
+  apply (rule upred_entails_trans[OF upred_sep_comm2R])
+  apply (simp add: upred_sep_assoc_eq)
+  apply (rule upred_entails_substE[OF upred_wand_holds2E[OF cinv_acc], unfolded upred_sep_assoc_eq])
+  apply (rule subset_UNIV)
+  
+  sorry
+end
 end

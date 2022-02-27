@@ -85,6 +85,9 @@ lemma upred_wandE: "P \<turnstile> (Q-\<^emph>R) \<Longrightarrow> (P \<^emph> Q
 lemma upred_wand_apply: "P\<^emph>(P-\<^emph>Q) \<turnstile> Q"
   by transfer (metis camera_comm n_valid_ne ofe_sym order_refl total_n_inclI)
 
+lemma upred_wand_apply': "P\<turnstile>Q \<Longrightarrow> P\<^emph>(Q-\<^emph>R)\<turnstile>R"
+  by transfer (metis camera_comm camera_valid_op n_valid_ne ofe_sym order_refl total_n_inclI)
+
 lemma upred_true_sep: "(P \<^emph> upred_emp) = P"
   apply transfer using n_incl_def by fastforce
 
@@ -226,6 +229,15 @@ lemma upred_wand_holds2E: "upred_holds (P -\<^emph> Q -\<^emph> R) \<Longrightar
   apply (rule upred_wand_holdsE)
   by assumption
 
+lemma upred_wand_mono: "\<lbrakk>P\<turnstile>P'; Q\<turnstile>Q'\<rbrakk> \<Longrightarrow> (P'-\<^emph>Q)\<turnstile>(P-\<^emph>Q')"
+  by transfer (metis camera_comm camera_valid_op)
+
+lemma upred_wand_disj: "\<lbrakk>(P-\<^emph>Q)\<turnstile>R; (P'-\<^emph>Q)\<turnstile>R\<rbrakk> \<Longrightarrow> ((P\<or>\<^sub>uP')-\<^emph>Q)\<turnstile>R"
+  by transfer metis
+
+lemma upred_wand_disj_apply: "\<lbrakk>P\<^emph>(Q-\<^emph>R)\<turnstile>S; P'\<^emph>(Q'-\<^emph>R)\<turnstile>S\<rbrakk> \<Longrightarrow> (P\<or>\<^sub>uP')\<^emph>((Q\<or>\<^sub>uQ')-\<^emph>R)\<turnstile>S"
+  by transfer metis
+
 lemma upred_own_nothing_true: "Own \<epsilon> \<stileturn>\<turnstile> upred_emp"
   by (rule upred_entail_eqI) (auto simp: upred_pure.rep_eq upred_own.rep_eq)
 
@@ -281,6 +293,10 @@ lemma upred_later_impl: "(\<triangleright> (P \<longrightarrow>\<^sub>u Q)) \<tu
 lemma upred_persis_later: "\<box>\<triangleright>P \<stileturn>\<turnstile> \<triangleright>\<box>P"
   by (rule upred_entail_eqI)
     (simp add: upred_later.rep_eq upred_persis.rep_eq)
+
+lemma upred_later_disj: "\<triangleright>(P\<or>\<^sub>uQ) \<stileturn>\<turnstile> (\<triangleright>P) \<or>\<^sub>u (\<triangleright>Q)"
+  apply (rule upred_entail_eqI)
+  by transfer auto
 
 lemma pull_exists_antecedent: "(\<exists>\<^sub>u x. (P x \<^emph> Q)) \<turnstile> R \<Longrightarrow> (\<exists>\<^sub>u x. P x) \<^emph> Q \<turnstile> R"
   by transfer' blast
@@ -709,11 +725,37 @@ lemma except_zero_mono_ext: "P\<^emph>Q\<turnstile>R \<Longrightarrow> P\<^emph>
 lemma except_zero_bupd: "\<diamondop>\<Rrightarrow>\<^sub>bP\<turnstile>\<Rrightarrow>\<^sub>b\<diamondop>P"
   unfolding except_zero_def by transfer blast
 
+definition is_except_zero :: "'a::ucamera upred_f \<Rightarrow> bool" where "is_except_zero P \<equiv> \<diamondop>P \<turnstile> P"
+
+lemma is_except_zero_except_zero: "is_except_zero (\<diamondop>P)"
+  unfolding is_except_zero_def by (rule except_zero_idem)
+
+lemma is_except_zero_later: "is_except_zero (\<triangleright>P)"
+  unfolding is_except_zero_def except_zero_def by transfer blast
+
 definition timeless :: "'a::ucamera upred_f \<Rightarrow> bool" where "timeless P \<equiv> (\<triangleright>P) \<turnstile> \<diamondop>P"
 
 lemma own_timeless: "timeless (Own (x::'a::ducamera))"
   by (auto simp: upred_own.rep_eq upred_entails.rep_eq upred_later.rep_eq except_zero_def 
     upred_disj.rep_eq upred_pure.rep_eq n_incl_def d_equiv timeless_def)
+
+definition elim_modal :: "'a::ucamera upred_f \<Rightarrow> 'a upred_f \<Rightarrow> 'a upred_f \<Rightarrow> 'a upred_f \<Rightarrow> bool" 
+  where "elim_modal P P' Q Q' \<equiv> P \<^emph> (P'-\<^emph>Q') \<turnstile> Q"
+  
+lemma elim_modal_timeless: "\<lbrakk>P \<turnstile> \<diamondop>P'; is_except_zero Q\<rbrakk> \<Longrightarrow> elim_modal P P' Q Q"
+  unfolding is_except_zero_def elim_modal_def
+  by (metis except_zero_mono_ext upred_entails_refl upred_entails_trans upred_frame upred_sep_comm upred_wandE)
+
+lemma elim_modal_entails: "\<lbrakk>elim_modal P P' Q Q'; P' \<turnstile> Q'\<rbrakk> \<Longrightarrow> P \<turnstile> Q"
+proof -
+  assume assms: "elim_modal P P' Q Q'" "P' \<turnstile> Q'"
+  from upred_wand_holdsI[OF assms(2)] have "P' -\<^emph> Q'" .
+  show ?thesis apply (rule add_holds[OF \<open>P'-\<^emph>Q'\<close>])
+  by (rule assms(1)[unfolded elim_modal_def])
+qed
+
+lemma elim_modal_entails': "\<lbrakk>elim_modal P P' Q Q'; R \<^emph> P' \<turnstile> Q'\<rbrakk> \<Longrightarrow> R \<^emph> P \<turnstile> Q"
+  by (metis elim_modal_def upred_entails_substE upred_sep_comm upred_wandI)
 
 subsubsection \<open>Plain predicates\<close>
 definition plain :: "'a::ucamera upred_f \<Rightarrow> bool" where "plain P \<equiv> P\<turnstile>\<^item>P"

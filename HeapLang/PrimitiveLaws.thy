@@ -21,4 +21,5 @@ type_synonym heap_lang_heap = "(loc, val option) heap"
 type_synonym heap_lang_proph_map = "(proph_id, (val\<times>val)) proph_mapGS"
 type_synonym heap_lang_proph_map_raw = "(proph_id,(val\<times>val) list) fmap"
 type_synonym heap_lang_proph_val_list = "(proph_id\<times>(val\<times>val)) list"
+
 end

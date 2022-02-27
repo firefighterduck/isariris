@@ -1,8 +1,7 @@
 theory Invariant
-imports ViewShift
+imports ViewShift Automation
 begin
 
-context invGS begin
 subsubsection \<open>Impredicative Invariants\<close>
 
 text \<open>Semantic invariant definition\<close>
@@ -106,7 +105,7 @@ done
 
 lemma inv_raw_alloc_open: "names N \<subseteq> E \<Longrightarrow>
   \<Turnstile>{E, E-names N}=> (inv_raw N P \<^emph> ((\<triangleright>P) ={E-names N, E}=\<^emph> upred_emp))"
-unfolding fancy_upd_def
+  unfolding fancy_upd_def
 apply (rule upred_wand_holdsI)
 apply (rule upred_wandE)
 apply (rule upred_entails_trans[OF upred_wand_holdsE[OF ownI_alloc_open[of "\<lambda>i. i \<in> names N"]],
@@ -330,7 +329,7 @@ type_synonym cinvG = frac
 definition cinv_own :: "gname \<Rightarrow> frac \<Rightarrow> iprop" where "cinv_own \<gamma> p = Own (constr_cinv \<gamma> (Some p))"
 definition cinv :: "namespace \<Rightarrow> gname \<Rightarrow> iprop \<Rightarrow> iprop" where "cinv N \<gamma> P = inv N (P \<or>\<^sub>u cinv_own \<gamma> 1)"
 
-lemma cinv_persistent: "persistent (cinv N \<gamma> P)"
+lemma cinv_persistent [pers_rule]: "persistent (cinv N \<gamma> P)"
   unfolding cinv_def by (rule persistent_inv)
 
 lemma timeless_cinv_own: "timeless (cinv_own \<gamma> p)"
@@ -355,6 +354,58 @@ qed
 lemma cinv_acc_strong: "names N \<subseteq> E \<Longrightarrow>
   (cinv N \<gamma> P) -\<^emph> (cinv_own \<gamma> p ={E,E-names N}=\<^emph>
   ((\<triangleright>P) \<^emph> cinv_own \<gamma> p \<^emph> (\<forall>\<^sub>u E'. (((\<triangleright>P) \<or>\<^sub>u cinv_own \<gamma> 1) ={E',names N \<union> E'}=\<^emph> upred_emp))))"
-  sorry
-end
+  apply (rule upred_wand_holds2I)
+  apply (rule add_holds[OF inv_acc[of N "names N", simplified]])
+  apply (subst cinv_def)
+  apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm2L]])
+  apply (rule upred_entails_substE[OF upred_wand_apply, unfolded upred_sep_assoc_eq])
+  apply (rule add_holds[OF fupd_mask_frameR[of "names N" "E-names N"]])
+  apply simp
+  apply (rule upred_entails_substE[OF upred_wand_apply, unfolded upred_sep_assoc_eq])
+  apply (simp add: Un_absorb1)
+  apply (rule upred_entails_trans[OF _ fupd_mask_trans[of E "E -names N" "E-names N"]])
+  apply (auto simp: upred_sep_assoc_eq intro!: fupd_frame_mono)
+  apply (rule upred_entails_trans[OF upred_sep_comm2R])
+  apply (rule upred_entails_substE[OF upred_entail_eqL[OF upred_later_disj]])
+  apply (rule upred_disjE')
+  apply (rule upred_entails_trans[OF _ upred_wand_holdsE[OF fupd_frame_split]]) prefer 2
+  apply (rule can_be_split_rev) apply (rule can_be_split_sepR) apply (rule can_be_split_refl)
+  apply (rule upred_frame)
+  apply (rule upred_entails_trans[OF _ upred_wand_holdsE[OF fupd_frame_split]]) prefer 2
+  apply (rule can_be_split_rev) apply (rule can_be_split_refl)
+  apply (subst upred_sep_comm, rule upred_frame)
+  apply (rule upred_entails_trans[OF _ upred_wand_holdsE[OF fupd_intro]])
+  apply (auto intro!: upred_sep_mono upred_forallI)[1]
+  subgoal for E'
+    apply (rule upred_entails_trans[OF upred_wand_mono[OF upred_entail_eqR[OF upred_later_disj] upred_entails_refl]])
+    apply (rule upred_wandI)
+    apply (subst upred_sep_comm)
+    apply (rule upred_entails_trans[OF upred_wand_apply'])
+    apply (rule upred_disjE) apply (auto intro: upred_disjIL)
+    apply (rule upred_entails_trans[OF upred_laterI]) apply (auto intro: upred_disjIR)
+    apply (rule add_holds[OF fupd_mask_frameR[of "{}" E' "names N" upred_emp, simplified]])
+    by (auto intro: upred_entails_trans[OF upred_wand_apply])
+  apply (rule elim_modal_entails'[OF elim_modal_timeless[OF timeless_cinv_own[unfolded timeless_def] is_except_zero_fupd]])
+  apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm2L]])
+  apply (rule upred_entails_trans[OF upred_sep_comm2R])
+  by (auto intro: upred_entails_substE[OF upred_wand_holds2E[OF cinv_own_1_l], unfolded upred_sep_assoc_eq])
+
+lemma cinv_acc: "names N \<subseteq> E \<Longrightarrow>
+  ((cinv N \<gamma> P) -\<^emph> (cinv_own \<gamma> p ={E,E-names N}=\<^emph> ((\<triangleright>P) \<^emph> cinv_own \<gamma> p \<^emph> ((\<triangleright>P) ={E-names N,E}=\<^emph>upred_emp))))"
+  apply (rule upred_wand_holdsI)
+  apply (rule upred_entails_trans[OF upred_entail_eqR[OF persistent_dupl]], pers_solver)
+  apply (rule upred_wandI)
+  apply (auto intro!: upred_entails_substE[OF upred_wand_holds2E[OF cinv_acc_strong], simplified upred_sep_assoc_eq, of N E])
+  apply (rule upred_entails_trans[OF _ fupd_mask_trans[of E "E -names N" "E-names N"]])
+  apply (auto simp: upred_sep_assoc_eq intro!: fupd_frame_mono)
+  apply (rule upred_entails_trans[OF _ upred_wand_holdsE[OF fupd_frame_split]])
+  prefer 2 apply (rule can_be_split_rev, rule can_be_split_refl, unfold upred_sep_assoc_eq)
+  apply (rule upred_entails_trans[OF upred_sep_comm2R]) apply (rule upred_frame)  
+  apply (rule upred_entails_trans[OF upred_sep_comm2R]) apply (rule upred_frame)
+  apply (rule upred_entails_substE[OF upred_forall_inst[of _ "E-names N"]])
+  apply (rule upred_entails_trans[OF _ upred_wand_holdsE[OF fupd_intro]])
+  apply (rule upred_wandI)
+  apply (rule upred_entails_trans[OF upred_sep_comm2R]) 
+  apply (auto simp: Un_absorb1 intro!: upred_entails_substE[OF upred_wand_apply', unfolded upred_sep_assoc_eq] upred_disjIL) 
+  by (rule upred_weakeningR)
 end
