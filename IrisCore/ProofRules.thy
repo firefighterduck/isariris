@@ -168,6 +168,18 @@ lemma upred_sep_comm4_2: "P \<^emph> Q \<^emph> R \<^emph> T \<^emph> S \<turnst
 lemma upred_sep_comm4_1: "P \<^emph> Q \<^emph> R \<^emph> T \<^emph> S \<turnstile> Q \<^emph> P \<^emph> R \<^emph> T \<^emph> S"
   by (simp add: upred_sep_comm)
 
+lemma upred_sep_comm5_2: "P \<^emph> Q \<^emph> R \<^emph> T \<^emph> S \<^emph> U \<turnstile> P \<^emph> R \<^emph> Q \<^emph> T \<^emph> S \<^emph> U"
+  by (simp add: upred_sep_comm2_eq)
+
+lemma upred_sep_comm5_1: "P \<^emph> Q \<^emph> R \<^emph> T \<^emph> S \<^emph> U \<turnstile> Q \<^emph> P \<^emph> R \<^emph> T \<^emph> S \<^emph> U"
+  by (simp add: upred_sep_comm)
+
+lemma upred_sep_comm6_2: "P \<^emph> Q \<^emph> R \<^emph> T \<^emph> S \<^emph> U \<^emph> V \<turnstile> P \<^emph> R \<^emph> Q \<^emph> T \<^emph> S \<^emph> U \<^emph> V"
+  by (simp add: upred_sep_comm2_eq)
+
+lemma upred_sep_comm6_1: "P \<^emph> Q \<^emph> R \<^emph> T \<^emph> S \<^emph> U \<^emph> V \<turnstile> Q \<^emph> P \<^emph> R \<^emph> T \<^emph> S \<^emph> U \<^emph> V"
+  by (simp add: upred_sep_comm)
+  
 lemma upred_sep_comm6_2R: "P \<^emph> Q \<^emph> R \<^emph> S \<^emph> T \<^emph> U \<^emph> V \<turnstile> P \<^emph> R \<^emph> S \<^emph> T \<^emph> U \<^emph> V \<^emph> Q"
   by (auto simp: upred_sep_comm2_eq)
 
@@ -735,9 +747,44 @@ lemma is_except_zero_later: "is_except_zero (\<triangleright>P)"
 
 definition timeless :: "'a::ucamera upred_f \<Rightarrow> bool" where "timeless P \<equiv> (\<triangleright>P) \<turnstile> \<diamondop>P"
 
-lemma own_timeless: "timeless (Own (x::'a::ducamera))"
+named_theorems timeless_rule
+method timeless_solver = (rule timeless_rule)+
+
+lemma own_timeless [timeless_rule]: "timeless (Own (x::'a::ducamera))"
   by (auto simp: upred_own.rep_eq upred_entails.rep_eq upred_later.rep_eq except_zero_def 
     upred_disj.rep_eq upred_pure.rep_eq n_incl_def d_equiv timeless_def)
+
+lemma timeless_pure [timeless_rule]: "timeless (\<upharpoonleft>(b))"
+  unfolding timeless_def except_zero_def by transfer simp
+
+lemma timeless_conj [timeless_rule]: "\<lbrakk>timeless P; timeless Q\<rbrakk> \<Longrightarrow> timeless (P\<and>\<^sub>uQ)"
+  unfolding timeless_def except_zero_def by transfer blast
+
+lemma timeless_disj [timeless_rule]: "\<lbrakk>timeless P; timeless Q\<rbrakk> \<Longrightarrow> timeless (P\<or>\<^sub>uQ)"
+  unfolding timeless_def except_zero_def by transfer blast
+
+lemma timeless_impl [timeless_rule]: "timeless Q \<Longrightarrow> timeless (P\<longrightarrow>\<^sub>uQ)"
+  unfolding timeless_def except_zero_def apply transfer
+  by (metis (mono_tags, lifting) Rep_sprop diff_le_mono diff_le_self diff_self_eq_0 mem_Collect_eq n_incl_refl)
+
+lemma timeless_sep [timeless_rule]: "\<lbrakk>timeless P; timeless Q\<rbrakk> \<Longrightarrow> timeless (P\<^emph>Q)"
+  unfolding timeless_def 
+  apply (rule upred_entails_trans[OF upred_entail_eqL[OF upred_later_sep]])
+  apply (rule upred_entails_trans[OF _ upred_entail_eqR[OF except_zero_sep]])
+  by (auto intro: upred_sep_mono)
+
+lemma timeless_wand [timeless_rule]: "timeless Q \<Longrightarrow> timeless (P-\<^emph>Q)"
+  unfolding timeless_def except_zero_def apply transfer
+  by (smt (verit, ccfv_threshold) Rep_sprop diff_diff_cancel diff_is_0_eq diff_right_commute mem_Collect_eq n_incl_refl nat_le_linear)
+
+lemma timeless_forall [timeless_rule]: "(\<And>x. timeless (P x)) \<Longrightarrow> timeless (\<forall>\<^sub>u x. P x)"
+  unfolding timeless_def except_zero_def by transfer' blast
+
+lemma timeless_exists [timeless_rule]: "(\<And>x. timeless (P x)) \<Longrightarrow> timeless (\<exists>\<^sub>u x. P x)"
+  unfolding timeless_def except_zero_def by transfer' blast
+
+lemma timeless_persis [timeless_rule]: "timeless P \<Longrightarrow> timeless (\<box>P)"
+  unfolding timeless_def except_zero_def apply transfer using camera_core_n_valid by blast
 
 definition elim_modal :: "'a::ucamera upred_f \<Rightarrow> 'a upred_f \<Rightarrow> 'a upred_f \<Rightarrow> 'a upred_f \<Rightarrow> bool" 
   where "elim_modal P P' Q Q' \<equiv> P \<^emph> (P'-\<^emph>Q') \<turnstile> Q"

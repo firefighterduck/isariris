@@ -123,6 +123,12 @@ by (auto intro: upred_wandE)
 lemma persistent_vs [pers_rule]: "persistent (P ={E1,E2}=> Q)"
   unfolding view_shift_def by pers_solver
 
+lemma timeless_later_vs: "timeless P \<Longrightarrow> (\<triangleright>P) ={E}=> P"
+  unfolding timeless_def view_shift_def fancy_upd_def
+  apply (subst upred_holds_entails)
+  by (smt (verit, ccfv_SIG) except_zero_sepL persistent_persisI persistent_pure updI 
+    upred_entails_substE upred_entails_trans upred_holds_entails upred_sep_comm upred_wand_holds2I)
+
 lemma is_except_zero_fupd: "is_except_zero (\<Turnstile>{E1,E2}=> P)"
   unfolding is_except_zero_def fancy_upd_def
   apply (subst except_zero_def)

@@ -15,7 +15,7 @@ function wp :: "stuckness \<Rightarrow> mask \<Rightarrow> expr \<Rightarrow> (v
 by auto
 
 abbreviation WP :: "expr \<Rightarrow> (val \<Rightarrow> iprop) \<Rightarrow> iprop" ("WP _ {{ _ }}") where
-  "WP e {{ \<Phi> }} \<equiv> wp NotStuck {} e \<Phi>"
+  "WP e {{ \<Phi> }} \<equiv> wp NotStuck UNIV e \<Phi>"
 
 text \<open>
   First we show that some basic properties of wp hold for inputs in the domain, then we 
@@ -235,5 +235,21 @@ lemma wp_pure: "\<lbrakk>pure_exec b n e1 e2; b; P \<turnstile> wp s E e2 Q\<rbr
 
 lemma wp_let_bind: "Q \<turnstile> wp s E e (\<lambda>v. wp s E (let: x := (of_val v) in e2 endlet) P) \<Longrightarrow> 
   Q \<turnstile> wp s E (let: x := e in e2 endlet) P" sorry (* Would follow from wp_bind *)
+
+lemma wp_let_bind': "Q \<turnstile> wp s E e (\<lambda>v. wp s E (let: x := C (of_val v) in e2 endlet) P) \<Longrightarrow> 
+  Q \<turnstile> wp s E (let: x := C e in e2 endlet) P" sorry
+
+lemma elim_modal_fupd_wp_atomic: "atomic (stuckness_to_atomicity s) e \<Longrightarrow> 
+  elim_modal (\<Turnstile>{E1,E2}=>P) P (wp s E1 e Q) (wp s E2 e (\<lambda>v. \<Turnstile>{E2,E1}=> Q v))"
+  unfolding elim_modal_def
+  apply (entails_substL rule: upred_wand_holdsE[OF fupd_frame_r])
+  apply (entails_substL rule: fupd_mono[OF upred_wand_apply])
+  by (rule wp_atomic, assumption)
+
+lemma wp_is_except_zero: "is_except_zero (wp s E e P)"
+  unfolding is_except_zero_def
+  apply (rule upred_entails_trans[OF _ fupd_wp])
+  apply (rule upred_entails_trans[OF _ is_except_zero_fupd[unfolded is_except_zero_def]])
+  by (auto intro: upred_entails_trans[OF _ except_zero_mono[OF upred_wand_holdsE[OF fupd_intro]]])
 end
 end   

@@ -1,5 +1,5 @@
 theory Spanning
-imports Mon "../HeapLang/Par" "../HeapLang/WeakestPrecondition"
+imports Mon "../HeapLang/Par" "../HeapLang/WeakestPrecondition" "HOL-Library.Rewrite"
 begin
 
 subsection \<open> Spanning Tree \<close>
@@ -18,7 +18,7 @@ definition unmark_snd :: val where "unmark_snd \<equiv>
 
 definition span :: val where "span \<equiv>
   RecV (Some ''span'') (Some ''x'')
-  match: (V ''x'') with                     
+  match: (V ''x'') with
   NoneCase \<Rightarrow> FalseE
   | SomeCase (Some ''y'') \<Rightarrow> 
     if: App (Val try_mark) (V ''y'') then
@@ -35,24 +35,26 @@ definition span :: val where "span \<equiv>
 subsubsection \<open>Proofs\<close>
 context wp_rules begin  
 lemma wp_try_mark:
-assumes "x\<in>dom g" 
-shows "(graph_ctxt \<kappa> g Mrk) \<^emph> (own_graphUR q Map.empty) \<^emph> (cinv_own \<kappa> k) \<turnstile>
+assumes "x\<in>fmdom' g"
+shows "(graph_ctxt \<kappa> g Mrk) \<^emph> (own_graphUR q fmempty) \<^emph> (cinv_own \<kappa> k) \<turnstile>
   WP (App (of_val try_mark) (of_val #[x])) 
   {{ \<lambda>v.
-    ((\<upharpoonleft>(v=#[True])) \<^emph> (\<exists>\<^sub>u u. (((\<upharpoonleft>(g x = Some u)) \<^emph> own_graphUR q (x [\<mapsto>\<^sub>g] u)) \<^emph> is_marked x \<^emph> cinv_own \<kappa> k)))
-    \<or>\<^sub>u ((\<upharpoonleft>(v=#[False])) \<^emph> own_graphUR q Map.empty \<^emph> is_marked x \<^emph> cinv_own \<kappa> k) 
+    ((\<upharpoonleft>(v=#[True])) \<^emph> (\<exists>\<^sub>u u. (((\<upharpoonleft>(fmlookup g x = Some u)) \<^emph> own_graphUR q (x [\<mapsto>\<^sub>g] u)) \<^emph> is_marked x \<^emph> cinv_own \<kappa> k)))
+    \<or>\<^sub>u ((\<upharpoonleft>(v=#[False])) \<^emph> own_graphUR q fmempty \<^emph> is_marked x \<^emph> cinv_own \<kappa> k) 
   }}"
   unfolding try_mark_def
-  apply (auto simp: subst'_def intro!: wp_pure[OF pure_exec_beta] wp_let_bind)
+  apply (auto simp: subst'_def intro!: wp_pure[OF pure_exec_beta] wp_let_bind'[where C=Fst])
   unfolding graph_ctxt_def
-  apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm2L]])
-  apply (rule upred_entails_trans[OF upred_sep_comm2R])
-  apply (rule upred_entails_substE[OF upred_entail_eqR[OF persistent_dupl]], pers_solver)
-  apply (rule upred_entails_trans[OF upred_sep_comm2R])
-  apply (simp add: upred_sep_assoc_eq)
-  apply (rule upred_entails_substE[OF upred_wand_holds2E[OF cinv_acc], unfolded upred_sep_assoc_eq])
+  apply (move_sepL "cinv ?N ?\<kappa> ?P")
+  apply dupl_pers
+  apply (move_sepL "cinv_own ?N ?\<kappa>")
+  apply (entails_substL rule: upred_wand_holds2E[OF cinv_acc])
   apply (rule subset_UNIV)
-  
+  apply (auto simp: upred_sep_assoc_eq intro!: elim_modal_entails'[OF elim_modal_fupd_wp_atomic[OF atomic_load]])
+  apply (move_sepL "\<triangleright>(graph_inv g Mrk)")
+  apply (rule elim_modal_entails'[OF elim_modal_timeless[OF graph_inv_timeless[unfolded timeless_def] wp_is_except_zero]])
+  apply (rewrite in "_\<^emph>(\<hole>) \<turnstile>_" graph_inv_def)
+  apply (auto simp: upred_sep_assoc_eq intro!: pull_exists_antecedentR upred_existsE')
   sorry
 end
 end

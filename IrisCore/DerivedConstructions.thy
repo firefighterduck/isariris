@@ -941,4 +941,67 @@ instance
 end
 
 instance dfset :: (type) ducamera ..
+subsubsection \<open> Finite map camera \<close>
+instantiation fmap :: (type,camera) camera begin
+context includes fmap.lifting begin
+lift_definition valid_raw_fmap :: "('a, 'b) fmap \<Rightarrow> sprop" is valid_raw .
+lift_definition pcore_fmap :: "('a, 'b) fmap \<Rightarrow> ('a, 'b) fmap option" is pcore
+  apply (auto simp: pcore_fun_def comp_def)
+  by (metis (mono_tags, lifting) domIff finite_subset option.case(1) option.case(2) pcore_option_def subsetI)
+lift_definition op_fmap :: "('a, 'b) fmap \<Rightarrow> ('a, 'b) fmap \<Rightarrow> ('a, 'b) fmap" is op
+proof -
+  fix f1 f2 :: "'a\<rightharpoonup>'b"
+  assume assms: "finite (dom f1)" "finite (dom f2)"
+  have "i \<in> dom (\<lambda>i. option_op (f1 i) (f2 i)) \<longleftrightarrow> i\<in>dom f1 \<or> i\<in>dom f2" for i
+    by (cases "f1 i"; cases "f2 i") auto  
+  then have "dom (\<lambda>i. option_op (f1 i) (f2 i)) = dom f1 \<union> dom f2" by blast
+  then have "finite (dom (\<lambda>i. option_op (f1 i) (f2 i))) \<longleftrightarrow> finite (dom f1)\<and>finite (dom f2)"
+    by simp
+    with assms show "finite (dom (f1 \<cdot> f2))" by (auto simp: op_fun_def op_option_def)
+qed
+end  
+instance proof 
+show "non_expansive (valid_raw::('a, 'b) fmap \<Rightarrow> sprop)"
+  apply (rule non_expansiveI)
+  by (auto simp: valid_raw_fmap.rep_eq)  (simp add: n_equiv_fmap.rep_eq valid_raw_ne)
+next
+show "non_expansive (pcore::('a, 'b) fmap \<Rightarrow> ('a, 'b) fmap option)"
+  apply (rule non_expansiveI)
+  apply (auto simp: pcore_fmap_def n_equiv_fmap_def)
+  by (smt (verit, ccfv_threshold) camera_props(9) dom_fmlookup_finite eq_onp_same_args 
+    map_option_eq_Some n_equiv_fmap.abs_eq n_equiv_option_def option.map_disc_iff pcore_fmap.rep_eq)
+next
+show "non_expansive2 (op::('a, 'b) fmap \<Rightarrow> ('a, 'b) fmap \<Rightarrow> ('a, 'b) fmap)"
+  by (rule non_expansive2I) (auto simp: op_fmap.rep_eq n_equiv_fmap_def)
+next
+fix a b c :: "('a,'b) fmap"
+show "a \<cdot> b \<cdot> c = a \<cdot> (b \<cdot> c)" apply (auto simp: op_fmap_def)
+  by (metis (mono_tags, opaque_lifting) camera_assoc fmlookup_inverse op_fmap.rep_eq)
+next
+fix a b :: "('a,'b) fmap"
+show "a \<cdot> b = b \<cdot> a" 
+  by (metis (mono_tags, lifting) DerivedConstructions.op_fmap.rep_eq camera_comm fmlookup_inject)
+next
+fix a a' :: "('a,'b) fmap"
+show "pcore a = Some a' \<Longrightarrow> a' \<cdot> a = a"
+  by (metis (mono_tags) camera_pcore_id fmlookup_inject op_fmap.rep_eq option.simps(9) pcore_fmap.rep_eq)
+next
+fix a a' :: "('a,'b) fmap"
+show " pcore a = Some a' \<Longrightarrow> pcore a' = pcore a"
+  by (smt (verit, del_insts) DerivedConstructions.pcore_fmap.abs_eq camera_pcore_idem 
+    dom_fmlookup_finite eq_onp_same_args fmlookup_inverse option.simps(9) pcore_fmap.rep_eq)
+next
+fix a a' b :: "('a,'b) fmap"
+show "pcore a = Some a' \<Longrightarrow> \<exists>c. b = a \<cdot> c \<Longrightarrow> \<exists>b'. pcore b = Some b' \<and> (\<exists>c. b' = a' \<cdot> c)"
+  including fmap.lifting apply transfer apply auto using camera_pcore_mono sorry
+next
+fix a b :: "('a,'b) fmap" and n
+show "Rep_sprop (valid_raw (a \<cdot> b)) n \<Longrightarrow> Rep_sprop (valid_raw a) n"
+  including fmap.lifting apply transfer using camera_valid_op by blast
+next
+fix a b1 b2 :: "('a,'b) fmap" and n
+show "Rep_sprop (valid_raw a) n \<Longrightarrow> n_equiv n a (b1 \<cdot> b2) \<Longrightarrow> \<exists>c1 c2. a = c1 \<cdot> c2 \<and> n_equiv n c1 b1 \<and> n_equiv n c2 b2"
+  including fmap.lifting apply transfer using camera_extend sorry
+qed
+end
 end

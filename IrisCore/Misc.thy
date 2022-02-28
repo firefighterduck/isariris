@@ -95,7 +95,7 @@ lemma sep_comp_fun_commute: "comp_fun_commute (\<^emph>)"
 lemma sep_P_comp_fun_commute: "comp_fun_commute (\<lambda>x a. a \<^emph> P x)"
   apply standard apply (simp add: comp_def comp_fun_commute_def upred_sep_comm)
   by (metis (no_types, opaque_lifting) upred_sep_assoc_eq upred_sep_comm)
-  
+
 lemma sep_map_dom_delete: "fmlookup m i = Some x \<Longrightarrow> 
   sep_map_fmdom P m = P i \<^emph> sep_map_fmdom P (fmdrop i m)"
 unfolding sep_map_set_def
@@ -122,5 +122,12 @@ inductive_cases rel_nstepsE[elim!]: "rel_nsteps R 0 x y"
 
 lemma rel_one_step: "R x y \<Longrightarrow> rel_nsteps R (Suc 0) x y"
   by auto  
-  
+
+lemma timeless_sep_map_fset [timeless_rule]: "(\<And>x. timeless (f x)) \<Longrightarrow> timeless ([\<^emph>\<^sub>m] f s)"
+unfolding sep_fold_fset_def
+apply (induction s)
+apply (auto simp: comp_fun_commute.ffold_empty[OF sep_P_comp_fun_commute])
+apply timeless_solver
+apply (auto simp: comp_fun_commute.ffold_finsert[OF sep_P_comp_fun_commute])
+by (timeless_solver; auto)
 end
