@@ -1,5 +1,5 @@
 theory ViewShift
-imports WorldSatisfaction
+imports WorldSatisfaction Automation
 begin
 
 subsubsection \<open>Fancy updates\<close>
@@ -185,6 +185,15 @@ proof -
   show ?thesis .
 qed
 
+lemma upd_fupd: "(\<Rrightarrow>\<^sub>b P) ={E}=\<^emph> P"
+unfolding fancy_upd_def
+apply iIntro
+apply (entails_substL rule: upd_frameL)
+apply (subst upred_sep_assoc_eq)
+apply (rule upd_mono)
+apply (entails_substR rule: except_zeroI)
+by iFrame_single+
+
 abbreviation fancy_step :: "mask \<Rightarrow> mask \<Rightarrow> iprop \<Rightarrow> iprop" ("\<Turnstile>{_}[_]\<triangleright>=>_") where
   "fancy_step Eo Ei Q \<equiv> \<Turnstile>{Eo,Ei}=> \<triangleright> \<Turnstile>{Ei,Eo}=> Q"
 abbreviation fancy_wand_step :: "iprop \<Rightarrow> mask \<Rightarrow> mask \<Rightarrow> iprop \<Rightarrow> iprop" ("_={_}[_]\<triangleright>=\<^emph>_") where
@@ -201,4 +210,11 @@ abbreviation fancy_linear_steps :: "mask \<Rightarrow> nat \<Rightarrow> iprop \
   "fancy_linear_steps E n Q \<equiv> \<Turnstile>{E}[E]\<triangleright>^n=>Q"
 abbreviation fancy_linear_wand_steps :: "iprop \<Rightarrow> mask \<Rightarrow> nat \<Rightarrow> iprop \<Rightarrow> iprop" ("_={_}\<triangleright>^_=\<^emph>_") where
   "fancy_linear_wand_steps P E n Q \<equiv> P={E}[E]\<triangleright>^n=\<^emph>Q"
+
+method fupd_dropL =
+  move_sepL "\<Turnstile>{?E1,?E2}=>?P",
+    match conclusion in "_\<^emph>\<Turnstile>{E1,E2}=>P\<turnstile>\<Turnstile>{E1,E3}=>Q" for E1 E2 E3 P Q \<Rightarrow>
+      \<open>entails_substR rule: fupd_mask_trans[of E1 E2 E3], rule fupd_frame_mono\<close>
+    \<bar> "\<Turnstile>{E1,E2}=>P\<turnstile>\<Turnstile>{E1,E3}=>Q" for E1 E2 E3 P Q \<Rightarrow> \<open>rule fupd_mono\<close>,
+  (simp only: upred_true_sep)?
 end

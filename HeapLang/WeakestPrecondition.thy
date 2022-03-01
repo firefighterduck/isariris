@@ -202,6 +202,7 @@ lemma wp_atomic: "atomic (stuckness_to_atomicity s) e \<Longrightarrow>
   \<Turnstile>{E1,E2}=> wp s E2 e (\<lambda>v. \<Turnstile>{E2,E1}=> P v) \<turnstile> wp s E1 e P" sorry
 
 lemma wp_bind: "wp s E e (\<lambda>v. wp s E (lang_ctxt K (of_val v)) P) \<turnstile> wp s E (lang_ctxt K e) P" sorry
+lemma wp_bind': "wp s E e (\<lambda>v. wp s E (C (of_val v)) P) \<turnstile> wp s E (C e) P" sorry
 lemma wp_bind_inv: "wp s E (lang_ctxt K e) P \<turnstile> wp s E e (\<lambda>v. wp s E (lang_ctxt K (of_val v)) P)" sorry
 lemma wp_stuck_mono: "s1 \<le> s2 \<Longrightarrow> wp s1 E e P \<turnstile> wp s2 E e P" sorry
 lemma wp_stuck_weaken: "wp s E e P \<turnstile> wp MaybeStuck E e P" using wp_stuck_mono[of s MaybeStuck] by simp
@@ -231,7 +232,7 @@ lemma wp_pure': "\<lbrakk>pure_exec b n e1 e2; b; P \<turnstile> wp s E (fill K 
   P \<turnstile> wp s E (fill K e1) Q" sorry
 
 lemma wp_pure: "\<lbrakk>pure_exec b n e1 e2; b; P \<turnstile> wp s E e2 Q\<rbrakk> \<Longrightarrow>
-  P \<turnstile> wp s E e1 Q" sorry
+  P \<turnstile> wp s E e1 Q" by (rule wp_pure'[where K = "[]", unfolded fill_def, simplified])
 
 lemma wp_let_bind: "Q \<turnstile> wp s E e (\<lambda>v. wp s E (let: x := (of_val v) in e2 endlet) P) \<Longrightarrow> 
   Q \<turnstile> wp s E (let: x := e in e2 endlet) P" sorry (* Would follow from wp_bind *)
@@ -251,5 +252,16 @@ lemma wp_is_except_zero: "is_except_zero (wp s E e P)"
   apply (rule upred_entails_trans[OF _ fupd_wp])
   apply (rule upred_entails_trans[OF _ is_except_zero_fupd[unfolded is_except_zero_def]])
   by (auto intro: upred_entails_trans[OF _ except_zero_mono[OF upred_wand_holdsE[OF fupd_intro]]])
+
+lemma wp_load: "P \<^emph> (l\<mapsto>{p}v) \<turnstile> Q v \<Longrightarrow> P \<^emph> (l\<mapsto>{p}v) \<turnstile> wp s E (Load #[l]) Q"
+  sorry
+
+lemma wp_pure_let: "\<lbrakk>pure_exec b n e1 (Val v); b; P \<turnstile> wp s E (subst' x v e2) Q\<rbrakk> \<Longrightarrow>
+  P \<turnstile> wp s E (let: x := e1 in e2 endlet) Q"
+  sorry
+
+lemma wp_cmpxchg_fail: "\<lbrakk>v\<noteq>v1; vals_compare_safe v v1; P \<^emph> (l\<mapsto>{p}v) \<turnstile> wp s E (#[(v,False)]) Q\<rbrakk>
+  \<Longrightarrow> P \<^emph> (l\<mapsto>{p}v) \<turnstile> wp s E (CmpXchg (Val #[l]) v1 v2) Q"
+  sorry  
 end
 end   

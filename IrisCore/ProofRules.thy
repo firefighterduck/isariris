@@ -180,9 +180,15 @@ lemma upred_sep_comm6_2: "P \<^emph> Q \<^emph> R \<^emph> T \<^emph> S \<^emph>
 lemma upred_sep_comm6_1: "P \<^emph> Q \<^emph> R \<^emph> T \<^emph> S \<^emph> U \<^emph> V \<turnstile> Q \<^emph> P \<^emph> R \<^emph> T \<^emph> S \<^emph> U \<^emph> V"
   by (simp add: upred_sep_comm)
   
+lemma upred_sep_comm7_2: "P \<^emph> Q \<^emph> R \<^emph> T \<^emph> S \<^emph> U \<^emph> V \<^emph> W \<turnstile> P \<^emph> R \<^emph> Q \<^emph> T \<^emph> S \<^emph> U \<^emph> V \<^emph> W"
+  by (simp add: upred_sep_comm2_eq)
+  
+lemma upred_sep_comm7_1: "P \<^emph> Q \<^emph> R \<^emph> T \<^emph> S \<^emph> U \<^emph> V \<^emph> W \<turnstile> Q \<^emph> P \<^emph> R \<^emph> T \<^emph> S \<^emph> U \<^emph> V \<^emph> W"
+  by (simp add: upred_sep_comm)
+
 lemma upred_sep_comm6_2R: "P \<^emph> Q \<^emph> R \<^emph> S \<^emph> T \<^emph> U \<^emph> V \<turnstile> P \<^emph> R \<^emph> S \<^emph> T \<^emph> U \<^emph> V \<^emph> Q"
   by (auto simp: upred_sep_comm2_eq)
-
+  
 lemma upred_sep_assoc_eq: "P \<^emph> (Q \<^emph> R) = P \<^emph> Q \<^emph> R"
   by (metis upred_sep_comm upred_sep_comm2_eq)
   
@@ -315,6 +321,9 @@ lemma pull_exists_antecedent: "(\<exists>\<^sub>u x. (P x \<^emph> Q)) \<turnsti
 
 lemma pull_exists_eq: "(\<exists>\<^sub>u x. P x) \<^emph> Q = (\<exists>\<^sub>u x. (P x \<^emph> Q))"
   by transfer blast
+
+lemma pull_exists_eq': "Q \<^emph> (\<exists>\<^sub>u x. P x) = (\<exists>\<^sub>u x. (Q \<^emph> P x))"
+  by transfer' blast
 
 lemma pull_exists_antecedentR: "(\<exists>\<^sub>u x. (Q \<^emph> P x)) \<turnstile> R \<Longrightarrow> Q \<^emph> (\<exists>\<^sub>u x. P x) \<turnstile> R"
   by transfer' blast

@@ -4,6 +4,7 @@ imports SpanningTreeCameras
   "../HeapLang/Notation"
   "../IrisCore/Misc"
   "../IrisCore/AuthHeap"
+   "HOL-Library.Rewrite"
 begin
 
 subsection \<open> The underlying structures of the spanning tree \<close>
@@ -84,6 +85,10 @@ definition of_graph_elem :: "gmon \<Rightarrow> loc \<Rightarrow> chl \<Rightarr
 definition of_graph :: "loc graph \<Rightarrow> gmon \<Rightarrow> marked_graph" where
   "of_graph g G = fmmap_keys (\<lambda>l chl. of_graph_elem G l chl) g"
 
+lemma of_graph_dom: "fmdom' (of_graph g G) = fmdom' g"
+  unfolding of_graph_def of_graph_elem_def fmdom'_alt_def fmdom_fmmap_keys
+  by auto 
+
 definition own_graphUR :: "frac \<Rightarrow> gmon \<Rightarrow> iprop" where
   "own_graphUR q G = Own\<^sub>g(fragm (Some (G,q)))"
 
@@ -120,4 +125,77 @@ lemma graph_ctxt_persistent [pers_rule]: "persistent (graph_ctxt \<kappa> g Mrk)
 
 definition gmon_map :: "loc \<Rightarrow> chl \<Rightarrow> gmon" where "gmon_map l v = fmupd l (Ex v) fmempty"
 notation gmon_map (infix "[\<mapsto>\<^sub>g]" 60)
-end    
+
+lemma graph_open: "x \<in> fmdom' g \<Longrightarrow>
+  (Own\<^sub>g (full (Some (G,1)))) \<^emph> heap_owns (of_graph g G) markings \<turnstile>
+  (Own\<^sub>g (full (Some (G,1)))) \<^emph> heap_owns (fmdrop x (of_graph g G)) markings 
+  \<^emph> (\<exists>\<^sub>u u. (\<upharpoonleft>(fmlookup (of_graph g G) x = Some u)) \<^emph> (\<exists>\<^sub>u m. (\<upharpoonleft>(markings x = Some m)) 
+    \<^emph> (x \<mapsto>\<^sub>u #[(m, children_to_val (snd u))]) \<^emph> (m \<mapsto>\<^sub>u #[fst u])))"
+proof -
+  assume "x \<in> fmdom' g"
+  then have "x \<in> fmdom' (of_graph g G)" by (simp add: of_graph_dom)
+  then have "\<exists>y. fmlookup (of_graph g G) x = Some y" by (simp add: fmlookup_dom'_iff)
+  then obtain y where y: "fmlookup (of_graph g G) x = Some y" by auto
+  then have "(of_graph g G) = fmupd x y (of_graph g G)" by (metis fmap_ext fmupd_lookup)
+  then have rw: "(of_graph g G) = fmupd x y (fmdrop x (of_graph g G))"
+    by (smt (verit, ccfv_threshold) fmap_ext fmlookup_drop fmupd_lookup) 
+  have "fmlookup (fmdrop x (of_graph g G)) x = None" by simp
+  show ?thesis
+    unfolding heap_owns_def y
+    apply (rewrite in "(_ \<^emph> [\<^emph>\<^sub>m] _ (_ \<hole>)) \<turnstile> _" rw)
+    apply (rule upred_entails_substE[OF upred_entail_eqL[OF sep_map_fset_insert[OF 
+        \<open>fmlookup (fmdrop x (of_graph g G)) x = None\<close>]], unfolded upred_sep_assoc_eq])
+    apply (move_sepR "[\<^emph>\<^sub>m] ?P ?m")
+    apply (auto simp: intro!: upred_sep_mono upred_existsI[of _ _ y] split: prod.splits)
+    apply (entails_substR rule_eq: upred_sep_comm)
+    by (auto simp: upred_true_sep)
+qed
+
+lemma graph_close: 
+  "heap_owns (fmdrop x (of_graph g G)) markings \<^emph> 
+  (\<exists>\<^sub>u u. (\<upharpoonleft>(fmlookup (of_graph g G) x = Some u)) \<^emph> (\<exists>\<^sub>u m. (\<upharpoonleft>(markings x = Some m)) 
+    \<^emph> (x \<mapsto>\<^sub>u #[(m, children_to_val (snd u))]) \<^emph> (m \<mapsto>\<^sub>u #[fst u])))
+  \<turnstile> heap_owns (of_graph g G) markings"
+proof -
+  have upd_drop: "fmlookup (of_graph g G) x = Some u \<Longrightarrow> (of_graph g G) = fmupd x u (fmdrop x (of_graph g G))" 
+    for u by (smt (verit, best) fmap_ext fmlookup_drop fmupd_lookup)
+  have lookup_drop: "fmlookup (fmdrop x (of_graph g G)) x = None" by simp
+  show ?thesis 
+  apply iExistsL+
+  apply (iPureL False)+
+  subgoal for u m
+  apply (rewrite in "_\<turnstile>\<hole>" heap_owns_def)
+  apply (rewrite in "_\<turnstile> [\<^emph>\<^sub>m] _ (_ \<hole>)" upd_drop, assumption)
+  unfolding heap_owns_def
+  apply (entails_substR rule: upred_entail_eqR[OF sep_map_fset_insert[OF lookup_drop]])
+  apply (auto simp: upred_sep_assoc_eq split: prod.splits)
+  apply (entails_substL rule_eq: upred_sep_comm2L)
+  apply (move_sepL "[\<^emph>\<^sub>m] ?P ?m")
+  apply (auto intro!: upred_sep_mono)
+  apply (iExistsR m)
+  by (auto intro!: upred_sep_mono upred_frame_empL)
+  done
+qed
+
+lemma auth_own_graph_valid: "Own\<^sub>g (full (Some (G,q))) \<turnstile> \<V> G"
+apply (auto simp: constr_graph_def)
+apply (entails_substL rule: own_valid)
+apply transfer'
+by (auto simp: \<epsilon>_n_valid prod_n_valid_def valid_raw_option_def)
+
+lemma new_marked: "(Own\<^sub>m (full m)) ={E}=\<^emph> (Own\<^sub>m (full (m\<cdot>{|l|})) \<^emph> is_marked l)"
+apply iIntro
+unfolding is_marked_def constr_markings_def
+apply (entails_substR rule: fupd_mono[OF upred_entail_eqL[OF own_op]])
+apply (rule upred_entails_trans[OF upred_wand_holdsE[OF own_update] upred_wand_holdsE[OF upd_fupd]])
+apply (auto simp: camera_upd_def prod_n_valid_def op_prod_def \<epsilon>_left_id)
+sorry
+
+lemma already_marked: "l |\<in>| m \<Longrightarrow>
+  (Own\<^sub>m (full m)) ={E}=\<^emph> (Own\<^sub>m (full m) \<^emph> is_marked l)"
+  apply iIntro
+  apply (entails_substL rule: upred_wand_holdsE[OF new_marked])
+  apply (rule fupd_mono)
+  apply (rule upred_frame)
+  sorry
+end

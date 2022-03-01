@@ -130,4 +130,16 @@ apply (auto simp: comp_fun_commute.ffold_empty[OF sep_P_comp_fun_commute])
 apply timeless_solver
 apply (auto simp: comp_fun_commute.ffold_finsert[OF sep_P_comp_fun_commute])
 by (timeless_solver; auto)
+
+lemma sep_map_fset_insert: "fmlookup m i = None \<Longrightarrow> 
+  [\<^emph>\<^sub>m] (\<lambda>(l,y). P l y) (fset_of_fmap (fmupd i x m)) \<stileturn>\<turnstile> P i x \<^emph> [\<^emph>\<^sub>m] (\<lambda>(l,y). P l y) (fset_of_fmap m)"
+proof -
+  assume assm: "fmlookup m i = None"
+  then have fset_upd: "fset_of_fmap (fmupd i x m) = {|(i,x)|} |\<union>| fset_of_fmap m"
+    apply (auto simp: fset_of_fmap.rep_eq) apply argo by (metis option.inject)
+  from assm have "(i,x) |\<notin>| fset_of_fmap m" by simp
+  show ?thesis 
+  by (auto simp: sep_fold_fset_def fset_upd comp_fun_commute.ffold_finsert[OF 
+    sep_P_comp_fun_commute \<open>(i,x) |\<notin>| fset_of_fmap m\<close>] upred_sep_comm split: prod.splits)
+qed
 end

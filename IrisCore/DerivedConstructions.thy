@@ -624,7 +624,7 @@ definition lup :: "('a::ucamera)\<times>'a \<Rightarrow> 'a\<times>'a \<Rightarr
   "lup \<equiv> \<lambda>(a,f) (a',f'). \<forall>n c. (n_valid a n \<and> n_equiv n a (f \<cdot> c)) \<longrightarrow> (n_valid a' n \<and> n_equiv n a' (f' \<cdot> c))"
 
 (* Axiomatized for now. *)
-lemma "(a,f)\<leadsto>\<^sub>L(a',f') \<Longrightarrow> (comb a f) \<leadsto> {comb a' f'}"
+lemma auth_update_alloc: "(a,f)\<leadsto>\<^sub>L(a',f') \<Longrightarrow> (comb a f) \<leadsto> {comb a' f'}"
 apply (auto simp: lup_def camera_upd_def valid_def op_auth_def op_prod_def split: auth.splits)
 apply (metis n_incl_op_extend option.distinct(1) option_n_incl)
 apply (metis op_option_def option.distinct(1) option_op.elims)
@@ -1004,4 +1004,22 @@ show "Rep_sprop (valid_raw a) n \<Longrightarrow> n_equiv n a (b1 \<cdot> b2) \<
   including fmap.lifting apply transfer using camera_extend sorry
 qed
 end
+
+instance fmap :: (type,dcamera) dcamera apply standard
+  apply (auto simp: valid_def valid_raw_fmap_def)
+  using dcamera_valid_iff by blast
+
+lemma empty_finite: " \<epsilon> \<in> {m. finite (dom m)} "
+  by (auto simp: \<epsilon>_fun_def \<epsilon>_option_def)
+
+instantiation fmap :: (type, camera) ucamera begin
+context includes fmap.lifting begin
+lift_definition \<epsilon>_fmap :: "('a, 'b) fmap" is "\<epsilon>::'a\<rightharpoonup>'b" by (auto simp: \<epsilon>_fun_def \<epsilon>_option_def)
+end
+instance apply standard
+by (auto simp: \<epsilon>_fmap_def valid_def valid_raw_fmap_def op_fmap_def pcore_fmap_def Abs_fmap_inverse[OF empty_finite]
+  \<epsilon>_valid[unfolded valid_def] \<epsilon>_left_id fmlookup_inverse \<epsilon>_pcore)
+end
+
+instance fmap :: (type, dcamera) ducamera ..
 end

@@ -147,6 +147,11 @@ lemma beta_red_no_obs: "head_red_no_obs (App (of_val (RecV f x e)) (of_val v)) \
 lemma pure_exec_beta: 
   "pure_exec True 1 (App (Val (RecV f x e)) (Val v)) (subst' x v (subst' f (RecV f x e) e))" 
   by (auto simp: pure_head_step_def beta_red_no_obs intro!: rel_one_step pure_head_step_pure_step)
+
+lemma pure_exec_fst:
+  "pure_exec True 1 (Fst (Val (PairV v1 v2))) (Val v1)"
+  apply (auto simp: pure_head_step_def head_red_no_obs_def intro!: rel_one_step pure_head_step_pure_step)
+  by auto
   
 text \<open>Atomicity proofs, but mostly axiomatized.\<close>
     
