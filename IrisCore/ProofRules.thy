@@ -186,6 +186,12 @@ lemma upred_sep_comm7_2: "P \<^emph> Q \<^emph> R \<^emph> T \<^emph> S \<^emph>
 lemma upred_sep_comm7_1: "P \<^emph> Q \<^emph> R \<^emph> T \<^emph> S \<^emph> U \<^emph> V \<^emph> W \<turnstile> Q \<^emph> P \<^emph> R \<^emph> T \<^emph> S \<^emph> U \<^emph> V \<^emph> W"
   by (simp add: upred_sep_comm)
 
+lemma upred_sep_comm8_2: "P \<^emph> Q \<^emph> R \<^emph> T \<^emph> S \<^emph> U \<^emph> V \<^emph> W \<^emph> X \<turnstile> P \<^emph> R \<^emph> Q \<^emph> T \<^emph> S \<^emph> U \<^emph> V \<^emph> W \<^emph> X"
+  by (simp add: upred_sep_comm2_eq)
+  
+lemma upred_sep_comm8_1: "P \<^emph> Q \<^emph> R \<^emph> T \<^emph> S \<^emph> U \<^emph> V \<^emph> W \<^emph> X \<turnstile> Q \<^emph> P \<^emph> R \<^emph> T \<^emph> S \<^emph> U \<^emph> V \<^emph> W \<^emph> X"
+  by (simp add: upred_sep_comm)
+  
 lemma upred_sep_comm6_2R: "P \<^emph> Q \<^emph> R \<^emph> S \<^emph> T \<^emph> U \<^emph> V \<turnstile> P \<^emph> R \<^emph> S \<^emph> T \<^emph> U \<^emph> V \<^emph> Q"
   by (auto simp: upred_sep_comm2_eq)
   
@@ -395,9 +401,17 @@ lemma upred_frameL: "R\<turnstile>Q \<Longrightarrow> P\<^emph>R\<turnstile>P\<^
 
 lemma false_sep [simp]: "(P \<^emph> \<upharpoonleft>False) = \<upharpoonleft>False"
   by transfer' blast
+lemma false_sep' [simp]: "(\<upharpoonleft>False \<^emph> P) = \<upharpoonleft>False"
+  by transfer' blast
 lemma false_entails [simp]: "\<upharpoonleft>False \<turnstile> P"
   by transfer' blast
 
+lemma false_disj [simp]: "(\<upharpoonleft>False \<or>\<^sub>u P) = P"
+  by transfer' blast
+
+lemma false_disj' [simp]: "(P \<or>\<^sub>u \<upharpoonleft>False) = P"
+  by transfer' blast
+  
 lemma false_wand [simp]: "((\<upharpoonleft>False) -\<^emph> P) = upred_emp"
   by transfer simp
 
@@ -462,6 +476,9 @@ qed
 
 lemma upred_pureI: "b \<Longrightarrow> (P \<turnstile> \<upharpoonleft>b)"
   by transfer blast
+
+lemma upred_pureI': "\<lbrakk>b; P\<turnstile>Q\<rbrakk> \<Longrightarrow> (P \<turnstile> Q\<^emph>\<upharpoonleft>b)"
+  using upred_pureI upred_sep_pure by blast
 
 lemma upred_frame_empL: "upred_emp \<turnstile> Q \<Longrightarrow> R \<turnstile> Q\<^emph>R"
  by (metis upred_frameL upred_sep_comm upred_true_sep)
@@ -595,7 +612,10 @@ lemma can_be_split_sepL: "can_be_split P Q R \<Longrightarrow> can_be_split (P\<
 
 lemma can_be_split_sepR: "can_be_split P Q R \<Longrightarrow> can_be_split (P\<^emph>S) Q (R\<^emph>S)"
   by (simp add: can_be_split_def upred_entail_eq_def upred_frame upred_sep_assoc_eq)
-  
+
+lemma can_be_split_disj: "\<lbrakk>can_be_split P P' Q; can_be_split R R' Q\<rbrakk> \<Longrightarrow> can_be_split (P\<or>\<^sub>uR) (P'\<or>\<^sub>uR') Q"
+  unfolding can_be_split_def upred_entail_eq_def by transfer blast
+
 lemma split_trans: "\<lbrakk>can_be_split P P1 P2; P1 \<turnstile> Q; Q\<^emph>P2 \<turnstile> R\<rbrakk> \<Longrightarrow> P \<turnstile> R"
   unfolding can_be_split_def by (meson upred_entail_eqL upred_entails_trans upred_frame)
 

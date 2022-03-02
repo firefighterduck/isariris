@@ -262,6 +262,13 @@ lemma wp_pure_let: "\<lbrakk>pure_exec b n e1 (Val v); b; P \<turnstile> wp s E 
 
 lemma wp_cmpxchg_fail: "\<lbrakk>v\<noteq>v1; vals_compare_safe v v1; P \<^emph> (l\<mapsto>{p}v) \<turnstile> wp s E (#[(v,False)]) Q\<rbrakk>
   \<Longrightarrow> P \<^emph> (l\<mapsto>{p}v) \<turnstile> wp s E (CmpXchg (Val #[l]) v1 v2) Q"
-  sorry  
+  sorry   
+
+lemma wp_cmpxchg_success: "\<lbrakk>v=v1; vals_compare_safe v v1; P \<^emph> (l\<mapsto>{p}v2) \<turnstile> wp s E (#[(v,True)]) Q\<rbrakk>
+  \<Longrightarrow> P \<^emph> (l\<mapsto>{p}v) \<turnstile> wp s E (CmpXchg (Val #[l]) v1 v2) Q"
+sorry
+  
+lemma wp_frame': "(\<And>x. can_be_split (Q x) (Q' x) P) \<Longrightarrow> (wp s E e Q') \<^emph> P \<turnstile> wp s E e Q"
+sorry  
 end
 end   

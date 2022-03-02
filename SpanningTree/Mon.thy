@@ -48,7 +48,7 @@ context includes fmap.lifting begin
 lift_definition gmon_graph :: "gmon \<Rightarrow> loc graph_map" is
   "\<lambda>g. (\<lambda>l. Option.bind l excl_chlC_chl) \<circ> g" .
 end
-thm gmon_graph.rep_eq
+
 lemma gmon_graph_dom: "valid g \<Longrightarrow> (dom (gmon_graph g) = fmdom' g)"
 proof -
   assume assm: "valid g"
@@ -123,7 +123,7 @@ definition graph_ctxt :: "gname \<Rightarrow> loc graph \<Rightarrow> (loc\<righ
 lemma graph_ctxt_persistent [pers_rule]: "persistent (graph_ctxt \<kappa> g Mrk)"
   unfolding graph_ctxt_def by (rule cinv_persistent)
 
-definition gmon_map :: "loc \<Rightarrow> chl \<Rightarrow> gmon" where "gmon_map l v = fmupd l (Ex v) fmempty"
+abbreviation gmon_map :: "loc \<Rightarrow> chl \<Rightarrow> gmon" where "gmon_map l v \<equiv> fmupd l (Ex v) fmempty"
 notation gmon_map (infix "[\<mapsto>\<^sub>g]" 60)
 
 lemma graph_open: "x \<in> fmdom' g \<Longrightarrow>
@@ -198,4 +198,56 @@ lemma already_marked: "l |\<in>| m \<Longrightarrow>
   apply (rule fupd_mono)
   apply (rule upred_frame)
   sorry
+
+lemma in_dom_of_graph: "\<lbrakk>valid G; fmlookup (of_graph g G) x = Some (b,v)\<rbrakk> \<Longrightarrow> b \<longleftrightarrow> x \<in> fmdom' G"
+proof -
+  assume assms: "valid G" "fmlookup (of_graph g G) x = Some (b,v)"
+  from assms(2) have "fmlookup (fmmap_keys (\<lambda>l chl. of_graph_elem G l chl) g) x = Some (b,v)" 
+    unfolding of_graph_def .
+  with fmlookup_fmmap_keys have step1: "map_option (\<lambda>chl. of_graph_elem G x chl) (fmlookup g x) = Some (b,v)"
+    by simp
+  then obtain v' where "fmlookup g x = Some v'" by blast
+  with step1 have "of_graph_elem G x v' = (b,v)" by simp
+  then have "(case gmon_graph G x of Some w \<Rightarrow> (True,w) | None \<Rightarrow> (False, v')) = (b,v)"
+    unfolding of_graph_elem_def .
+  then have "b \<longleftrightarrow> x \<in> dom (gmon_graph G)"
+    by (metis (no_types, lifting) Pair_inject domD domIff option.simps(4) option.simps(5))
+  with gmon_graph_dom[OF assms(1)] show ?thesis by simp
+qed
+
+lemma mark_graph: "fmlookup G x = None \<Longrightarrow>
+  ((Own\<^sub>g (full (Some (G,1)))) \<^emph> own_graphUR q fmempty) ={E}=\<^emph>
+  ((Own\<^sub>g (full (Some (fmupd x (Ex w) G, 1)))) \<^emph> (own_graphUR q (x [\<mapsto>\<^sub>g] w)))"
+  sorry
+
+lemma drop_marked: "fmdrop x (of_graph g G) = fmdrop x (of_graph g (fmupd x (Ex w) G))"
+proof -
+have not_x_gmon_graph: "\<forall>y. x\<noteq>y \<longrightarrow> gmon_graph G y = gmon_graph (fmupd x (Ex w) G) y"
+  by (auto simp: gmon_graph_def)
+have "fmdrop x (of_graph g G) = fmdrop x (fmmap_keys (\<lambda>l chl. of_graph_elem G l chl) g)" 
+  unfolding of_graph_def ..
+also have "\<dots> = fmmap_keys (\<lambda>l chl. of_graph_elem G l chl) (fmdrop x g)" by simp
+also have "\<dots> = fmmap_keys (\<lambda>l chl. (case gmon_graph G l of Some w \<Rightarrow> (True,w) | None \<Rightarrow> (False, chl)))
+  (fmdrop x g)" unfolding of_graph_elem_def ..
+also have "\<dots> = fmmap_keys (\<lambda>l chl. (case gmon_graph (fmupd x (Ex w) G) l of Some w \<Rightarrow> (True,w) 
+  | None \<Rightarrow> (False, chl))) (fmdrop x g)" using not_x_gmon_graph by (simp add: fmap_ext)
+finally have "fmdrop x (of_graph g G) = fmdrop x (of_graph g (fmupd x (Ex w) G))" unfolding of_graph_elem_def of_graph_def
+  by simp
+then show ?thesis .
+qed
+
+lemma mark_update_lookup: "\<lbrakk>x \<in> fmdom' g; valid (fmupd x (Ex v) G)\<rbrakk> \<Longrightarrow> 
+  fmlookup (of_graph g (fmupd x (Ex v) G)) x = Some (True, v)" 
+  unfolding valid_def of_graph_def fmlookup_fmmap_keys of_graph_elem_def gmon_graph_def
+  by (auto simp: fmlookup_dom'_iff)
+
+lemma mark_strict_subgraph: 
+  "\<lbrakk>valid (fmupd x (Ex v) G); x \<in> fmdom' g; fmlookup (of_graph g G) x = Some (false, v);
+  strict_subgraph' g (gmon_graph G)\<rbrakk> \<Longrightarrow> strict_subgraph' g (gmon_graph (fmupd x (Ex v) G))"
+  apply (auto simp: valid_def strict_subgraph'_def of_graph_def of_graph_elem_def strict_sub_children_def)
+  sorry
+
+lemma of_graph_unmarked: "fmlookup (of_graph g G) x = Some (False, v) \<Longrightarrow> fmlookup g x = Some v"
+  by (auto simp: of_graph_def of_graph_elem_def) (metis Pair_inject option.case_eq_if)
+
 end

@@ -152,6 +152,11 @@ lemma pure_exec_fst:
   "pure_exec True 1 (Fst (Val (PairV v1 v2))) (Val v1)"
   apply (auto simp: pure_head_step_def head_red_no_obs_def intro!: rel_one_step pure_head_step_pure_step)
   by auto
+
+lemma pure_exec_snd:
+  "pure_exec True 1 (Snd (Val (PairV v1 v2))) (Val v2)"
+  apply (auto simp: pure_head_step_def head_red_no_obs_def intro!: rel_one_step pure_head_step_pure_step)
+  by auto
   
 text \<open>Atomicity proofs, but mostly axiomatized.\<close>
     
