@@ -34,6 +34,9 @@ lemma upred_weakeningR': "P\<and>\<^sub>uQ \<turnstile> Q"
 lemma upred_weakeningR2: "P\<^emph>Q\<^emph>R\<turnstile>Q\<^emph>R"
   by transfer (metis camera_comm le_refl n_incl_def)
 
+lemma upred_emp_left: "upred_emp \<turnstile> P \<Longrightarrow> Q \<turnstile> P \<^emph> Q"
+  by transfer (metis \<epsilon>_left_id \<epsilon>_n_valid ofe_refl)
+
 lemma upred_entails_add: "\<lbrakk>P\<turnstile>Q; P\<and>\<^sub>uQ\<turnstile>R\<rbrakk> \<Longrightarrow> P\<turnstile>R"
   by transfer blast  
 
@@ -287,7 +290,7 @@ lemma upred_persis_sep:"(\<box>P) \<^emph> (\<box>Q) \<turnstile> \<box>(P\<^emp
 lemma upred_persis_idem: "\<box>P \<turnstile> \<box>\<box>P"
   by transfer (metis camera_core_idem)
     
-lemma upred_later_mono: "P\<turnstile>Q \<Longrightarrow> \<triangleright>P \<turnstile> \<triangleright>  Q"
+lemma upred_later_mono: "P\<turnstile>Q \<Longrightarrow> \<triangleright>P \<turnstile> \<triangleright>Q"
   apply transfer
   using Rep_sprop diff_le_self by blast
 
@@ -595,6 +598,12 @@ definition can_be_split :: "('a::ucamera) upred_f \<Rightarrow> 'a upred_f \<Rig
 lemma can_be_split_refl: "can_be_split (P\<^emph>Q) P Q"
   unfolding can_be_split_def by (simp add: upred_entails_eq_eq)
 
+lemma can_be_split_baseL: "can_be_split P P upred_emp"
+  unfolding can_be_split_def by (simp add: upred_entails_eq_eq upred_true_sep)
+
+lemma can_be_split_baseR: "can_be_split P upred_emp P"
+  unfolding can_be_split_def by (simp add: upred_entails_eq_eq upred_true_sep upred_sep_comm)
+  
 lemma can_be_split_rev: "can_be_split P Q R \<Longrightarrow> can_be_split P R Q"
   unfolding can_be_split_def upred_entail_eq_def by (simp add: upred_sep_comm)
 
@@ -617,6 +626,9 @@ lemma can_be_split_disj: "\<lbrakk>can_be_split P P' Q; can_be_split R R' Q\<rbr
   unfolding can_be_split_def upred_entail_eq_def by transfer blast
 
 lemma split_trans: "\<lbrakk>can_be_split P P1 P2; P1 \<turnstile> Q; Q\<^emph>P2 \<turnstile> R\<rbrakk> \<Longrightarrow> P \<turnstile> R"
+  unfolding can_be_split_def by (meson upred_entail_eqL upred_entails_trans upred_frame)
+
+lemma split_trans': "\<lbrakk>Q\<turnstile>Q'; can_be_split P P1 P2; P1 \<turnstile> Q; Q'\<^emph>P2 \<turnstile> R\<rbrakk> \<Longrightarrow> P \<turnstile> R"
   unfolding can_be_split_def by (meson upred_entail_eqL upred_entails_trans upred_frame)
 
 lemma split_frame: "\<lbrakk>can_be_split P P1 P2; can_be_split Q Q1 Q2; P1\<turnstile>Q1; P2\<turnstile>Q2\<rbrakk> \<Longrightarrow> P\<turnstile>Q"
@@ -767,11 +779,13 @@ lemma except_zero_bupd: "\<diamondop>\<Rrightarrow>\<^sub>bP\<turnstile>\<Rright
   unfolding except_zero_def by transfer blast
 
 definition is_except_zero :: "'a::ucamera upred_f \<Rightarrow> bool" where "is_except_zero P \<equiv> \<diamondop>P \<turnstile> P"
+named_theorems iez_rule
+method iez_solver = (rule iez_rule)+
 
-lemma is_except_zero_except_zero: "is_except_zero (\<diamondop>P)"
+lemma is_except_zero_except_zero [iez_rule]: "is_except_zero (\<diamondop>P)"
   unfolding is_except_zero_def by (rule except_zero_idem)
 
-lemma is_except_zero_later: "is_except_zero (\<triangleright>P)"
+lemma is_except_zero_later [iez_rule]: "is_except_zero (\<triangleright>P)"
   unfolding is_except_zero_def except_zero_def by transfer blast
 
 definition timeless :: "'a::ucamera upred_f \<Rightarrow> bool" where "timeless P \<equiv> (\<triangleright>P) \<turnstile> \<diamondop>P"
@@ -821,6 +835,12 @@ definition elim_modal :: "'a::ucamera upred_f \<Rightarrow> 'a upred_f \<Rightar
 lemma elim_modal_timeless: "\<lbrakk>P \<turnstile> \<diamondop>P'; is_except_zero Q\<rbrakk> \<Longrightarrow> elim_modal P P' Q Q"
   unfolding is_except_zero_def elim_modal_def
   by (metis except_zero_mono_ext upred_entails_refl upred_entails_trans upred_frame upred_sep_comm upred_wandE)
+
+lemma elim_modal_timeless': "\<lbrakk>timeless P; is_except_zero Q\<rbrakk> \<Longrightarrow> elim_modal (\<triangleright>P) P Q Q"
+  by (unfold timeless_def;rule elim_modal_timeless;assumption+)
+
+lemma elim_later_timelessL: "timeless P \<Longrightarrow> elim_modal (\<triangleright>P) P (\<triangleright>Q) (\<triangleright>Q)"
+  by (rule elim_modal_timeless', assumption, iez_solver)
 
 lemma elim_modal_entails: "\<lbrakk>elim_modal P P' Q Q'; P' \<turnstile> Q'\<rbrakk> \<Longrightarrow> P \<turnstile> Q"
 proof -

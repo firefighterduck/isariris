@@ -99,6 +99,9 @@ definition atomic :: "atomicity \<Rightarrow> expr \<Rightarrow> bool" where
   "atomic a e \<equiv> \<forall>\<sigma> e' \<kappa> \<sigma>' efs. prim_step e \<sigma> \<kappa> e' \<sigma>' efs \<longrightarrow> 
     (case a of WeaklyAtomic \<Rightarrow> irreducible e' \<sigma>' | StronglyAtomic \<Rightarrow> (\<exists>v. to_val e' = Some v))"
 
+named_theorems atomic_rule
+method atomic_solver = (rule atomic_rule)+    
+    
 definition head_atomic :: "atomicity \<Rightarrow> expr \<Rightarrow> bool" where
   "head_atomic a e \<equiv> \<forall>\<sigma> e' \<kappa> \<sigma>' efs. head_step e \<sigma> \<kappa> e' \<sigma>' efs \<longrightarrow> 
     (case a of WeaklyAtomic \<Rightarrow> irreducible e' \<sigma>' | StronglyAtomic \<Rightarrow> (\<exists>v. to_val e' = Some v))"
@@ -160,7 +163,7 @@ lemma pure_exec_snd:
   
 text \<open>Atomicity proofs, but mostly axiomatized.\<close>
     
-lemma atomic_rec: "atomic a (Rec f x e)" 
+lemma atomic_rec [atomic_rule]: "atomic a (Rec f x e)" 
 proof (auto simp: atomic_def prim_step_def)
   fix \<sigma> \<kappa> \<sigma>' efs K e1' e2'
   assume assms: "Rec f x e = fill K e1'" "e1' \<sigma> \<kappa> \<Rightarrow>\<^sub>h e2' \<sigma>' efs"
@@ -171,24 +174,24 @@ proof (auto simp: atomic_def prim_step_def)
   by (cases a) (auto simp: irred_val)
 qed
 
-lemma atomic_pair: "atomic a (Pair (Val v1) (Val v2))" sorry
-lemma atomic_injl: "atomic a (InjL (Val v))" sorry
-lemma atomic_injr: "atomic a (InjR (Val v))" sorry
-lemma atomic_beta: "atomic a (App (RecV f x (Val v1)) (Val v2))" sorry
-lemma atomic_unop: "atomic a (UnOp uop (Val v))" sorry
-lemma atomic_binop: "atomic a (BinOp bop (Val v1) (Val v2))" sorry
-lemma atomic_if_true: "atomic a (If (Val (LitV (LitBool True))) (Val v1) e2)" sorry
-lemma atomic_if_false: "atomic a (If (Val (LitV (LitBool False))) e1 (Val v2))" sorry
-lemma atomic_fst: "atomic a (Fst (Val v))" sorry
-lemma atomic_snd: "atomic a (Snd (Val v))" sorry
-lemma atomic_fork: "atomic a (Fork e)" sorry
-lemma atomic_alloc: "atomic a (AllocN (Val v1) (Val v2))" sorry
-lemma atomic_free: "atomic a (Free (Val v))" sorry
-lemma atomic_load: "atomic a (Load (Val v))" sorry
-lemma atomic_xchg: "atomic a (Xchg (Val v1) (Val v2))" sorry
-lemma atomic_store: "atomic a (Store (Val v1) (Val v2))" sorry
-lemma atomic_cmp_xchg: "atomic a (CmpXchg (Val v0) (Val v1) (Val v2))" sorry
-lemma atomic_faa: "atomic a (FAA (Val v1) (Val v2))" sorry
-lemma atomic_new_proph: "atomic a NewProph" sorry
-lemma atomic_resolve: "atomic a e \<Longrightarrow> atomic a (Resolve e (Val v1) (Val v2))" sorry
+lemma atomic_pair [atomic_rule]: "atomic a (Pair (Val v1) (Val v2))" sorry
+lemma atomic_injl [atomic_rule]: "atomic a (InjL (Val v))" sorry
+lemma atomic_injr [atomic_rule]: "atomic a (InjR (Val v))" sorry
+lemma atomic_beta [atomic_rule]: "atomic a (App (RecV f x (Val v1)) (Val v2))" sorry
+lemma atomic_unop [atomic_rule]: "atomic a (UnOp uop (Val v))" sorry
+lemma atomic_binop [atomic_rule]: "atomic a (BinOp bop (Val v1) (Val v2))" sorry
+lemma atomic_if_true [atomic_rule]: "atomic a (If (Val (LitV (LitBool True))) (Val v1) e2)" sorry
+lemma atomic_if_false [atomic_rule]: "atomic a (If (Val (LitV (LitBool False))) e1 (Val v2))" sorry
+lemma atomic_fst [atomic_rule]: "atomic a (Fst (Val v))" sorry
+lemma atomic_snd [atomic_rule]: "atomic a (Snd (Val v))" sorry
+lemma atomic_fork [atomic_rule]: "atomic a (Fork e)" sorry
+lemma atomic_alloc [atomic_rule]: "atomic a (AllocN (Val v1) (Val v2))" sorry
+lemma atomic_free [atomic_rule]: "atomic a (Free (Val v))" sorry
+lemma atomic_load [atomic_rule]: "atomic a (Load (Val v))" sorry
+lemma atomic_xchg [atomic_rule]: "atomic a (Xchg (Val v1) (Val v2))" sorry
+lemma atomic_store [atomic_rule]: "atomic a (Store (Val v1) (Val v2))" sorry
+lemma atomic_cmp_xchg [atomic_rule]: "atomic a (CmpXchg (Val v0) (Val v1) (Val v2))" sorry
+lemma atomic_faa [atomic_rule]: "atomic a (FAA (Val v1) (Val v2))" sorry
+lemma atomic_new_proph [atomic_rule]: "atomic a NewProph" sorry
+lemma atomic_resolve [atomic_rule]: "atomic a e \<Longrightarrow> atomic a (Resolve e (Val v1) (Val v2))" sorry
 end

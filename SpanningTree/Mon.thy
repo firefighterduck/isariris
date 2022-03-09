@@ -147,7 +147,7 @@ proof -
         \<open>fmlookup (fmdrop x (of_graph g G)) x = None\<close>]], unfolded upred_sep_assoc_eq])
     apply (move_sepR "[\<^emph>\<^sub>m] ?P ?m")
     apply (auto simp: intro!: upred_sep_mono upred_existsI[of _ _ y] split: prod.splits)
-    apply (entails_substR rule_eq: upred_sep_comm)
+    apply (entails_substR rule: upred_sep_comm)
     by (auto simp: upred_true_sep)
 qed
 
@@ -162,18 +162,19 @@ proof -
   have lookup_drop: "fmlookup (fmdrop x (of_graph g G)) x = None" by simp
   show ?thesis 
   apply iExistsL+
-  apply (iPureL False)+
+  apply iPureL+
   subgoal for u m
   apply (rewrite in "_\<turnstile>\<hole>" heap_owns_def)
   apply (rewrite in "_\<turnstile> [\<^emph>\<^sub>m] _ (_ \<hole>)" upd_drop, assumption)
   unfolding heap_owns_def
   apply (entails_substR rule: upred_entail_eqR[OF sep_map_fset_insert[OF lookup_drop]])
   apply (auto simp: upred_sep_assoc_eq split: prod.splits)
-  apply (entails_substL rule_eq: upred_sep_comm2L)
+  apply (entails_substL rule: upred_sep_comm2L)
   apply (move_sepL "[\<^emph>\<^sub>m] ?P ?m")
-  apply (auto intro!: upred_sep_mono)
+  apply (iFrame_single)
   apply (iExistsR m)
-  by (auto intro!: upred_sep_mono upred_frame_empL)
+  apply iPureR
+  by (iFrame_single)+
   done
 qed
 
@@ -194,7 +195,7 @@ sorry
 lemma already_marked: "l |\<in>| m \<Longrightarrow>
   (Own\<^sub>m (full m)) ={E}=\<^emph> (Own\<^sub>m (full m) \<^emph> is_marked l)"
   apply iIntro
-  apply (entails_substL rule: upred_wand_holdsE[OF new_marked])
+  apply (entails_substL rule: new_marked)
   apply (rule fupd_mono)
   apply (rule upred_frame)
   sorry

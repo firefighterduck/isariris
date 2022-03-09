@@ -129,7 +129,7 @@ lemma timeless_later_vs: "timeless P \<Longrightarrow> (\<triangleright>P) ={E}=
   by (smt (verit, ccfv_SIG) except_zero_sepL persistent_persisI persistent_pure updI 
     upred_entails_substE upred_entails_trans upred_holds_entails upred_sep_comm upred_wand_holds2I)
 
-lemma is_except_zero_fupd: "is_except_zero (\<Turnstile>{E1,E2}=> P)"
+lemma is_except_zero_fupd [iez_rule]: "is_except_zero (\<Turnstile>{E1,E2}=> P)"
   unfolding is_except_zero_def fancy_upd_def
   apply (subst except_zero_def)
   apply (rule upred_disjE)
@@ -197,6 +197,10 @@ by iFrame_single+
 lemma elim_modal_fupd: "elim_modal (\<Turnstile>{E1,E2}=>P) P (\<Turnstile>{E1,E3}=>Q) (\<Turnstile>{E2,E3}=>Q)"
   unfolding elim_modal_def by (simp add: fupd_ext upred_wandE)
 
+lemma elim_modal_upd: "elim_modal (\<Rrightarrow>\<^sub>b P) P (\<Turnstile>{E1,E2}=>Q) (\<Turnstile>{E1,E2}=>Q)"
+  unfolding elim_modal_def using upd_fupd elim_modal_fupd[unfolded elim_modal_def]
+  using fupd_ext upred_entails_wand_holdsR upred_wand_holds2E by blast
+
 abbreviation fancy_step :: "mask \<Rightarrow> mask \<Rightarrow> iprop \<Rightarrow> iprop" ("\<Turnstile>{_}[_]\<triangleright>=>_") where
   "fancy_step Eo Ei Q \<equiv> \<Turnstile>{Eo,Ei}=> \<triangleright> \<Turnstile>{Ei,Eo}=> Q"
 abbreviation fancy_wand_step :: "iprop \<Rightarrow> mask \<Rightarrow> mask \<Rightarrow> iprop \<Rightarrow> iprop" ("_={_}[_]\<triangleright>=\<^emph>_") where
@@ -214,10 +218,14 @@ abbreviation fancy_linear_steps :: "mask \<Rightarrow> nat \<Rightarrow> iprop \
 abbreviation fancy_linear_wand_steps :: "iprop \<Rightarrow> mask \<Rightarrow> nat \<Rightarrow> iprop \<Rightarrow> iprop" ("_={_}\<triangleright>^_=\<^emph>_") where
   "fancy_linear_wand_steps P E n Q \<equiv> P={E}[E]\<triangleright>^n=\<^emph>Q"
 
-method fupd_dropL =
-  move_sepL "\<Turnstile>{?E1,?E2}=>?P",
-    match conclusion in "_\<^emph>\<Turnstile>{E1,E2}=>P\<turnstile>\<Turnstile>{E1,E3}=>Q" for E1 E2 E3 P Q \<Rightarrow>
-      \<open>entails_substR rule: fupd_mask_trans[of E1 E2 E3], rule fupd_frame_mono\<close>
-    \<bar> "\<Turnstile>{E1,E2}=>P\<turnstile>\<Turnstile>{E1,E3}=>Q" for E1 E2 E3 P Q \<Rightarrow> \<open>rule fupd_mono\<close>,
-  (simp only: upred_true_sep)?
+context fixes P Q R :: iprop 
+assumes [timeless_rule]: "timeless P" and [timeless_rule]: "timeless Q" and [timeless_rule]: "timeless R" 
+begin
+  
+lemma test_lemma2: "(\<triangleright>P) \<^emph> (\<triangleright>Q) \<^emph> (\<triangleright>R) -\<^emph> \<Turnstile>{E}=>(P\<^emph>Q\<^emph>R)"
+apply iIntro
+apply later_elim+
+apply (entails_substR rule: fupd_intro)
+by iFrame_single+
+end
 end

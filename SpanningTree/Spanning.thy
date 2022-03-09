@@ -33,7 +33,7 @@ definition span :: val where "span \<equiv>
   endmatch"
   
 subsubsection \<open>Proofs\<close>
-  
+
 context wp_rules begin  
 lemma wp_try_mark:
 assumes "x\<in>fmdom' g"
@@ -46,134 +46,94 @@ shows "(graph_ctxt \<kappa> g Mrk) \<^emph> (own_graphUR q fmempty) \<^emph> (ci
   unfolding try_mark_def
   apply (auto simp: subst'_def intro!: wp_pure[OF pure_exec_beta] wp_let_bind'[where C=Fst])
   unfolding graph_ctxt_def
-  apply (move_sepL "cinv ?N ?\<kappa> ?P") apply dupl_pers
-  apply (iApply rule: upred_wand_holds2E[OF cinv_acc[OF subset_UNIV]])
-  apply (auto simp: upred_sep_assoc_eq intro!: elim_modal_entails'[OF elim_modal_fupd_wp_atomic[OF atomic_load]])
-  apply (move_sepL "\<triangleright>(graph_inv g Mrk)")
-  apply (rule elim_modal_entails'[OF elim_modal_timeless[OF graph_inv_timeless[unfolded timeless_def] wp_is_except_zero]])
+  apply (iMod rule: cinv_acc[OF subset_UNIV])
   apply (rewrite in "_\<^emph>(\<hole>) \<turnstile>_" graph_inv_def)
   apply iExistsL
   apply (iApply rule: graph_open[OF assms])
   apply iExistsL+
-  apply (move_sepL "x \<mapsto>{?p} ?v") apply (rule wp_load[simplified])
-  apply (iPureL True)
+  apply (iApply rule: wp_load[simplified, where ?l = x])
+  apply iPureL+
   subgoal for G u m
-  apply (move_sepL "\<upharpoonleft>(fmlookup (of_graph g G) x = Some u)")
-  apply (iPureL True)
-  apply (rule split_trans[of _ _ _ "heap_owns (of_graph g G) Mrk"])
-  apply (rule can_be_split_sepL) apply (rule can_be_split_sepL) apply (rule can_be_split_sepL) 
-  apply (rule can_be_split_sepL) apply (rule can_be_split_rev) apply (rule can_be_split_refl)
-  apply (entails_substR rule: graph_close[of x])
+  apply (iApply_step "heap_owns ?g ?m \<^emph> (m \<mapsto>\<^sub>u ?v1) \<^emph> (x \<mapsto>\<^sub>u ?v2)" rule: graph_close[of x])
   apply (move_sep_both "heap_owns ?g ?m")
   apply (rule upred_frame)
   apply (iExistsR u)
   apply (iExistsR m)
   apply iFrame_single+
   apply (simp only: upred_sep_assoc_eq)
-  apply (rule split_trans[of _ _ _ "\<triangleright>(graph_inv g Mrk)"])
-  apply (rule can_be_split_sepL) apply (rule can_be_split_sepL) apply (rule can_be_split_sepL)
-  apply (rule can_be_split_sepR) apply (rule can_be_split_sepR) apply (rule can_be_split_sepR)
-  apply (rule can_be_split_refl)
+  apply (iApply_step2 "\<triangleright>(graph_inv g Mrk)" "heap_owns ?g ?m \<^emph> Own\<^sub>m ?m2 \<^emph> Own\<^sub>g ?g2")
   subgoal unfolding graph_inv_def by (entails_substR rule: upred_laterI; iExistsR G; iFrame_single+)
   apply (simp add: upred_sep_assoc_eq)
   apply iApply_wand
-  apply (auto simp: upred_true_sep intro!: fupd_frame_mono)
+  apply fupd_elimL
+  apply (entails_substR rule: fupd_intro)
   apply (rule wp_pure_let[OF pure_exec_fst, simplified])
-  apply (auto simp: subst'_def)
+  apply (simp add: subst'_def)
   apply (entails_substR rule: wp_bind'[where C = Snd])
-  apply (move_sepL "cinv ?N ?\<kappa> ?P") apply dupl_pers
-  apply (iApply rule: upred_wand_holds2E[OF cinv_acc[OF subset_UNIV]])
-  apply (rule elim_modal_entails'[OF elim_modal_fupd_wp_atomic[OF atomic_cmp_xchg]])
-  apply (simp only: upred_sep_assoc_eq)
-  apply (move_sepL "\<triangleright>(graph_inv g Mrk)")
-  apply (rule elim_modal_entails'[OF elim_modal_timeless[OF graph_inv_timeless[unfolded timeless_def] wp_is_except_zero]])
+  apply (iMod rule: cinv_acc[OF subset_UNIV])
   apply (rewrite in "_\<^emph>(\<hole>) \<turnstile>_" graph_inv_def)
   apply iExistsL
   apply (iApply rule: graph_open[OF assms])
   apply iExistsL+
-  apply (iPureL False)
-  apply (iPureL False)
-  apply (iPureL False)
-  apply (move_sepL "Own\<^sub>g ?g")
-  apply (subst_pers_keepL rule: upred_entails_trans[OF auth_own_graph_valid upred_entail_eqL[OF discrete_valid]])
-  apply (iPureL False)
+  apply iPureL+
+  apply (iApply rule: upred_entails_trans[OF auth_own_graph_valid upred_entail_eqL[OF discrete_valid]])
+  apply iPureL
   subgoal for G' u' m'
   apply (cases u')
   subgoal for u1 u2 u3
   apply (cases u1)
   subgoal
     apply simp
-    apply (move_sepL "m' \<mapsto>{?q}?v") apply (rule wp_cmpxchg_fail[simplified])
+    apply (iApply rule: wp_cmpxchg_fail[simplified, where ?l = m'])
     apply (auto simp: vals_compare_safe_def)
     apply (entails_substR rule: wp_value)
-    apply (rule split_trans[of _ _ _ "heap_owns (of_graph g G') Mrk"])
-    apply (rule can_be_split_sepL) apply (rule can_be_split_sepR) apply (rule can_be_split_sepL)
-    apply (rule can_be_split_rev) apply (rule can_be_split_refl)
-    apply (entails_substR rule: graph_close[of x])
+    apply (iApply_step "heap_owns ?g ?m \<^emph> (m' \<mapsto>\<^sub>u TrueV) \<^emph> (x \<mapsto>\<^sub>u ?v)" rule: graph_close[of x])
     apply (move_sep_both "heap_owns ?g ?m")
     apply (rule upred_frame)
     apply (iExistsR u')
     apply (iExistsR m')
-    apply simp apply iFrame_single+ apply (move_sepR upred_emp, subst upred_true_sep)+ apply simp
+    apply simp apply iFrame_single+
     apply (unfold upred_sep_assoc_eq)
-    apply (move_sepL "Own\<^sub>m ?m")
-    apply (entails_substL rule: upred_wand_holdsE[OF already_marked[of x]])
+    apply (iMod rule: already_marked[of x])
     using in_dom_of_graph apply (metis fmdom'_alt_def notin_fset)
-    apply (rule elim_modal_entails'[OF elim_modal_fupd])
-    apply (simp only: upred_sep_assoc_eq)
-    apply (rule upred_entails_trans[OF _ fupd_mono[OF wp_frame']])
-    prefer 2 apply (rule can_be_split_disj) apply (rule can_be_split_sepL) apply (rule can_be_split_refl)
-    apply (rule can_be_split_sepL) apply (rule can_be_split_refl)
-    apply (entails_substR rule: upred_wand_holdsE[OF fupd_frame_r])
-    apply (rule upred_frame)   
-    apply (rule split_trans[of _ _ _ "\<triangleright>(graph_inv g Mrk)"])
-    apply (rule can_be_split_sepL) apply (rule can_be_split_sepL) apply (rule can_be_split_sepR)
-    apply (rule can_be_split_sepR) apply (rule can_be_split_sepR) apply (rule can_be_split_refl)
-    subgoal unfolding graph_inv_def by (entails_substR rule: upred_laterI; iExistsR G';iPureR,simp;(iFrame_single)+)
+    apply (entails_substR rule: fupd_mono[OF wp_frame'])
+    prefer 2 apply (split_pat "is_marked x")
+    apply (entails_substR rule: fupd_frame_r)
+    apply remove_emp
+    apply (rule upred_frame)
+    apply (iApply_step2 "\<triangleright>(graph_inv g Mrk)" "heap_owns ?g ?m \<^emph> Own\<^sub>g ?g2 \<^emph> Own\<^sub>m ?m2")
+    subgoal unfolding graph_inv_def by (entails_substR rule: upred_laterI;iExistsR G';(iFrame_single)+)
     apply (simp only: upred_sep_assoc_eq) apply iApply_wand
     apply (rule fupd_frame_mono, simp only: upred_true_sep)
     apply (rule wp_pure[OF pure_exec_snd, simplified])
     apply (entails_substR rule: wp_value, simp)
-    apply (iFrame_single)+ by simp
+    by (iFrame_single)+
   apply simp
   apply (move_sepL "m' \<mapsto>{?q}?v") apply (rule wp_cmpxchg_success[simplified])
   apply (auto simp: vals_compare_safe_def)
   apply (entails_substR rule: wp_value)
-  apply (iApply rule: upred_wand_holdsE[OF mark_graph[of _ x _ _ "(u2,u3)"]])
+  apply (iMod rule: mark_graph[of _ x _ _ "(u2,u3)"])
   using in_dom_of_graph apply blast
-  apply (rule elim_modal_entails'[OF elim_modal_fupd])
-  apply (iApply rule: upred_wand_holdsE[OF new_marked])
-  apply (rule elim_modal_entails'[OF elim_modal_fupd])
-  apply (simp only: upred_sep_assoc_eq)
-  apply (rule upred_entails_trans[OF _ fupd_mono[OF wp_frame']])
-  prefer 2 apply (rule can_be_split_disj) apply (rule can_be_split_sepR) apply (rule can_be_split_refl)
-  apply (rule can_be_split_sepR) apply (rule can_be_split_refl)
-  apply (entails_substR rule: upred_wand_holdsE[OF fupd_frame_r])
-  apply (simp only: upred_sep_assoc_eq)
+  apply (iMod rule: new_marked)
+  apply (entails_substR rule: fupd_mono[OF wp_frame'])
+  prefer 2 apply (split_pat "is_marked x \<^emph> cinv_own \<kappa> k")
+  apply (entails_substR rule: fupd_frame_r)
+  apply remove_emp
   apply (iFrame_single) apply (rule upred_frame)
   apply (subst drop_marked)
-  apply (move_sepL "Own\<^sub>g ?g")
-  apply (subst_pers_keepL rule: upred_entails_trans[OF auth_own_graph_valid upred_entail_eqL[OF discrete_valid]])
-  apply (iPureL False)
-  apply (rule split_trans[of _ _ _ "heap_owns (of_graph g (fmupd x (ex.Ex (u2,u3)) G')) Mrk"])
-  apply (rule can_be_split_sepR) apply (rule can_be_split_sepR) apply (rule can_be_split_sepR) 
-  apply (rule can_be_split_sepL) apply (rule can_be_split_sepL) apply (rule can_be_split_rev)
-  apply (rule can_be_split_refl)
-  apply (entails_substR rule: graph_close)
+  apply (iApply rule: upred_entails_trans[OF auth_own_graph_valid upred_entail_eqL[OF discrete_valid]])
+  apply iPureL
+  apply (iApply_step "heap_owns ?g ?m \<^emph> (x\<mapsto>\<^sub>u?v1) \<^emph> (m'\<mapsto>\<^sub>u?v2)" rule: graph_close)
   apply (move_sep_both "heap_owns ?g ?m")
   apply (rule upred_frame)
   apply (iExistsR "(True,u2,u3)")
   apply (iExistsR m)
   apply simp
-  apply (iFrame_single)
-  apply (rule upred_frame_empL)
-  apply (subst upred_true_sep)
+  apply (iFrame_single)+
   apply iPureR
   using mark_update_lookup[OF assms] apply blast
   apply (simp only: upred_sep_assoc_eq)
-  apply (rule split_trans[of _ _ _ "\<triangleright>(graph_inv g Mrk)"])
-  apply (rule can_be_split_sepL) apply (rule can_be_split_sepL) apply (rule can_be_split_sepR)
-  apply (rule can_be_split_sepR) apply (rule can_be_split_refl)
+  apply (iApply_step2 "\<triangleright>(graph_inv g Mrk)" "heap_owns ?g ?m \<^emph> Own\<^sub>g ?g2 \<^emph> Own\<^sub>m ?m2")
   subgoal unfolding graph_inv_def apply (entails_substR rule: upred_laterI)
     apply (iExistsR "fmupd x(ex.Ex (u2, u3)) G'")
     apply iPureR using mark_strict_subgraph[OF _ assms] apply blast

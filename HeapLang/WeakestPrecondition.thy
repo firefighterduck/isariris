@@ -247,7 +247,7 @@ lemma elim_modal_fupd_wp_atomic: "atomic (stuckness_to_atomicity s) e \<Longrigh
   apply (entails_substL rule: fupd_mono[OF upred_wand_apply])
   by (rule wp_atomic, assumption)
 
-lemma wp_is_except_zero: "is_except_zero (wp s E e P)"
+lemma wp_is_except_zero [iez_rule]: "is_except_zero (wp s E e P)"
   unfolding is_except_zero_def
   apply (rule upred_entails_trans[OF _ fupd_wp])
   apply (rule upred_entails_trans[OF _ is_except_zero_fupd[unfolded is_except_zero_def]])
@@ -270,5 +270,21 @@ sorry
   
 lemma wp_frame': "(\<And>x. can_be_split (Q x) (Q' x) P) \<Longrightarrow> (wp s E e Q') \<^emph> P \<turnstile> wp s E e Q"
 sorry  
+
+method fupd_elimL =
+  check_moveL "\<Turnstile>{?E1,?E2}=>?P",
+    (match conclusion in "_\<^emph>\<Turnstile>{E1,_}=>_\<turnstile>\<Turnstile>{E1,_}=>_" for E1 \<Rightarrow>
+      \<open>rule elim_modal_entails'[OF elim_modal_fupd]\<close>
+    \<bar> "\<Turnstile>{E1,E2}=>_\<turnstile>\<Turnstile>{E1,E2}=>_" for E1 E2 \<Rightarrow> \<open>rule fupd_mono\<close>
+    \<bar> "\<Turnstile>{E1,_}=>_\<turnstile>wp _ E1 _ _" for E1 \<Rightarrow> \<open>rule elim_modal_entails[OF elim_modal_fupd_wp_atomic],
+        (atomic_solver;fail)\<close>
+    \<bar> "_\<^emph>\<Turnstile>{E1,_}=>_\<turnstile>wp _ E1 _ _" for E1 \<Rightarrow> \<open>rule elim_modal_entails'[OF elim_modal_fupd_wp_atomic],
+        (atomic_solver;fail)\<close>
+    | rule elim_modal_entails'[OF elim_modal_fupd] | rule elim_modal_entails[OF elim_modal_fupd]
+    | (rule elim_modal_entails'[OF elim_modal_fupd_wp_atomic],(atomic_solver;fail))
+    | (rule elim_modal_entails[OF elim_modal_fupd_wp_atomic],(atomic_solver;fail))),
+  (simp only: upred_true_sep upred_sep_assoc_eq)?
+
+method iMod uses rule = iMod_raw later_elim fupd_elimL rule: rule
 end
 end   
