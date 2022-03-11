@@ -1,12 +1,10 @@
 theory Automation
-imports ProofRules "HOL-Eisbach.Eisbach_Tools"
+imports ProofSearchPredicates "HOL-Eisbach.Eisbach_Tools"
 begin
-
-method itac = tactic all_tac
 
 method iIntro = 
   (match conclusion in "upred_holds _" \<Rightarrow> \<open>rule upred_wand_holdsI\<close>)?,((rule upred_wandI)+)?
-
+  
 text \<open>A simple attribute to convert upred_holds predicates into entailments.\<close>
 ML \<open> val to_entailment: attribute context_parser = let 
   fun is_upred_holds (Const(\<^const_name>\<open>Trueprop\<close>,_)$(Const(\<^const_name>\<open>upred_holds\<close>,_)$_)) = true
@@ -53,7 +51,28 @@ ML \<open> val to_entailment: attribute context_parser = let
 \<close>
 attribute_setup to_entailment = \<open>to_entailment\<close>
 
-method entails_substL uses rule = 
+text \<open>Find a subgoal on which the given method is applicable, prefer that subgoal and apply the method.
+  This will result in new subgoals to be at the head. Requires to evaluate the method for all subgoals
+  up to the applicable goal and another time for that goal.\<close>
+method_setup apply_prefer =
+  \<open>Method.text_closure >> (fn m => fn ctxt => fn facts =>  
+    let fun prefer_first i thm = 
+      let val applicable = case Seq.pull (SELECT_GOAL (method_evaluate m ctxt facts) i thm) 
+        of SOME _ => true
+        | NONE => false
+      in (if applicable then prefer_tac i thm else no_tac thm) end
+    in SIMPLE_METHOD ((FIRSTGOAL prefer_first) THEN (method_evaluate m ctxt facts)) facts end)\<close>
+
+text \<open>Find a subgoal on which the given method is applicable and apply the method there.
+  This will not move any subgoals around and resulting subgoals will not be at the head. 
+  Requires the method to be evaluated for all subgoals at most once.\<close>
+method_setup apply_first =
+  \<open>Method.text_closure >> (fn m => fn ctxt => fn facts =>  
+    let fun eval_method i = 
+      SELECT_GOAL (method_evaluate m ctxt facts) i
+    in SIMPLE_METHOD (FIRSTGOAL eval_method) facts end)\<close>
+
+method entails_substL uses rule =
   match rule[uncurry] in "_ = _" \<Rightarrow> \<open>rule upred_entails_trans[OF upred_entails_eq[OF rule]]\<close>
   \<bar> "_ \<Longrightarrow> (_=_)" \<Rightarrow> \<open>rule upred_entails_trans[OF upred_entails_eq[OF rule]]\<close>
   \<bar> "_\<turnstile>_" \<Rightarrow> \<open>rule rule
@@ -68,12 +87,12 @@ method entails_substL uses rule =
 method entails_substR uses rule = 
   match rule[uncurry] in "_ = _" \<Rightarrow> \<open>rule upred_entails_trans[OF _ upred_entails_eq[OF rule]]\<close>
   \<bar> "_ \<Longrightarrow> (_=_)" \<Rightarrow> \<open>rule upred_entails_trans[OF _ upred_entails_eq[OF rule]]\<close>
-  \<bar> "_\<turnstile>_" \<Rightarrow> \<open>rule upred_entails_substI[OF rule, unfolded upred_sep_assoc_eq]
+  \<bar> "_\<turnstile>_" \<Rightarrow> \<open>rule rule
+    | rule upred_entails_substI[OF rule, unfolded upred_sep_assoc_eq]
+    | (rule upred_entails_trans[OF _ rule])\<close>
+  \<bar> "_ \<Longrightarrow> (_ \<turnstile> _)" \<Rightarrow> \<open>rule rule
+    | rule upred_entails_substI[OF rule, unfolded upred_sep_assoc_eq]
     | rule upred_entails_trans[OF _ rule]\<close>
-  \<bar> "_ \<Longrightarrow> (_ \<turnstile> _)" \<Rightarrow> \<open>rule upred_entails_substI[OF rule, unfolded upred_sep_assoc_eq]
-    | rule upred_entails_trans[OF _ rule]\<close>
-  \<bar> "upred_holds (P-\<^emph>Q)" for P Q \<Rightarrow> \<open>entails_substR rule: upred_wand_holdsE[OF rule]\<close>
-  \<bar> "_ \<Longrightarrow> upred_holds (P-\<^emph>Q)" for P Q \<Rightarrow> \<open>entails_substR rule: upred_wand_holdsE[OF rule]\<close>
   \<bar> R[curry]: "upred_holds _" \<Rightarrow> \<open>entails_substR rule: R[to_entailment]\<close>
   \<bar> R[curry]: "_ \<Longrightarrow> upred_holds _" \<Rightarrow> \<open>entails_substR rule: R[to_entailment]\<close>
   
@@ -83,11 +102,11 @@ method subst_pers_keepL uses rule =
   (entails_substL rule: persistent_keep[OF _ rule], (pers_solver; fail))
 | entails_substL rule: rule
 
-text \<open>Unchecked move methods, might not terminate if pattern is not found.\<close>
+text \<open>Unchecked move methods, might not terminate if pattern is not found.\<close>   
 method move_sepL for pat :: "'a::ucamera upred_f" =
   match conclusion in \<open>hyps \<turnstile> _\<close> for hyps :: "'a upred_f" \<Rightarrow>
-    \<open> match (hyps) in "pat" \<Rightarrow> itac
-      \<bar> "_\<^emph>pat" \<Rightarrow> itac
+    \<open> match (hyps) in "pat" \<Rightarrow> succeed
+      \<bar> "_\<^emph>pat" \<Rightarrow> succeed
       \<bar> "pat\<^emph>_" \<Rightarrow> \<open>subst upred_sep_comm\<close>
       \<bar> "_\<^emph>pat\<^emph>_" \<Rightarrow> \<open>entails_substL rule: upred_sep_comm2R\<close>
       \<bar> "pat\<^emph>_\<^emph>_" \<Rightarrow> \<open>entails_substL rule: upred_sep_comm2L; move_sepL pat\<close>
@@ -105,11 +124,11 @@ method move_sepL for pat :: "'a::ucamera upred_f" =
       \<bar> "pat\<^emph>_\<^emph>_\<^emph>_\<^emph>_\<^emph>_\<^emph>_\<^emph>_\<^emph>_" \<Rightarrow> \<open>entails_substL rule: upred_sep_comm8_1; move_sepL pat\<close>
       \<bar> "_\<^emph>_\<^emph>_\<^emph>_\<^emph>_\<^emph>_\<^emph>_\<^emph>_\<^emph>_\<^emph>_" \<Rightarrow> \<open>entails_substL rule: upred_sep_comm8_1; move_sepL pat\<close>
     \<close>
-
+    
 method move_sepR for pat :: "'a::ucamera upred_f" =
   match conclusion in \<open>_ \<turnstile> goal\<close> for goal :: "'a upred_f" \<Rightarrow>
-    \<open> match (goal) in "pat" \<Rightarrow> itac
-      \<bar> "_\<^emph>pat" \<Rightarrow> itac
+    \<open> match (goal) in "pat" \<Rightarrow> succeed
+      \<bar> "_\<^emph>pat" \<Rightarrow> succeed
       \<bar> "pat\<^emph>_" \<Rightarrow> \<open>entails_substR rule: upred_sep_comm\<close>
       \<bar> "_\<^emph>pat\<^emph>_" \<Rightarrow> \<open>entails_substR rule: upred_sep_comm2R\<close>
       \<bar> "pat\<^emph>_\<^emph>_" \<Rightarrow> \<open>entails_substR rule: upred_sep_comm2L; move_sepR pat\<close>
@@ -139,13 +158,18 @@ method move_sep_all for left :: bool and trm :: "'a::ucamera upred_f" =
 method move_sep_both for trm :: "'a::ucamera upred_f" =
   move_sepL trm, move_sepR trm
 
-text \<open>Checked move methods, will terminate.\<close>
+text \<open>Checked move methods, guaranteed to terminate.\<close>
 method find_pat_sep for pat trm :: "'a::ucamera upred_f" = 
-  match (trm) in "pat" \<Rightarrow> itac
-  \<bar> "_\<^emph>pat" \<Rightarrow> itac
-  \<bar> "pat\<^emph>_" \<Rightarrow> itac
+  match (trm) in "pat" \<Rightarrow> succeed
+  \<bar> "_\<^emph>pat" \<Rightarrow> succeed
+  \<bar> "pat\<^emph>_" \<Rightarrow> succeed
   \<bar> "rest\<^emph>_" for rest :: "'a upred_f" \<Rightarrow> \<open>find_pat_sep pat rest\<close>   
 
+method find_in_pat_sep for pat trm :: "'a::ucamera upred_f" = 
+  match (pat) in "rest\<^emph>head" for rest head :: "'a upred_f" \<Rightarrow>
+    \<open> match (trm) in head \<Rightarrow> succeed | find_in_pat_sep rest trm \<close>
+  \<bar> "single_pat" for single_pat \<Rightarrow> \<open> match (trm) in single_pat \<Rightarrow> succeed \<close>
+    
 method check_moveL for pat :: "'a::ucamera upred_f" =
   match conclusion in \<open>hyps \<turnstile> _\<close> for hyps :: "'a upred_f" \<Rightarrow>
     \<open> find_pat_sep pat hyps; move_sepL pat\<close>
@@ -159,19 +183,23 @@ method check_move for left :: bool and pat :: "'a::ucamera upred_f" =
   \<bar> False \<Rightarrow> \<open>check_moveR pat\<close>  
 
 method check_move_all for left :: bool and trm :: "'a::ucamera upred_f" =
-  match (trm) in "rest\<^emph>head" for rest head :: "'a upred_f" \<Rightarrow> \<open>check_move_all left rest; check_move left head\<close>
+  match (trm) in "rest\<^emph>head" for rest head :: "'a upred_f" \<Rightarrow> 
+    \<open>check_move_all left rest; check_move left head\<close>
   \<bar> "P" for P :: "'a upred_f" \<Rightarrow> \<open>check_move left P\<close>
 
 method check_move_both for trm :: "'a::ucamera upred_f" =
-  check_moveL trm, check_moveR trm
-
+  (check_moveL trm, dupl_pers), check_moveR trm
+  
 method check_move_dupl_all for left acc_pure :: bool and trm :: "'a::ucamera upred_f" =
-  match (trm) in "rest\<^emph>\<upharpoonleft>_" for rest :: "'a upred_f" \<Rightarrow> \<open>match (acc_pure) in True \<Rightarrow> itac 
-    \<bar> False \<Rightarrow> \<open>check_move left head, dupl_pers, check_move_dupl_all left acc_pure rest\<close>\<close>
+  match (trm) in "rest\<^emph>\<upharpoonleft>head" for rest :: "'a upred_f" and head \<Rightarrow> \<open>match (acc_pure) in True \<Rightarrow> succeed 
+    \<bar> False \<Rightarrow> \<open>check_move left "\<upharpoonleft>head", dupl_pers, check_move_dupl_all left acc_pure rest\<close>\<close>
   \<bar> "rest\<^emph>head" for rest head :: "'a upred_f" \<Rightarrow>
     \<open>check_move left head, dupl_pers, check_move_dupl_all left acc_pure rest\<close>
   \<bar> "P" for P :: "'a upred_f" \<Rightarrow> \<open>check_move left P, dupl_pers\<close>
 
+method check_move_all_both for pat :: "'a::ucamera upred_f" =
+  (check_move_dupl_all True False pat, move_sep_all True pat), check_move_all False pat
+  
 text \<open>Moves all hypotheses while duplicating all persistent, then moves again but unchecked to get 
   correct order of hypotheses. Then applies given rule.\<close>
 method iApply uses rule =
@@ -182,36 +210,74 @@ method iApply uses rule =
   \<bar> R[curry]: "upred_holds _" \<Rightarrow> \<open>iApply rule: R[to_entailment]\<close>
   \<bar> R[curry]: "_ \<Longrightarrow> upred_holds _" \<Rightarrow> \<open>iApply rule: R[to_entailment]\<close>
 
-text \<open>Due to the limitations of subgoal focusing, this can only take concrete terms to
-  separate into the left side and not a pattern.\<close>
-method split_pat for trm :: "'a::ucamera upred_f" =
-  ((match conclusion in "can_be_split (_\<^emph>_) _ _" \<Rightarrow> itac),
-  (((match conclusion in "can_be_split (_\<^emph>head) _ _" for head :: "'a upred_f" \<Rightarrow> 
-    \<open>find_pat_sep head trm\<close>), rule can_be_split_sepL)
-    | rule can_be_split_sepR), split_pat trm)
-| ((match conclusion in "can_be_split (_\<or>\<^sub>u_) _ _" \<Rightarrow> itac),rule can_be_split_disj;
-  (rule can_be_split_rev, split_pat trm))
-| ((match conclusion in "can_be_split _ _ _" \<Rightarrow> itac),
-  (((match conclusion in "can_be_split (_\<^emph>head) _ _" for head :: "'a upred_f" \<Rightarrow> 
-    \<open>find_pat_sep head pat\<close>), rule can_be_split_baseL)
-    | rule can_be_split_baseR)) 
+text \<open>Looks for the head term in the given pattern and separates matches to the right.\<close>
+method split_pat for pat :: "'a::ucamera upred_f" =
+  ((match conclusion in "can_be_split (_\<^emph>_) _ _" \<Rightarrow> succeed),
+  (((match conclusion in "can_be_split (_\<^emph>head) _ _" for head :: "'a upred_f" \<Rightarrow>
+      \<open>find_in_pat_sep pat head\<close>), rule can_be_split_sepR)
+    | rule can_be_split_sepL), split_pat pat)
+| ((match conclusion in "can_be_split (_\<or>\<^sub>u_) _ _" \<Rightarrow> succeed),rule can_be_split_disj;split_pat pat)
+| (((match conclusion in "can_be_split head _ _" for head :: "'a upred_f" \<Rightarrow>
+      \<open>find_in_pat_sep pat head\<close>), rule can_be_split_baseR)
+    | rule can_be_split_baseL)
+| ((match conclusion in "frame (_\<^emph>_) _ _" \<Rightarrow> succeed),
+  (((match conclusion in "frame (_\<^emph>head) _ _" for head :: "'a upred_f" \<Rightarrow>
+      \<open>find_in_pat_sep pat head\<close>), rule frame_sepR)
+    | rule frame_sepL), split_pat pat)
+| ((match conclusion in "frame (_\<or>\<^sub>u_) _ _" \<Rightarrow> succeed),rule frame_disj;split_pat pat)
+| (((match conclusion in "frame head _ _" for head :: "'a upred_f" \<Rightarrow>
+      \<open>find_in_pat_sep pat head\<close>), rule frame_baseR)
+    | rule frame_baseL)
 
-text \<open>Separates the top terms (the same number as the patterns) to the left and the rest to the right.
+text \<open>Separates the top terms (the same number as the patterns) to the right and the rest to the left.
   If it should separate the terms in the pattern, they first need to be moved to the top level.\<close>
 method ord_split_pat for pat :: "'a::ucamera upred_f" =
-  (match conclusion in "can_be_split (_\<^emph>_) _ _" \<Rightarrow> itac),
-  match (pat) in "rest\<^emph>_" for rest :: "'a upred_f" \<Rightarrow> \<open>rule can_be_split_sepL, ord_split_pat rest\<close>
-  \<bar> "_" \<Rightarrow> \<open>(rule can_be_split_rev, rule can_be_split_refl) | rule can_be_split_baseL\<close>
-| (match conclusion in "can_be_split (_\<or>\<^sub>u_) _ _" \<Rightarrow> itac),rule can_be_split_disj; 
+  (match conclusion in "can_be_split (_\<^emph>_) _ _" \<Rightarrow> succeed),
+  match (pat) in "rest\<^emph>_" for rest :: "'a upred_f" \<Rightarrow> 
+    \<open>((rule persistent_dupl_split', (pers_solver; fail)) 
+    | rule can_be_split_sepR), ord_split_pat rest\<close>
+  \<bar> "_" \<Rightarrow> \<open>(rule can_be_split_rev, rule can_be_split_refl) 
+    | (rule persistent_dupl_split', (pers_solver; fail))
+    | rule can_be_split_baseR\<close>
+| (match conclusion in "frame (_\<or>\<^sub>u_) _ _" \<Rightarrow> succeed),rule frame_disj; 
+  ord_split_pat pat
+| (match conclusion in "frame (_\<^emph>_) _ _" \<Rightarrow> succeed),
+  match (pat) in "rest\<^emph>_" for rest :: "'a upred_f" \<Rightarrow> 
+    \<open>((rule persistent_dupl_frame3, (pers_solver; fail)) 
+    | rule frame_sepR), ord_split_pat rest\<close>
+  \<bar> "_" \<Rightarrow> \<open>(rule frame_rev, rule frame_refl) 
+    | (rule persistent_dupl_frame3, (pers_solver; fail))
+    | rule frame_baseR\<close>
+| (match conclusion in "frame (_\<or>\<^sub>u_) _ _" \<Rightarrow> succeed),rule frame_disj; 
   ord_split_pat pat
 
 text \<open>Uses the rule to do a step and separates arguments based on the pat.\<close>
-method iApply_step for pat :: "'a::ucamera upred_f" uses rule =
-  check_move_all True pat, rule split_trans'[OF rule], ord_split_pat pat
+method iApply_step' for pat :: "'a::ucamera upred_f" uses rule =
+  check_move_all True pat, rule split_trans_rule[OF rule], rule can_be_split_rev,
+  ord_split_pat pat; (simp_all only: upred_sep_assoc_eq)?
 
+method iApply_step for pat :: "'a::ucamera upred_f" uses rule =
+  rule split_trans_rule[OF rule], rule can_be_split_rev, (* The rule has the order of things reversed. *)
+  split_pat pat; (simp_all only: upred_sep_assoc_eq)?
+  
 text \<open>Does a transitive step with the given step term and separates arguments based on pat.\<close>
+method iApply_step2' for step pat :: "'a::ucamera upred_f" =
+  check_move_all True pat, rule split_trans[where ?Q = step], rule can_be_split_rev,
+  ord_split_pat pat; (simp_all only: upred_sep_assoc_eq)?
+
 method iApply_step2 for step pat :: "'a::ucamera upred_f" =
-  check_move_all True pat, rule split_trans[where ?Q = step], ord_split_pat pat  
+  rule split_trans[where ?Q = step], rule can_be_split_rev, (* The rule has the order of things reversed. *)
+  split_pat pat; (simp_all only: upred_sep_assoc_eq)?
+
+text \<open>Search for a wand with left hand side lhs_pat, obtain the lhs term from other hypotheses
+  matching pat and apply the wand to the newly obtained lhs term.\<close>
+method iApply_wand_as_rule for lhs_pat pat :: "'a::ucamera upred_f" =
+  check_moveL "lhs_pat-\<^emph>?a_schematic_variable_name_that_noone_would_use_in_setp_pat";
+  match conclusion in "_\<^emph>(step_trm-\<^emph>P)\<turnstile>_" for step_trm P :: "'a upred_f" \<Rightarrow>
+    \<open>iApply_step2 step_trm pat,
+    prefer_last,
+      move_sepL step_trm, move_sepL "step_trm-\<^emph>P", subst_pers_keepL rule: upred_wand_apply,
+    defer_tac\<close>
   
 method remove_emp = 
   (simp only: upred_sep_assoc_eq)?;
@@ -224,8 +290,8 @@ method iExistsL =
 
 method iExistsR for inst =
   (check_moveR "upred_exists ?P"; (unfold pull_exists_eq pull_exists_eq')?; 
-    rule upred_existsI[of _ _ inst]; (simp only: upred_sep_assoc_eq)?)
-
+  rule upred_existsI[of _ _ inst]; (simp only: upred_sep_assoc_eq)?)
+    
 method iPureL =
   (check_moveL "upred_pure ?b", rule upred_pure_impl)
 
@@ -242,7 +308,7 @@ method find_applicable_wand for trm :: "'a::ucamera upred_f" =
 method iApply_wand =
   match conclusion in \<open>hyps \<turnstile> _\<close> for hyps \<Rightarrow>
     \<open>find_applicable_wand hyps, subst_pers_keepL rule: upred_wand_apply, remove_emp\<close>
-
+    
 text \<open>Tries to remove the head goal term by either framing or reasoning with iPure and assumptions.\<close>
 method iFrame_single = 
   remove_emp, match conclusion in \<open>_ \<turnstile> goal\<close> for goal :: "'a::ucamera upred_f" \<Rightarrow>
@@ -252,6 +318,10 @@ method iFrame_single =
       \<bar> P for P :: "'a upred_f" \<Rightarrow> 
         \<open>(move_sepL P; (rule upred_entails_refl | rule upred_weakeningR)) | (iPureR; assumption)\<close> \<close>
 
+method iFrame_raw for pat :: "'a::ucamera upred_f" = 
+  remove_emp, check_move_all_both pat;
+  (rule upred_frame upred_emp_left | rule upred_entails_refl | rule upred_weakeningR)+
+    
 method later_elim =
   check_moveL "\<triangleright> ?P", 
   (rule elim_modal_entails'[OF elim_modal_timeless']
@@ -260,6 +330,18 @@ method later_elim =
 
 method iMod_raw methods later fupd uses rule =
   iApply rule: rule, (prefer_last, (later | fupd)+, defer_tac)?; remove_emp
+
+method iMod_raw_wand for lhs_pat pat :: "'a::ucamera upred_f" methods later fupd =
+  iApply_wand_as_rule lhs_pat pat, (prefer_last, (later | fupd)+, defer_tac)?; remove_emp
+
+method destruct_raw = 
+  (* Try to destruct existential quantifiers at top level.*)  
+  ((rule pull_exists_antecedentR)+; rule upred_existsE';(simp only: upred_sep_assoc_eq)?)
+| (* Also put all new pures into assumptions. *) rule upred_pure_impl
+
+text \<open>Applies the given rule and destructs the resulting term.\<close>
+method iDestruct uses rule =
+  iApply rule: rule, (prefer_last, destruct_raw+, defer_tac)?; remove_emp
 
 lemma test_lemma: "S \<^emph> (\<box>P) \<^emph> Q \<^emph> ((\<box>P)-\<^emph>\<box>R) \<^emph> (\<triangleright>R) -\<^emph> (\<box>R) \<^emph> (\<triangleright>R) \<^emph> Q"
 apply iIntro

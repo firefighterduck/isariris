@@ -197,7 +197,7 @@ shows "wp s E e P \<turnstile> wp s E e Q"
   apply (rule add_holds[OF upred_holds_forall[OF fupd_intro'[OF assms, of _ E]], of _ id, simplified])
   apply (subst upred_sep_comm)
   by (rule upred_wand_apply)
-
+  
 lemma wp_atomic: "atomic (stuckness_to_atomicity s) e \<Longrightarrow>
   \<Turnstile>{E1,E2}=> wp s E2 e (\<lambda>v. \<Turnstile>{E2,E1}=> P v) \<turnstile> wp s E1 e P" sorry
 
@@ -206,7 +206,7 @@ lemma wp_bind': "wp s E e (\<lambda>v. wp s E (C (of_val v)) P) \<turnstile> wp 
 lemma wp_bind_inv: "wp s E (lang_ctxt K e) P \<turnstile> wp s E e (\<lambda>v. wp s E (lang_ctxt K (of_val v)) P)" sorry
 lemma wp_stuck_mono: "s1 \<le> s2 \<Longrightarrow> wp s1 E e P \<turnstile> wp s2 E e P" sorry
 lemma wp_stuck_weaken: "wp s E e P \<turnstile> wp MaybeStuck E e P" using wp_stuck_mono[of s MaybeStuck] by simp
-lemma wp_frame: "P \<^emph> wp s E e (\<lambda>v. Q v) \<turnstile> wp s E e (\<lambda>v. P \<^emph> Q v)" sorry
+lemma wp_frame_simp: "wp s E e (\<lambda>v. Q v) \<^emph> P \<turnstile> wp s E e (\<lambda>v. Q v \<^emph> P)" sorry
 
 lemma wp_frame_step:
 assumes "HeapLang.to_val e = None" "E2\<subseteq>E1"
@@ -271,20 +271,68 @@ sorry
 lemma wp_frame': "(\<And>x. can_be_split (Q x) (Q' x) P) \<Longrightarrow> (wp s E e Q') \<^emph> P \<turnstile> wp s E e Q"
 sorry  
 
+lemma wp_frame: "(\<And>x. frame (P x) (Q x) R) \<Longrightarrow> frame (wp s E e P) (wp s E e Q) R"
+  unfolding frame_def by (smt (verit) upred_entails_trans wp_frame_simp wp_mono)
+
+text \<open>Because fupds often appear with schematic variables which make matching difficult, we just
+  try the different elimination methods.\<close>
 method fupd_elimL =
   check_moveL "\<Turnstile>{?E1,?E2}=>?P",
-    (match conclusion in "_\<^emph>\<Turnstile>{E1,_}=>_\<turnstile>\<Turnstile>{E1,_}=>_" for E1 \<Rightarrow>
-      \<open>rule elim_modal_entails'[OF elim_modal_fupd]\<close>
-    \<bar> "\<Turnstile>{E1,E2}=>_\<turnstile>\<Turnstile>{E1,E2}=>_" for E1 E2 \<Rightarrow> \<open>rule fupd_mono\<close>
-    \<bar> "\<Turnstile>{E1,_}=>_\<turnstile>wp _ E1 _ _" for E1 \<Rightarrow> \<open>rule elim_modal_entails[OF elim_modal_fupd_wp_atomic],
-        (atomic_solver;fail)\<close>
-    \<bar> "_\<^emph>\<Turnstile>{E1,_}=>_\<turnstile>wp _ E1 _ _" for E1 \<Rightarrow> \<open>rule elim_modal_entails'[OF elim_modal_fupd_wp_atomic],
-        (atomic_solver;fail)\<close>
-    | rule elim_modal_entails'[OF elim_modal_fupd] | rule elim_modal_entails[OF elim_modal_fupd]
-    | (rule elim_modal_entails'[OF elim_modal_fupd_wp_atomic],(atomic_solver;fail))
-    | (rule elim_modal_entails[OF elim_modal_fupd_wp_atomic],(atomic_solver;fail))),
+    (rule elim_modal_entails'[OF elim_modal_fupd]
+    | (rule fupd_mono | rule elim_modal_entails[OF elim_modal_fupd])
+    | (rule elim_modal_entails[OF elim_modal_fupd_wp_atomic],(atomic_solver;fail))
+    | (rule elim_modal_entails'[OF elim_modal_fupd_wp_atomic],(atomic_solver;fail)));
   (simp only: upred_true_sep upred_sep_assoc_eq)?
 
 method iMod uses rule = iMod_raw later_elim fupd_elimL rule: rule
+method iMod_wand for lhs_pat pat :: "'a::ucamera upred_f" = 
+  iMod_raw_wand lhs_pat pat later_elim fupd_elimL  
+
+method lift_modL for trm :: iprop methods m =
+  match (trm) in "\<Turnstile>{_,_}=>P" for P :: iprop \<Rightarrow> 
+    \<open>apply_prefer \<open>entails_substL rule: fupd_mono\<close>, lift_modL P m\<close>
+  \<bar> "wp _ _ _ (\<lambda>x. Q x)" for Q \<Rightarrow> 
+    \<open>apply_prefer \<open>entails_substL rule: wp_mono\<close>, lift_modL "Q v" m\<close>
+  \<bar> "_" \<Rightarrow> \<open>rule upred_entails_trans, m, (rule upred_entails_refl)?\<close>
+
+method lift_splitL for pat :: iprop =
+  match conclusion in "hyps\<turnstile>_" for hyps :: iprop \<Rightarrow>
+    \<open>lift_modL hyps \<open>rule upred_entail_eqL[OF can_be_splitE], split_pat pat\<close>\<close>
+  
+method lift_modR for trm :: iprop methods m =
+  match (trm) in "\<Turnstile>{_,_}=>P" for P :: iprop \<Rightarrow> 
+    \<open>apply_prefer \<open>entails_substR rule: fupd_mono\<close>, lift_modR P m\<close>
+  \<bar> "wp _ _ _ (\<lambda>x. Q x)" for Q \<Rightarrow> 
+    \<open>apply_prefer \<open>entails_substR rule: wp_mono\<close>, lift_modR "Q v" m\<close>
+  \<bar> "_" \<Rightarrow> \<open>rule upred_entails_trans[rotated], m, (rule upred_entails_refl)?\<close>
+
+method lift_splitR for pat :: iprop =
+  match conclusion in "_\<turnstile>goal" for goal :: iprop \<Rightarrow>
+    \<open>lift_modR goal \<open>rule upred_entail_eqR[OF can_be_splitE], split_pat pat\<close>\<close>
+
+method lift_mod_frameR for trm :: iprop and wrapper :: "'a \<Rightarrow> iprop" methods wrapped =
+  match (trm) in "wrapper _" \<Rightarrow> "apply_first wrapped"
+  \<bar> "\<Turnstile>{_,_}=>P" for P :: iprop \<Rightarrow> 
+    \<open>apply_first \<open>entails_substR rule: fupd_mono\<close>, lift_mod_frameR P wrapper wrapped, 
+      apply_first \<open>entails_substR rule: fupd_frame_r\<close>\<close>
+  \<bar> "wp _ _ _ (\<lambda>x. Q x)" for Q \<Rightarrow> 
+    \<open>apply_first \<open>entails_substR rule: wp_mono\<close>, lift_mod_frameR "Q v" wrapper wrapped,
+      apply_first \<open>entails_substR rule: wp_frame_simp\<close>\<close>
+    
+method lift_mod_frame for pat :: iprop =
+  lift_splitR pat,
+  match conclusion in "_\<turnstile>goal" for goal :: iprop \<Rightarrow>
+    \<open>lift_mod_frameR goal "wp ?s ?E ?e" \<open>rule wp_frame_simp\<close>\<close>,
+  iFrame_raw pat
+
+method iFrame for pat :: "'a::ucamera upred_f" = 
+  remove_emp, check_move_all_both pat;
+  (rule upred_frame upred_emp_left | rule upred_entails_refl | rule upred_weakeningR)+
+
+method iFrame_new for pat :: iprop = 
+  remove_emp, lift_splitL pat, lift_splitR pat, (* First split/move the pattern on both sides. *)
+    (* Then pull out the pattern on both sides. *)
+  
+  (rule upred_frame upred_emp_left | rule upred_entails_refl | rule upred_weakeningR)+
 end
 end   

@@ -1,6 +1,6 @@
 theory iPropShallow                                                      
 imports DerivedConstructions "../SpanningTree/SpanningTreeCameras" Namespace
-  ProofRules "../HeapLang/PrimitiveLaws" View ProphMap
+  ProofSearchPredicates "../HeapLang/PrimitiveLaws" View ProphMap
 begin
 
 (*

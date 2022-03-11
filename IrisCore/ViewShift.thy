@@ -61,12 +61,15 @@ by auto
 lemma fupd_frame_split:  "can_be_split P P1 P2 \<Longrightarrow> ((\<Turnstile>{E1,E2}=> P1) \<^emph> P2) ={E1,E2}=\<^emph> P"
   unfolding can_be_split_def 
   using fupd_frame_r fupd_mono upred_entail_eqR upred_entails_wand_holdsR by blast
-
+  
 lemma fupd_frame_mono: "R\<^emph>P\<turnstile>Q \<Longrightarrow> R \<^emph> (\<Turnstile>{E1,E2}=> P) \<turnstile> \<Turnstile>{E1,E2}=> Q"
 apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm]])
 apply (auto intro!: upred_entails_trans[OF upred_wand_holdsE[OF fupd_frame_r]] fupd_mono)
 apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm]])
 by simp
+
+lemma fupd_frame: "frame P Q R \<Longrightarrow> frame (\<Turnstile>{E1,E2}=>P) (\<Turnstile>{E1,E2}=>Q) R"
+  unfolding frame_def using fupd_frame_mono by (simp add: upred_sep_comm)
 
 lemma fupd_mask_subseteq: "E2 \<subseteq> E1 \<Longrightarrow> \<Turnstile>{E1,E2}=>\<Turnstile>{E2,E1}=>upred_emp"
 proof -
