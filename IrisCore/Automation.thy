@@ -158,6 +158,9 @@ method move_sep_all for left :: bool and trm :: "'a::ucamera upred_f" =
 method move_sep_both for trm :: "'a::ucamera upred_f" =
   move_sepL trm, move_sepR trm
 
+method move_sep_all_both for pat :: "'a::ucamera upred_f" =
+  move_sep_all True pat, move_sep_all False pat
+  
 text \<open>Checked move methods, guaranteed to terminate.\<close>
 method find_pat_sep for pat trm :: "'a::ucamera upred_f" = 
   match (trm) in "pat" \<Rightarrow> succeed
@@ -225,6 +228,7 @@ method split_pat for pat :: "'a::ucamera upred_f" =
       \<open>find_in_pat_sep pat head\<close>), rule frame_sepR)
     | rule frame_sepL), split_pat pat)
 | ((match conclusion in "frame (_\<or>\<^sub>u_) _ _" \<Rightarrow> succeed),rule frame_disj;split_pat pat)
+| (rule frame_rule, split_pat pat)
 | (((match conclusion in "frame head _ _" for head :: "'a upred_f" \<Rightarrow>
       \<open>find_in_pat_sep pat head\<close>), rule frame_baseR)
     | rule frame_baseL)
@@ -250,6 +254,7 @@ method ord_split_pat for pat :: "'a::ucamera upred_f" =
     | rule frame_baseR\<close>
 | (match conclusion in "frame (_\<or>\<^sub>u_) _ _" \<Rightarrow> succeed),rule frame_disj; 
   ord_split_pat pat
+| (rule frame_rule, ord_split_pat pat)
 
 text \<open>Uses the rule to do a step and separates arguments based on the pat.\<close>
 method iApply_step' for pat :: "'a::ucamera upred_f" uses rule =
@@ -279,10 +284,7 @@ method iApply_wand_as_rule for lhs_pat pat :: "'a::ucamera upred_f" =
       move_sepL step_trm, move_sepL "step_trm-\<^emph>P", subst_pers_keepL rule: upred_wand_apply,
     defer_tac\<close>
   
-method remove_emp = 
-  (simp only: upred_sep_assoc_eq)?;
-  (check_moveL upred_emp; simp only: upred_true_sep; remove_emp)?;
-  (check_moveR upred_emp; simp only: upred_true_sep upred_emp_entailed; remove_emp)?
+method remove_emp = (simp_all only: upred_sep_assoc_eq upred_true_sep upred_true_sep')?
   
 method iExistsL =
   (check_moveL "upred_exists ?P", (rule pull_exists_antecedentR)+; rule upred_existsE';
@@ -314,13 +316,10 @@ method iFrame_single =
   remove_emp, match conclusion in \<open>_ \<turnstile> goal\<close> for goal :: "'a::ucamera upred_f" \<Rightarrow>
     \<open> match (goal) in "_\<^emph>P" for P \<Rightarrow> 
         \<open> (check_moveL P; dupl_pers; rule upred_frame upred_emp_left)
-        | (iPureR; assumption)\<close>
+        | (iPureR; (assumption | simp))\<close>
       \<bar> P for P :: "'a upred_f" \<Rightarrow> 
-        \<open>(move_sepL P; (rule upred_entails_refl | rule upred_weakeningR)) | (iPureR; assumption)\<close> \<close>
-
-method iFrame_raw for pat :: "'a::ucamera upred_f" = 
-  remove_emp, check_move_all_both pat;
-  (rule upred_frame upred_emp_left | rule upred_entails_refl | rule upred_weakeningR)+
+        \<open>(move_sepL P; (rule upred_entails_refl | rule upred_weakeningR)) 
+         | (iPureR; (assumption | simp))\<close> \<close>
     
 method later_elim =
   check_moveL "\<triangleright> ?P", 

@@ -53,7 +53,8 @@ lemma split_frame: "\<lbrakk>can_be_split P P1 P2; can_be_split Q Q1 Q2; P1\<tur
 subsubsection \<open>Framing\<close>
 definition frame :: "('a::ucamera) upred_f \<Rightarrow> 'a upred_f \<Rightarrow> 'a upred_f \<Rightarrow> bool" where
   "frame P Q R \<equiv> Q\<^emph>R \<turnstile> P"
-
+named_theorems frame_rule
+  
 lemma frameI: "Q\<^emph>R \<turnstile> P \<Longrightarrow> frame P Q R" unfolding frame_def .
 lemma frameE: "frame P Q R \<Longrightarrow> Q\<^emph>R \<turnstile> P" unfolding frame_def .
 

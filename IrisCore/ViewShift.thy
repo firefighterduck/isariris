@@ -68,7 +68,7 @@ apply (auto intro!: upred_entails_trans[OF upred_wand_holdsE[OF fupd_frame_r]] f
 apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm]])
 by simp
 
-lemma fupd_frame: "frame P Q R \<Longrightarrow> frame (\<Turnstile>{E1,E2}=>P) (\<Turnstile>{E1,E2}=>Q) R"
+lemma fupd_frame [frame_rule]: "frame P Q R \<Longrightarrow> frame (\<Turnstile>{E1,E2}=>P) (\<Turnstile>{E1,E2}=>Q) R"
   unfolding frame_def using fupd_frame_mono by (simp add: upred_sep_comm)
 
 lemma fupd_mask_subseteq: "E2 \<subseteq> E1 \<Longrightarrow> \<Turnstile>{E1,E2}=>\<Turnstile>{E2,E1}=>upred_emp"

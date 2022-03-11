@@ -74,7 +74,7 @@ shows "(graph_ctxt \<kappa> g Mrk) \<^emph> (own_graphUR q fmempty) \<^emph> (ci
     apply (iApply_step "heap_owns ?g ?m \<^emph> (m' \<mapsto>\<^sub>u TrueV) \<^emph> (x \<mapsto>\<^sub>u ?v)" rule: graph_close[of x])
     apply (iFrame "heap_owns ?g ?m", iExistsR u',iExistsR m', simp, iFrame_single+)
     apply (iMod rule: already_marked[of x]) using in_dom_of_graph apply (metis fmdom'_alt_def notin_fset)
-    apply (lift_mod_frame "is_marked x")
+    apply (iFrame "is_marked x")
     apply (iMod_wand "\<triangleright>?P" "heap_owns ?g ?m \<^emph> Own\<^sub>g ?g2 \<^emph> Own\<^sub>m ?m2")
     subgoal by (unfold graph_inv_def, entails_substR rule: upred_laterI, iExistsR G', (iFrame_single)+)
     apply (entails_substR rule: fupd_intro, rule wp_pure[OF pure_exec_snd, simplified])
@@ -84,7 +84,7 @@ shows "(graph_ctxt \<kappa> g Mrk) \<^emph> (own_graphUR q fmempty) \<^emph> (ci
   apply (iMod rule: mark_graph[of _ x _ _ "(u2,u3)"])
   using in_dom_of_graph apply blast
   apply (iMod rule: new_marked)
-  apply (lift_mod_frame "is_marked ?x \<^emph> cinv_own \<kappa> k")
+  apply (iFrame "is_marked ?x \<^emph> cinv_own \<kappa> k")
   apply (subst drop_marked)
   apply (iDestruct rule: upred_entails_trans[OF auth_own_graph_valid upred_entail_eqL[OF discrete_valid]])
   apply (iApply_step "heap_owns ?g ?m \<^emph> (x\<mapsto>\<^sub>u?v1) \<^emph> (m'\<mapsto>\<^sub>u?v2)" rule: graph_close)

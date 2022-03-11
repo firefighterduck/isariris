@@ -271,7 +271,7 @@ sorry
 lemma wp_frame': "(\<And>x. can_be_split (Q x) (Q' x) P) \<Longrightarrow> (wp s E e Q') \<^emph> P \<turnstile> wp s E e Q"
 sorry  
 
-lemma wp_frame: "(\<And>x. frame (P x) (Q x) R) \<Longrightarrow> frame (wp s E e P) (wp s E e Q) R"
+lemma wp_frame [frame_rule]: "(\<And>x. frame (P x) (Q x) R) \<Longrightarrow> frame (wp s E e P) (wp s E e Q) R"
   unfolding frame_def by (smt (verit) upred_entails_trans wp_frame_simp wp_mono)
 
 text \<open>Because fupds often appear with schematic variables which make matching difficult, we just
@@ -298,41 +298,13 @@ method lift_modL for trm :: iprop methods m =
 method lift_splitL for pat :: iprop =
   match conclusion in "hyps\<turnstile>_" for hyps :: iprop \<Rightarrow>
     \<open>lift_modL hyps \<open>rule upred_entail_eqL[OF can_be_splitE], split_pat pat\<close>\<close>
-  
-method lift_modR for trm :: iprop methods m =
-  match (trm) in "\<Turnstile>{_,_}=>P" for P :: iprop \<Rightarrow> 
-    \<open>apply_prefer \<open>entails_substR rule: fupd_mono\<close>, lift_modR P m\<close>
-  \<bar> "wp _ _ _ (\<lambda>x. Q x)" for Q \<Rightarrow> 
-    \<open>apply_prefer \<open>entails_substR rule: wp_mono\<close>, lift_modR "Q v" m\<close>
-  \<bar> "_" \<Rightarrow> \<open>rule upred_entails_trans[rotated], m, (rule upred_entails_refl)?\<close>
 
-method lift_splitR for pat :: iprop =
+method lift_frame for pat :: iprop =
   match conclusion in "_\<turnstile>goal" for goal :: iprop \<Rightarrow>
-    \<open>lift_modR goal \<open>rule upred_entail_eqR[OF can_be_splitE], split_pat pat\<close>\<close>
-
-method lift_mod_frameR for trm :: iprop and wrapper :: "'a \<Rightarrow> iprop" methods wrapped =
-  match (trm) in "wrapper _" \<Rightarrow> "apply_first wrapped"
-  \<bar> "\<Turnstile>{_,_}=>P" for P :: iprop \<Rightarrow> 
-    \<open>apply_first \<open>entails_substR rule: fupd_mono\<close>, lift_mod_frameR P wrapper wrapped, 
-      apply_first \<open>entails_substR rule: fupd_frame_r\<close>\<close>
-  \<bar> "wp _ _ _ (\<lambda>x. Q x)" for Q \<Rightarrow> 
-    \<open>apply_first \<open>entails_substR rule: wp_mono\<close>, lift_mod_frameR "Q v" wrapper wrapped,
-      apply_first \<open>entails_substR rule: wp_frame_simp\<close>\<close>
-    
-method lift_mod_frame for pat :: iprop =
-  lift_splitR pat,
-  match conclusion in "_\<turnstile>goal" for goal :: iprop \<Rightarrow>
-    \<open>lift_mod_frameR goal "wp ?s ?E ?e" \<open>rule wp_frame_simp\<close>\<close>,
-  iFrame_raw pat
-
-method iFrame for pat :: "'a::ucamera upred_f" = 
-  remove_emp, check_move_all_both pat;
-  (rule upred_frame upred_emp_left | rule upred_entails_refl | rule upred_weakeningR)+
-
-method iFrame_new for pat :: iprop = 
-  remove_emp, lift_splitL pat, lift_splitR pat, (* First split/move the pattern on both sides. *)
-    (* Then pull out the pattern on both sides. *)
-  
+    \<open>rule upred_entails_trans[OF _ frameE], apply_first \<open>split_pat pat\<close>\<close>
+   
+method iFrame for pat :: iprop = 
+  remove_emp, lift_splitL pat, lift_frame pat, remove_emp, move_sep_all_both pat,
   (rule upred_frame upred_emp_left | rule upred_entails_refl | rule upred_weakeningR)+
 end
 end   

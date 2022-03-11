@@ -92,8 +92,8 @@ lemma upred_wand_apply': "P\<turnstile>Q \<Longrightarrow> P\<^emph>(Q-\<^emph>R
   by transfer (metis camera_comm camera_valid_op n_valid_ne ofe_sym order_refl total_n_inclI)
 
 lemma upred_true_sep: "(P \<^emph> upred_emp) = P"
-  apply transfer using n_incl_def by fastforce
-
+  apply transfer using n_incl_def by fastforce  
+  
 lemma upred_true_conj: "(P \<and>\<^sub>u upred_emp) = P" 
   by transfer simp
 
@@ -115,6 +115,9 @@ lemma upred_conj_assoc: "P \<and>\<^sub>u (Q \<and>\<^sub>u R) = P \<and>\<^sub>
 lemma upred_sep_comm: "P \<^emph> Q = Q \<^emph> P"
   by transfer (metis (no_types, opaque_lifting) camera_comm)
 
+lemma upred_true_sep': "(upred_emp \<^emph> P) = P"
+  by (subst upred_sep_comm) (simp add: upred_true_sep) 
+  
 lemma upred_sep_assoc: "P \<^emph> (Q \<^emph> R) \<turnstile> (P \<^emph> Q) \<^emph> R"
 proof (rule upred_entailsI)
   fix a n
