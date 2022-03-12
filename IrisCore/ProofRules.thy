@@ -91,13 +91,15 @@ lemma upred_wand_apply: "P\<^emph>(P-\<^emph>Q) \<turnstile> Q"
 lemma upred_wand_apply': "P\<turnstile>Q \<Longrightarrow> P\<^emph>(Q-\<^emph>R)\<turnstile>R"
   by transfer (metis camera_comm camera_valid_op n_valid_ne ofe_sym order_refl total_n_inclI)
 
-lemma upred_true_sep: "(P \<^emph> upred_emp) = P"
+named_theorems emp_rule
+  
+lemma upred_true_sep [emp_rule]: "(P \<^emph> upred_emp) = P"
   apply transfer using n_incl_def by fastforce  
   
-lemma upred_true_conj: "(P \<and>\<^sub>u upred_emp) = P" 
+lemma upred_true_conj [emp_rule]: "(P \<and>\<^sub>u upred_emp) = P" 
   by transfer simp
 
-lemma upred_true_conj': "(upred_emp \<and>\<^sub>u P) = P" 
+lemma upred_true_conj' [emp_rule]: "(upred_emp \<and>\<^sub>u P) = P" 
   by transfer simp
 
 lemma upred_true_wand: "(upred_emp -\<^emph> P) \<turnstile> P"
@@ -115,7 +117,7 @@ lemma upred_conj_assoc: "P \<and>\<^sub>u (Q \<and>\<^sub>u R) = P \<and>\<^sub>
 lemma upred_sep_comm: "P \<^emph> Q = Q \<^emph> P"
   by transfer (metis (no_types, opaque_lifting) camera_comm)
 
-lemma upred_true_sep': "(upred_emp \<^emph> P) = P"
+lemma upred_true_sep' [emp_rule]: "(upred_emp \<^emph> P) = P"
   by (subst upred_sep_comm) (simp add: upred_true_sep) 
   
 lemma upred_sep_assoc: "P \<^emph> (Q \<^emph> R) \<turnstile> (P \<^emph> Q) \<^emph> R"
@@ -292,7 +294,10 @@ lemma upred_persis_sep:"(\<box>P) \<^emph> (\<box>Q) \<turnstile> \<box>(P\<^emp
 
 lemma upred_persis_idem: "\<box>P \<turnstile> \<box>\<box>P"
   by transfer (metis camera_core_idem)
-    
+
+lemma upred_persis_upred_emp [emp_rule]: "\<box>upred_emp = upred_emp"
+  by transfer simp
+
 lemma upred_later_mono: "P\<turnstile>Q \<Longrightarrow> \<triangleright>P \<turnstile> \<triangleright>Q"
   apply transfer
   using Rep_sprop diff_le_self by blast
@@ -306,6 +311,8 @@ lemma upred_later_mono_extL: "P\<^emph>R\<turnstile>Q \<Longrightarrow> (\<trian
   (meson diff_le_self n_incl_refl ne_sprop_weaken ofe_down_contr ofe_eq_limit valid_raw_non_expansive)
 
 lemma upred_laterI: "P \<turnstile> \<triangleright>P" by transfer simp
+
+lemma upred_later_emp [emp_rule]: "\<triangleright>upred_emp = upred_emp" by transfer simp
 
 lemma upred_later_sep: "\<triangleright>(P\<^emph>Q) \<stileturn>\<turnstile> (\<triangleright>P) \<^emph> \<triangleright>Q"
   apply (rule upred_entail_eqI) 
@@ -369,7 +376,13 @@ lemma upred_forallI: "(\<And>x. P \<turnstile> Q x) \<Longrightarrow> P \<turnst
 
 lemma upred_forall_inst: "\<And>y. (\<forall>\<^sub>u x. P x) \<turnstile> P y"
   by transfer' blast
-  
+
+lemma upred_forall_emp [emp_rule]: "(\<forall>\<^sub>u_. upred_emp) = upred_emp"
+  by transfer simp
+
+lemma upred_exists_emp [emp_rule]: "(\<exists>\<^sub>u_. upred_emp) = upred_emp"
+  by transfer simp
+
 lemma upred_entails_substE: "\<lbrakk>P\<turnstile>Q; R \<^emph> Q \<turnstile> T\<rbrakk> \<Longrightarrow> R \<^emph> P \<turnstile> T"
   by transfer' (metis camera_comm camera_valid_op n_valid_ne)
 
@@ -452,7 +465,10 @@ lemma upd_mono: "P\<turnstile>Q \<Longrightarrow> \<Rrightarrow>\<^sub>bP\<turns
   by transfer (meson camera_valid_op)
 
 lemma updI: "P \<turnstile> \<Rrightarrow>\<^sub>b P" by transfer auto
-  
+
+lemma upd_emp [emp_rule]: "\<Rrightarrow>\<^sub>b upred_emp = upred_emp"
+  by transfer auto
+
 lemma upd_frame: "(\<Rrightarrow>\<^sub>bP) \<^emph> (\<Rrightarrow>\<^sub>bQ) \<turnstile> \<Rrightarrow>\<^sub>b(P\<^emph>Q)"
 proof -
   have step1: "(\<Rrightarrow>\<^sub>bP) \<^emph> (\<Rrightarrow>\<^sub>bQ) \<turnstile> \<Rrightarrow>\<^sub>b (P \<^emph> (\<Rrightarrow>\<^sub>bQ))" using upd_frameL by blast
@@ -593,13 +609,19 @@ lemma upred_holds_subst: "\<lbrakk>P\<turnstile>Q; upred_holds P\<rbrakk> \<Long
   by transfer simp
 
 lemma upred_holds_forall: "(\<And>x. upred_holds (P x)) \<Longrightarrow> upred_holds (\<forall>\<^sub>u x. P x)"
-by transfer' auto
+  by transfer' auto
+
+lemma upred_plain_emp [emp_rule]: "\<^item>upred_emp = upred_emp"
+  by transfer simp
 
 definition except_zero :: "'a::ucamera upred_f \<Rightarrow> 'a upred_f" ("\<diamondop>_") where 
   "except_zero P \<equiv> P \<or>\<^sub>u \<triangleright>\<upharpoonleft>False"
 
 lemma except_zeroI: "P \<turnstile> \<diamondop> P"
   unfolding except_zero_def by transfer blast
+
+lemma except_zero_emp [emp_rule]: "\<diamondop>upred_emp = upred_emp"
+  unfolding except_zero_def by transfer simp
 
 lemma except_zero_sep: "\<diamondop>(P \<^emph> Q) \<stileturn>\<turnstile> (\<diamondop>P) \<^emph> (\<diamondop>Q)"
   apply (auto simp: except_zero_def intro!: upred_entail_eqI; transfer)

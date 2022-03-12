@@ -4,6 +4,8 @@ begin
 
 method iIntro = 
   (match conclusion in "upred_holds _" \<Rightarrow> \<open>rule upred_wand_holdsI\<close>)?,((rule upred_wandI)+)?
+
+method remove_emp = (simp_all only: upred_sep_assoc_eq emp_rule)?
   
 text \<open>A simple attribute to convert upred_holds predicates into entailments.\<close>
 ML \<open> val to_entailment: attribute context_parser = let 
@@ -172,7 +174,15 @@ method find_in_pat_sep for pat trm :: "'a::ucamera upred_f" =
   match (pat) in "rest\<^emph>head" for rest head :: "'a upred_f" \<Rightarrow>
     \<open> match (trm) in head \<Rightarrow> succeed | find_in_pat_sep rest trm \<close>
   \<bar> "single_pat" for single_pat \<Rightarrow> \<open> match (trm) in single_pat \<Rightarrow> succeed \<close>
-    
+
+method find_other_than_pat_sep for pat trm :: "'a::ucamera upred_f" =
+  match (trm) in "pat" \<Rightarrow> fail
+  \<bar> "rest\<^emph>pat" for rest :: "'a upred_f" \<Rightarrow> \<open>find_other_than_pat_sep pat rest\<close>
+  \<bar> "_" \<Rightarrow> succeed  
+  
+method check_not_headL for pat :: "'a::ucamera upred_f" =
+  match conclusion in "_\<^emph>head\<turnstile>_" for head :: "'a upred_f" \<Rightarrow> \<open>find_other_than_pat_sep pat head\<close>
+
 method check_moveL for pat :: "'a::ucamera upred_f" =
   match conclusion in \<open>hyps \<turnstile> _\<close> for hyps :: "'a upred_f" \<Rightarrow>
     \<open> find_pat_sep pat hyps; move_sepL pat\<close>
@@ -223,15 +233,6 @@ method split_pat for pat :: "'a::ucamera upred_f" =
 | (((match conclusion in "can_be_split head _ _" for head :: "'a upred_f" \<Rightarrow>
       \<open>find_in_pat_sep pat head\<close>), rule can_be_split_baseR)
     | rule can_be_split_baseL)
-| ((match conclusion in "frame (_\<^emph>_) _ _" \<Rightarrow> succeed),
-  (((match conclusion in "frame (_\<^emph>head) _ _" for head :: "'a upred_f" \<Rightarrow>
-      \<open>find_in_pat_sep pat head\<close>), rule frame_sepR)
-    | rule frame_sepL), split_pat pat)
-| ((match conclusion in "frame (_\<or>\<^sub>u_) _ _" \<Rightarrow> succeed),rule frame_disj;split_pat pat)
-| (rule frame_rule, split_pat pat)
-| (((match conclusion in "frame head _ _" for head :: "'a upred_f" \<Rightarrow>
-      \<open>find_in_pat_sep pat head\<close>), rule frame_baseR)
-    | rule frame_baseL)
 
 text \<open>Separates the top terms (the same number as the patterns) to the right and the rest to the left.
   If it should separate the terms in the pattern, they first need to be moved to the top level.\<close>
@@ -245,16 +246,20 @@ method ord_split_pat for pat :: "'a::ucamera upred_f" =
     | rule can_be_split_baseR\<close>
 | (match conclusion in "frame (_\<or>\<^sub>u_) _ _" \<Rightarrow> succeed),rule frame_disj; 
   ord_split_pat pat
-| (match conclusion in "frame (_\<^emph>_) _ _" \<Rightarrow> succeed),
-  match (pat) in "rest\<^emph>_" for rest :: "'a upred_f" \<Rightarrow> 
-    \<open>((rule persistent_dupl_frame3, (pers_solver; fail)) 
-    | rule frame_sepR), ord_split_pat rest\<close>
-  \<bar> "_" \<Rightarrow> \<open>(rule frame_rev, rule frame_refl) 
-    | (rule persistent_dupl_frame3, (pers_solver; fail))
-    | rule frame_baseR\<close>
-| (match conclusion in "frame (_\<or>\<^sub>u_) _ _" \<Rightarrow> succeed),rule frame_disj; 
-  ord_split_pat pat
-| (rule frame_rule, ord_split_pat pat)
+
+method split_log_prog for pat :: "'a::ucamera upred_f" =
+  (rule split_rule | (((match conclusion in "can_be_split head _ _" for head :: "'a upred_f" \<Rightarrow>
+    \<open>find_in_pat_sep pat head\<close>), rule can_be_split_baseR) | rule can_be_split_baseL));
+  split_log_prog pat
+  
+text \<open>Linear-time moving that doesn't guarantee the order of the moved parts 
+  or that all parts of the pattern where found. Takes an I-pattern.\<close>
+method split_move for pat :: "'a::ucamera upred_f" =
+  rule upred_entails_trans[OF upred_entail_eqL[OF can_be_splitE]], split_log_prog pat,
+  check_not_headL upred_emp, remove_emp
+  
+method split_move_ord for pat :: "'a::ucamera upred_f" =
+  split_move pat, check_move_all True pat
 
 text \<open>Uses the rule to do a step and separates arguments based on the pat.\<close>
 method iApply_step' for pat :: "'a::ucamera upred_f" uses rule =
@@ -283,8 +288,6 @@ method iApply_wand_as_rule for lhs_pat pat :: "'a::ucamera upred_f" =
     prefer_last,
       move_sepL step_trm, move_sepL "step_trm-\<^emph>P", subst_pers_keepL rule: upred_wand_apply,
     defer_tac\<close>
-  
-method remove_emp = (simp_all only: upred_sep_assoc_eq upred_true_sep upred_true_sep')?
   
 method iExistsL =
   (check_moveL "upred_exists ?P", (rule pull_exists_antecedentR)+; rule upred_existsE';
@@ -345,5 +348,6 @@ method iDestruct uses rule =
 lemma test_lemma: "S \<^emph> (\<box>P) \<^emph> Q \<^emph> ((\<box>P)-\<^emph>\<box>R) \<^emph> (\<triangleright>R) -\<^emph> (\<box>R) \<^emph> (\<triangleright>R) \<^emph> Q"
 apply iIntro
 apply iApply_wand
+apply (split_move "Q\<^emph>S\<^emph>\<box>P")
 by iFrame_single+
 end

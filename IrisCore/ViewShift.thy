@@ -105,7 +105,7 @@ apply (rule add_holds[OF fupd_mask_subseteq], assumption)
 by (auto simp: upred_weakeningL intro!: fupd_frame_mono)
 
 lemma fupd_intro: "P ={E}=\<^emph> P"
-by (auto intro: upred_wand_holdsI upred_entails_trans[OF fupd_mask_intro_subseteq[of E E]] fupd_mask_trans)
+  by (auto intro: upred_wand_holdsI upred_entails_trans[OF fupd_mask_intro_subseteq[of E E]] fupd_mask_trans)
 
 lemma fupd_intro': "P\<turnstile>Q \<Longrightarrow> P ={E}=\<^emph> Q"
   by (simp add: fupd_intro upred_entails_wand_holdsL)

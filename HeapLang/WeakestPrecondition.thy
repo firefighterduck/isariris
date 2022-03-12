@@ -297,14 +297,29 @@ method lift_modL for trm :: iprop methods m =
 
 method lift_splitL for pat :: iprop =
   match conclusion in "hyps\<turnstile>_" for hyps :: iprop \<Rightarrow>
-    \<open>lift_modL hyps \<open>rule upred_entail_eqL[OF can_be_splitE], split_pat pat\<close>\<close>
-
+    \<open>lift_modL hyps \<open>print_headgoal, rule upred_entail_eqL[OF can_be_splitE], split_pat pat\<close>\<close>,
+  (check_not_headL upred_emp) (* If splitting has not found any of the terms in the pattern*)
+  
 method lift_frame for pat :: iprop =
-  match conclusion in "_\<turnstile>goal" for goal :: iprop \<Rightarrow>
-    \<open>rule upred_entails_trans[OF _ frameE], apply_first \<open>split_pat pat\<close>\<close>
+ rule upred_entails_trans[OF _ frameE], apply_first \<open>split_pat pat\<close>
    
 method iFrame for pat :: iprop = 
   remove_emp, lift_splitL pat, lift_frame pat, remove_emp, move_sep_all_both pat,
   (rule upred_frame upred_emp_left | rule upred_entails_refl | rule upred_weakeningR)+
+ 
+method frame_single =
+  rule upred_entails_refl | rule upred_weakeningR | rule upred_weakeningL
+| (rule framing, (frame_solver;fail))
+| (rule framing_emp, (frame_solver;fail))
+
+method frame_logic_programming for pat :: iprop =
+  match (pat) in "rest\<^emph>_" for rest :: iprop \<Rightarrow> \<open>frame_single, (frame_logic_programming rest)?\<close>
+  \<bar> _ \<Rightarrow> \<open>frame_single\<close>
+    
+method iFrame2 for pat :: iprop =
+  split_move pat, remove_emp, frame_logic_programming pat
+
+method iFrame3 for pat :: iprop =
+  split_move_ord pat, remove_emp, frame_logic_programming pat
 end
 end   

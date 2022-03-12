@@ -8,7 +8,8 @@ text \<open>These are based on type classes which the IPM uses to guide its proo
 subsubsection \<open>Splitting\<close>
 definition can_be_split :: "('a::ucamera) upred_f \<Rightarrow> 'a upred_f \<Rightarrow> 'a upred_f \<Rightarrow> bool" where
   "can_be_split PQ P Q \<equiv> PQ \<stileturn>\<turnstile> P \<^emph> Q"
-
+named_theorems split_rule
+  
 lemma can_be_split_refl: "can_be_split (P\<^emph>Q) P Q"
   unfolding can_be_split_def by (simp add: upred_entails_eq_eq)
 
@@ -21,7 +22,8 @@ lemma can_be_split_baseR: "can_be_split P upred_emp P"
 lemma can_be_split_rev: "can_be_split P Q R \<Longrightarrow> can_be_split P R Q"
   unfolding can_be_split_def upred_entail_eq_def by (simp add: upred_sep_comm)
 
-lemma can_be_split_mono: "\<lbrakk>can_be_split P P1 P2; can_be_split Q Q1 Q2\<rbrakk> \<Longrightarrow> can_be_split (P\<^emph>Q) (P1\<^emph>Q1) (P2\<^emph>Q2)"
+lemma can_be_split_mono [split_rule]: 
+  "\<lbrakk>can_be_split P P1 P2; can_be_split Q Q1 Q2\<rbrakk> \<Longrightarrow> can_be_split (P\<^emph>Q) (P1\<^emph>Q1) (P2\<^emph>Q2)"
   by (smt (verit, del_insts) can_be_split_def upred_entail_eq_def upred_sep_assoc_eq 
     upred_sep_comm2_eq upred_sep_mono) 
 
@@ -38,9 +40,6 @@ lemma can_be_split_sepL: "can_be_split P Q R \<Longrightarrow> can_be_split (P\<
 lemma can_be_split_sepR: "can_be_split P Q R \<Longrightarrow> can_be_split (P\<^emph>S) Q (R\<^emph>S)"
   by (simp add: can_be_split_def upred_entail_eq_def upred_frame upred_sep_assoc_eq)
 
-lemma can_be_split_disj: "\<lbrakk>can_be_split P P' Q; can_be_split R R' Q\<rbrakk> \<Longrightarrow> can_be_split (P\<or>\<^sub>uR) (P'\<or>\<^sub>uR') Q"
-  unfolding can_be_split_def upred_entail_eq_def by transfer blast
-
 lemma split_trans: "\<lbrakk>can_be_split P P1 P2; P1 \<turnstile> Q; Q\<^emph>P2 \<turnstile> R\<rbrakk> \<Longrightarrow> P \<turnstile> R"
   unfolding can_be_split_def by (meson upred_entail_eqL upred_entails_trans upred_frame)
 
@@ -49,6 +48,17 @@ lemma split_trans_rule: "\<lbrakk>Q\<turnstile>Q'; can_be_split P P1 P2; P1 \<tu
 
 lemma split_frame: "\<lbrakk>can_be_split P P1 P2; can_be_split Q Q1 Q2; P1\<turnstile>Q1; P2\<turnstile>Q2\<rbrakk> \<Longrightarrow> P\<turnstile>Q"
   by (meson can_be_split_def split_trans upred_entail_eqR upred_entails_refl upred_entails_trans upred_sep_mono)
+
+lemma can_be_split_disj [split_rule]: "\<lbrakk>can_be_split P P' Q; can_be_split R R' Q\<rbrakk> \<Longrightarrow> can_be_split (P\<or>\<^sub>uR) (P'\<or>\<^sub>uR') Q"
+  unfolding can_be_split_def upred_entail_eq_def by transfer blast
+  
+lemma can_be_split_later [split_rule]: "can_be_split P Q R \<Longrightarrow> can_be_split (\<triangleright>P) (\<triangleright>Q) (\<triangleright>R)"
+  unfolding can_be_split_def by (smt (verit, ccfv_threshold) upred_later_sep upred_later_mono 
+  diff_le_self ne_sprop_weaken ofe_refl upred_entail_eq_simp upred_later.rep_eq valid_raw_non_expansive)
+
+lemma can_be_split_except_zero [split_rule]: "can_be_split P Q R \<Longrightarrow> can_be_split (\<diamondop>P) (\<diamondop>Q) (\<diamondop>R)"
+  unfolding can_be_split_def using except_zero_sep except_zero_mono
+  by (smt (verit, ccfv_threshold) upred_entail_eq_def upred_entails_trans)
 
 subsubsection \<open>Framing\<close>
 definition frame :: "('a::ucamera) upred_f \<Rightarrow> 'a upred_f \<Rightarrow> 'a upred_f \<Rightarrow> bool" where
@@ -59,16 +69,19 @@ lemma frameI: "Q\<^emph>R \<turnstile> P \<Longrightarrow> frame P Q R" unfoldin
 lemma frameE: "frame P Q R \<Longrightarrow> Q\<^emph>R \<turnstile> P" unfolding frame_def .
 
 text \<open>Central lemma of framing.\<close>
-lemma framing: "\<lbrakk>frame P Q R; S \<turnstile> R\<rbrakk> \<Longrightarrow> S\<^emph>Q\<turnstile>P"
+lemma framing: "\<lbrakk>frame P Q R; S \<turnstile> Q\<rbrakk> \<Longrightarrow> S\<^emph>R\<turnstile>P"
   by (simp add: frame_def upred_entails_substE upred_sep_comm)
 
-lemma frame_refl: "frame (P\<^emph>Q) P Q"
+lemma framing_emp: "\<lbrakk>frame P Q R; upred_emp \<turnstile> Q\<rbrakk> \<Longrightarrow> R\<turnstile>P"
+  using frameE upred_emp_left upred_entails_trans by blast
+
+lemma frame_refl [frame_rule]: "frame (P\<^emph>Q) P Q"
   unfolding frame_def by simp  
   
 lemma frame_baseL: "frame P P upred_emp"
   unfolding frame_def by (rule upred_weakeningL)
 
-lemma frame_baseR: "frame P upred_emp P"
+lemma frame_baseR [frame_rule]: "frame P upred_emp P"
   unfolding frame_def by (rule upred_weakeningR)
 
 lemma can_be_split_frame: "can_be_split P Q R \<Longrightarrow> frame P Q R"
@@ -84,15 +97,17 @@ from upred_sep_mono[OF this[unfolded frame_def]] show "frame (P1\<^emph>P2) (Q1\
   by (simp add: upred_sep_comm2_eq frame_def upred_sep_assoc_eq)
 qed
 
-lemma frame_sepL: "frame P Q R \<Longrightarrow> frame (P\<^emph>S) (Q\<^emph>S) R"
+lemma frame_sepL [frame_rule]: "frame P Q R \<Longrightarrow> frame (P\<^emph>S) (Q\<^emph>S) R"
   by (simp add: frame_def upred_frame upred_sep_comm2_eq)
 
 lemma frame_sepR: "frame P Q R \<Longrightarrow> frame (P\<^emph>S) Q (R\<^emph>S)"
   by (simp add: frame_def upred_frame upred_sep_assoc_eq)
 
-lemma frame_disj: "\<lbrakk>frame P P' Q; frame R R' Q\<rbrakk> \<Longrightarrow> frame (P\<or>\<^sub>uR) (P'\<or>\<^sub>uR') Q"
+lemma frame_disj [frame_rule]: "\<lbrakk>frame P P' Q; frame R R' Q\<rbrakk> \<Longrightarrow> frame (P\<or>\<^sub>uR) (P'\<or>\<^sub>uR') Q"
   unfolding frame_def by transfer metis
 
+method frame_solver = (rule frame_rule)+
+  
 subsubsection \<open> Persistent predicates \<close>
 definition persistent :: "('a::ucamera) upred_f \<Rightarrow> bool" where "persistent P \<equiv> P \<turnstile> \<box>P"
 lemma persistentI: "persistent P \<Longrightarrow> P \<turnstile> \<box>P"
