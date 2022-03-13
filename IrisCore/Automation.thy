@@ -6,7 +6,10 @@ method iIntro =
   (match conclusion in "upred_holds _" \<Rightarrow> \<open>rule upred_wand_holdsI\<close>)?,((rule upred_wandI)+)?
 
 method remove_emp = (simp_all only: upred_sep_assoc_eq emp_rule)?
-  
+
+method log_prog_solver =
+  auto intro: frame_rule pers_rule iez_rule timeless_rule plain_rule plain_persistent
+
 text \<open>A simple attribute to convert upred_holds predicates into entailments.\<close>
 ML \<open> val to_entailment: attribute context_parser = let 
   fun is_upred_holds (Const(\<^const_name>\<open>Trueprop\<close>,_)$(Const(\<^const_name>\<open>upred_holds\<close>,_)$_)) = true
@@ -49,7 +52,6 @@ ML \<open> val to_entailment: attribute context_parser = let
   in
     (fn whatevs => ((fn (ctxt, thm) => let val thm' = try (move_wands o to_entail) thm in
     (SOME ctxt, thm')end), whatevs)) end
-
 \<close>
 attribute_setup to_entailment = \<open>to_entailment\<close>
 
@@ -98,10 +100,10 @@ method entails_substR uses rule =
   \<bar> R[curry]: "upred_holds _" \<Rightarrow> \<open>entails_substR rule: R[to_entailment]\<close>
   \<bar> R[curry]: "_ \<Longrightarrow> upred_holds _" \<Rightarrow> \<open>entails_substR rule: R[to_entailment]\<close>
   
-method dupl_pers = (entails_substL rule: upred_entail_eqR[OF persistent_dupl], (pers_solver; fail))?
+method dupl_pers = (entails_substL rule: upred_entail_eqR[OF persistent_dupl], (log_prog_solver; fail))?
                                                
 method subst_pers_keepL uses rule =
-  (entails_substL rule: persistent_keep[OF _ rule], (pers_solver; fail))
+  (entails_substL rule: persistent_keep[OF _ rule], (log_prog_solver; fail))
 | entails_substL rule: rule
 
 text \<open>Unchecked move methods, might not terminate if pattern is not found.\<close>   
@@ -239,15 +241,15 @@ text \<open>Separates the top terms (the same number as the patterns) to the rig
 method ord_split_pat for pat :: "'a::ucamera upred_f" =
   (match conclusion in "can_be_split (_\<^emph>_) _ _" \<Rightarrow> succeed),
   match (pat) in "rest\<^emph>_" for rest :: "'a upred_f" \<Rightarrow> 
-    \<open>((rule persistent_dupl_split', (pers_solver; fail)) 
+    \<open>((rule persistent_dupl_split', (log_prog_solver; fail)) 
     | rule can_be_split_sepR), ord_split_pat rest\<close>
   \<bar> "_" \<Rightarrow> \<open>(rule can_be_split_rev, rule can_be_split_refl) 
-    | (rule persistent_dupl_split', (pers_solver; fail))
+    | (rule persistent_dupl_split', (log_prog_solver; fail))
     | rule can_be_split_baseR\<close>
 | (match conclusion in "frame (_\<or>\<^sub>u_) _ _" \<Rightarrow> succeed),rule frame_disj; 
   ord_split_pat pat
 
-method split_log_prog for pat :: "'a::ucamera upred_f" =
+method split_log_prog for pat :: "'a::ucamera upred_f" = 
   (rule split_rule | (((match conclusion in "can_be_split head _ _" for head :: "'a upred_f" \<Rightarrow>
     \<open>find_in_pat_sep pat head\<close>), rule can_be_split_baseR) | rule can_be_split_baseL));
   split_log_prog pat
@@ -268,7 +270,7 @@ method iApply_step' for pat :: "'a::ucamera upred_f" uses rule =
 
 method iApply_step for pat :: "'a::ucamera upred_f" uses rule =
   rule split_trans_rule[OF rule], rule can_be_split_rev, (* The rule has the order of things reversed. *)
-  split_pat pat; (simp_all only: upred_sep_assoc_eq)?
+  split_pat pat; remove_emp
   
 text \<open>Does a transitive step with the given step term and separates arguments based on pat.\<close>
 method iApply_step2' for step pat :: "'a::ucamera upred_f" =
@@ -277,7 +279,7 @@ method iApply_step2' for step pat :: "'a::ucamera upred_f" =
 
 method iApply_step2 for step pat :: "'a::ucamera upred_f" =
   rule split_trans[where ?Q = step], rule can_be_split_rev, (* The rule has the order of things reversed. *)
-  split_pat pat; (simp_all only: upred_sep_assoc_eq)?
+  split_pat pat; remove_emp
 
 text \<open>Search for a wand with left hand side lhs_pat, obtain the lhs term from other hypotheses
   matching pat and apply the wand to the newly obtained lhs term.\<close>
@@ -328,7 +330,7 @@ method later_elim =
   check_moveL "\<triangleright> ?P", 
   (rule elim_modal_entails'[OF elim_modal_timeless']
   | rule elim_modal_entails[OF elim_modal_timeless']),
-  (timeless_solver;fail)+, (iez_solver; fail)+
+  (log_prog_solver;fail)+
 
 method iMod_raw methods later fupd uses rule =
   iApply rule: rule, (prefer_last, (later | fupd)+, defer_tac)?; remove_emp

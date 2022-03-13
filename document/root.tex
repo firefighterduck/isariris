@@ -53,6 +53,48 @@ We present a formalization of the influential paper 'A Decidable Fragment of
 
 \newpage
 
+\section{Automation Concepts}
+\begin{itemize}
+\item Basic conceptual difference to Coq: no named hypotheses but moving of subterms
+\item More or less explicit coercion of upred_holds and entailments, for goals by dedicated method,
+  for theorems by custom attribute
+\item automation might sometimes require reordering subgoals/searching for subgoals
+\item separate handling of lhs and rhs rule application
+\item no proof context like in IPM but implicit duplication where possible
+\item different moving approaches
+\item by commutativity: might require checking first, works on both sides, to work for arbitrary 
+  large terms either moving bigger subterms or on-the-fly generation of comm lemmata, could be 
+  optimized with moving lemmata "from x to head", can't handle wrappers
+\item splitting based: can move several terms on lhs at once, can not move out of some wrappers, 
+  requires I-pattern, can be done with "logic programming", requires lots of emps, not ordered,
+  not guaranteed to move all parts or at most one per subpattern
+\item framing: works only for rhs, can move out of most wrappers, based on "logic programming",
+  very simple but powerfull
+\item rule application for hypotheses: split to get lhs of rule, apply indirectly, can also be used to
+  apply wands from other hypotheses
+\item handling of existantial quantifiers easy, but instantiation only one term per call
+\item pull all pure hypotheses into context, try to solve pure goals from context/simp
+\item eliminate modalities after rule application with nested "logic programming"
+\item translate type class approach to predicates on iprops, instances to lemmata, instance search
+  to "logic programming" by rule application of instance lemmata
+\item problems: can't rewrite terms/unify with unfolding/symbolic execution, matching with subgoal
+  fixation breaks a few nice patterns, duplication handling can be involved
+\item most automization can be split into three steps: searching for/moving requirements, applying 
+  some resoning principle/rule, some possible cleanup
+\item interactive guidance with patterns often necessary (otherwise either specialized ML methods or
+  just failure if information from user is required, i.e. smart reasoning), patterns can be quite 
+  generic but must be unique, otherwise position dependant
+\item steps in the background: moving, reordering subgoals, removing emp, applying associativity,
+  coercion (upred_holds/entailment, upred_valid/upred_pure valid)
+\item subgoals often with schematic variables that might connect several subgoals, important to make
+  reasoning less user dependant, often implicitely unified by rules (e.g. splitting)
+\item some rules migth come with more premises, they are then new subgoal and can either be handled 
+  in a unfied way if the rule is known or must be solved by the user
+\item simplifications on the lhs are mostly allowed/won't break anything (due to the Iris base logic
+  being intuitionistic), on the rhs must be explicitely done by the user as this could break further
+  reasoning steps
+\end{itemize}
+
 % use vertical space instead of indenting paragraphs
 \parindent 0pt
 \parskip 0.9ex

@@ -286,7 +286,7 @@ method fupd_elimL =
 
 method iMod uses rule = iMod_raw later_elim fupd_elimL rule: rule
 method iMod_wand for lhs_pat pat :: "'a::ucamera upred_f" = 
-  iMod_raw_wand lhs_pat pat later_elim fupd_elimL  
+  iMod_raw_wand lhs_pat pat later_elim fupd_elimL
 
 method lift_modL for trm :: iprop methods m =
   match (trm) in "\<Turnstile>{_,_}=>P" for P :: iprop \<Rightarrow> 

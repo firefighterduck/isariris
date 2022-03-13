@@ -45,7 +45,7 @@ shows "(graph_ctxt \<kappa> g Mrk) \<^emph> (own_graphUR q fmempty) \<^emph> (ci
   apply (auto simp: try_mark_def subst'_def intro!: wp_pure[OF pure_exec_beta] wp_let_bind'[where C=Fst])
   unfolding graph_ctxt_def
   apply (iMod rule: cinv_acc[OF subset_UNIV])
-  apply (rewrite in "_\<^emph>(\<hole>) \<turnstile>_" graph_inv_def)
+  apply (subst (3) graph_inv_def)
   apply iExistsL
   apply (iDestruct rule: graph_open[OF assms]) subgoal for G u m
   apply (iApply rule: wp_load[simplified, where ?l = x])
@@ -58,13 +58,11 @@ shows "(graph_ctxt \<kappa> g Mrk) \<^emph> (own_graphUR q fmempty) \<^emph> (ci
   apply (simp, rule wp_pure_let[OF pure_exec_fst, simplified], simp add: subst'_def)
   apply (entails_substR rule: wp_bind'[where C = Snd])
   apply (iMod rule: cinv_acc[OF subset_UNIV])
-  apply (rewrite in "_\<^emph>(\<hole>) \<turnstile>_" graph_inv_def)
+  apply (subst (3) graph_inv_def)
   apply iExistsL
-  apply (iApply rule: graph_open[OF assms])
-  apply iExistsL+ subgoal for G' u' m'
+  apply (iDestruct rule: graph_open[OF assms]) subgoal for G' u' m'
   apply iPureL+
-  apply (iApply rule: upred_entails_trans[OF auth_own_graph_valid upred_entail_eqL[OF discrete_valid]])
-  apply iPureL
+  apply (iDestruct rule: upred_entails_trans[OF auth_own_graph_valid upred_entail_eqL[OF discrete_valid]])
   apply (cases u') subgoal for u1 u2 u3
   apply (cases u1)
   apply simp_all
