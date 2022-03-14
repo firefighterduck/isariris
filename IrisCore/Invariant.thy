@@ -185,7 +185,7 @@ text \<open>
   with invariants.
 \<close>
 
-lemma persistent_inv [pers_rule]: "persistent (inv N P)"
+lemma persistent_inv [pers_rule,log_prog_rule]: "persistent (inv N P)"
   unfolding inv_def by pers_solver
 
 lemma inv_alter: "inv N P -\<^emph> (\<triangleright>\<box>(P -\<^emph> (Q \<^emph> (Q-\<^emph>P)))) -\<^emph> inv N Q"
@@ -329,7 +329,7 @@ type_synonym cinvG = frac
 definition cinv_own :: "gname \<Rightarrow> frac \<Rightarrow> iprop" where "cinv_own \<gamma> p = Own (constr_cinv \<gamma> (Some p))"
 definition cinv :: "namespace \<Rightarrow> gname \<Rightarrow> iprop \<Rightarrow> iprop" where "cinv N \<gamma> P = inv N (P \<or>\<^sub>u cinv_own \<gamma> 1)"
 
-lemma cinv_persistent [pers_rule]: "persistent (cinv N \<gamma> P)"
+lemma cinv_persistent [pers_rule,log_prog_rule]: "persistent (cinv N \<gamma> P)"
   unfolding cinv_def by (rule persistent_inv)
 
 lemma timeless_cinv_own: "timeless (cinv_own \<gamma> p)"

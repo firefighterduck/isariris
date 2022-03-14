@@ -68,7 +68,7 @@ apply (auto intro!: upred_entails_trans[OF upred_wand_holdsE[OF fupd_frame_r]] f
 apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm]])
 by simp
 
-lemma fupd_frame [frame_rule]: "frame P Q R \<Longrightarrow> frame (\<Turnstile>{E1,E2}=>P) (\<Turnstile>{E1,E2}=>Q) R"
+lemma fupd_frame [frame_rule,log_prog_rule]: "frame P Q R \<Longrightarrow> frame (\<Turnstile>{E1,E2}=>P) (\<Turnstile>{E1,E2}=>Q) R"
   unfolding frame_def using fupd_frame_mono by (simp add: upred_sep_comm)
 
 lemma fupd_mask_subseteq: "E2 \<subseteq> E1 \<Longrightarrow> \<Turnstile>{E1,E2}=>\<Turnstile>{E2,E1}=>upred_emp"
@@ -123,7 +123,7 @@ apply (auto intro!: upred_entails_trans[OF _ upred_wand_holdsE[OF fupd_mask_weak
 apply (auto intro!: upred_wandI upred_entails_trans[OF _ upred_wand_holdsE[OF fupd_intro]])
 by (auto intro: upred_wandE)
 
-lemma persistent_vs [pers_rule]: "persistent (P ={E1,E2}=> Q)"
+lemma persistent_vs [pers_rule,log_prog_rule]: "persistent (P ={E1,E2}=> Q)"
   unfolding view_shift_def by pers_solver
 
 lemma timeless_later_vs: "timeless P \<Longrightarrow> (\<triangleright>P) ={E}=> P"
@@ -132,7 +132,7 @@ lemma timeless_later_vs: "timeless P \<Longrightarrow> (\<triangleright>P) ={E}=
   by (smt (verit, ccfv_SIG) except_zero_sepL persistent_persisI persistent_pure updI 
     upred_entails_substE upred_entails_trans upred_holds_entails upred_sep_comm upred_wand_holds2I)
 
-lemma is_except_zero_fupd [iez_rule]: "is_except_zero (\<Turnstile>{E1,E2}=> P)"
+lemma is_except_zero_fupd [iez_rule,log_prog_rule]: "is_except_zero (\<Turnstile>{E1,E2}=> P)"
   unfolding is_except_zero_def fancy_upd_def
   apply (subst except_zero_def)
   apply (rule upred_disjE)
@@ -220,15 +220,4 @@ abbreviation fancy_linear_steps :: "mask \<Rightarrow> nat \<Rightarrow> iprop \
   "fancy_linear_steps E n Q \<equiv> \<Turnstile>{E}[E]\<triangleright>^n=>Q"
 abbreviation fancy_linear_wand_steps :: "iprop \<Rightarrow> mask \<Rightarrow> nat \<Rightarrow> iprop \<Rightarrow> iprop" ("_={_}\<triangleright>^_=\<^emph>_") where
   "fancy_linear_wand_steps P E n Q \<equiv> P={E}[E]\<triangleright>^n=\<^emph>Q"
-
-context fixes P Q R :: iprop 
-assumes [timeless_rule]: "timeless P" and [timeless_rule]: "timeless Q" and [timeless_rule]: "timeless R" 
-begin
-  
-lemma test_lemma2: "(\<triangleright>P) \<^emph> (\<triangleright>Q) \<^emph> (\<triangleright>R) -\<^emph> \<Turnstile>{E}=>(P\<^emph>Q\<^emph>R)"
-apply iIntro
-apply later_elim+
-apply (entails_substR rule: fupd_intro)
-by iFrame_single+
-end
 end

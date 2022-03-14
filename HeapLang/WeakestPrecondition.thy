@@ -197,7 +197,13 @@ shows "wp s E e P \<turnstile> wp s E e Q"
   apply (rule add_holds[OF upred_holds_forall[OF fupd_intro'[OF assms, of _ E]], of _ id, simplified])
   apply (subst upred_sep_comm)
   by (rule upred_wand_apply)
-  
+
+lemma wp_mono':
+assumes "(\<And>v. P v \<turnstile> Q v)"
+shows "R \<^emph> wp s E e P \<turnstile> wp s E e Q"
+  using wp_mono[OF assms] assms upred_entails_trans upred_weakeningR wp_rules.wp_mono wp_rules_axioms 
+  by blast
+
 lemma wp_atomic: "atomic (stuckness_to_atomicity s) e \<Longrightarrow>
   \<Turnstile>{E1,E2}=> wp s E2 e (\<lambda>v. \<Turnstile>{E2,E1}=> P v) \<turnstile> wp s E1 e P" sorry
 
@@ -247,7 +253,7 @@ lemma elim_modal_fupd_wp_atomic: "atomic (stuckness_to_atomicity s) e \<Longrigh
   apply (entails_substL rule: fupd_mono[OF upred_wand_apply])
   by (rule wp_atomic, assumption)
 
-lemma wp_is_except_zero [iez_rule]: "is_except_zero (wp s E e P)"
+lemma wp_is_except_zero [iez_rule,log_prog_rule]: "is_except_zero (wp s E e P)"
   unfolding is_except_zero_def
   apply (rule upred_entails_trans[OF _ fupd_wp])
   apply (rule upred_entails_trans[OF _ is_except_zero_fupd[unfolded is_except_zero_def]])
@@ -271,18 +277,19 @@ sorry
 lemma wp_frame': "(\<And>x. can_be_split (Q x) (Q' x) P) \<Longrightarrow> (wp s E e Q') \<^emph> P \<turnstile> wp s E e Q"
 sorry  
 
-lemma wp_frame [frame_rule]: "(\<And>x. frame (P x) (Q x) R) \<Longrightarrow> frame (wp s E e P) (wp s E e Q) R"
+lemma wp_frame [frame_rule,log_prog_rule]: "(\<And>x. frame (P x) (Q x) R) \<Longrightarrow> frame (wp s E e P) (wp s E e Q) R"
   unfolding frame_def by (smt (verit) upred_entails_trans wp_frame_simp wp_mono)
 
 text \<open>Because fupds often appear with schematic variables which make matching difficult, we just
   try the different elimination methods.\<close>
+
 method fupd_elimL =
   check_moveL "\<Turnstile>{?E1,?E2}=>?P",
     (rule elim_modal_entails'[OF elim_modal_fupd]
     | (rule fupd_mono | rule elim_modal_entails[OF elim_modal_fupd])
-    | (rule elim_modal_entails[OF elim_modal_fupd_wp_atomic],(atomic_solver;fail))
-    | (rule elim_modal_entails'[OF elim_modal_fupd_wp_atomic],(atomic_solver;fail)));
-  (simp only: upred_true_sep upred_sep_assoc_eq)?
+    | (rule elim_modal_entails[OF elim_modal_fupd_wp_atomic],log_prog_solver)
+    | (rule elim_modal_entails'[OF elim_modal_fupd_wp_atomic],log_prog_solver));
+  remove_emp
 
 method iMod uses rule = iMod_raw later_elim fupd_elimL rule: rule
 method iMod_wand for lhs_pat pat :: "'a::ucamera upred_f" = 
@@ -297,7 +304,7 @@ method lift_modL for trm :: iprop methods m =
 
 method lift_splitL for pat :: iprop =
   match conclusion in "hyps\<turnstile>_" for hyps :: iprop \<Rightarrow>
-    \<open>lift_modL hyps \<open>print_headgoal, rule upred_entail_eqL[OF can_be_splitE], split_pat pat\<close>\<close>,
+    \<open>lift_modL hyps \<open>rule upred_entail_eqL[OF can_be_splitE], split_pat pat\<close>\<close>,
   (check_not_headL upred_emp) (* If splitting has not found any of the terms in the pattern*)
   
 method lift_frame for pat :: iprop =
@@ -306,20 +313,20 @@ method lift_frame for pat :: iprop =
 method iFrame for pat :: iprop = 
   remove_emp, lift_splitL pat, lift_frame pat, remove_emp, move_sep_all_both pat,
   (rule upred_frame upred_emp_left | rule upred_entails_refl | rule upred_weakeningR)+
- 
+
 method frame_single =
   rule upred_entails_refl | rule upred_weakeningR | rule upred_weakeningL
-| (rule framing, (frame_solver;fail))
-| (rule framing_emp, (frame_solver;fail))
+| (rule framing, log_prog_solver)
+| (rule framing_emp, log_prog_solver)
 
 method frame_logic_programming for pat :: iprop =
   match (pat) in "rest\<^emph>_" for rest :: iprop \<Rightarrow> \<open>frame_single, (frame_logic_programming rest)?\<close>
   \<bar> _ \<Rightarrow> \<open>frame_single\<close>
     
 method iFrame2 for pat :: iprop =
-  split_move pat, remove_emp, frame_logic_programming pat
+  split_move pat, frame_logic_programming pat
 
 method iFrame3 for pat :: iprop =
-  split_move_ord pat, remove_emp, frame_logic_programming pat
+  split_move_ord pat, frame_logic_programming pat
 end
 end   

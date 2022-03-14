@@ -180,7 +180,7 @@ qed
 lemma points_to_ne: "upred_holds ((l1\<mapsto>\<^sub>uv1) -\<^emph> ((l2 \<mapsto>{dq2} v2)) -\<^emph> \<upharpoonleft>(l1\<noteq>l2))"
 by (rule points_to_frac_ne[OF dfrac_not_valid_own])
 
-lemma timeless_points_to [timeless_rule]: "timeless (l\<mapsto>{p}v)"
+lemma timeless_points_to [timeless_rule,log_prog_rule]: "timeless (l\<mapsto>{p}v)"
   unfolding points_to_def constr_heap_def timeless_def except_zero_def
   by transfer' (auto simp: singleton_map_n_incl d_equiv)
 end

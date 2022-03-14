@@ -614,6 +614,8 @@ lemma upred_holds_forall: "(\<And>x. upred_holds (P x)) \<Longrightarrow> upred_
 lemma upred_plain_emp [emp_rule]: "\<^item>upred_emp = upred_emp"
   by transfer simp
 
+lemma upred_extend: "P \<turnstile> R \<Longrightarrow> Q \<^emph> P \<turnstile> R" using upred_entails_trans upred_weakeningR by blast
+  
 definition except_zero :: "'a::ucamera upred_f \<Rightarrow> 'a upred_f" ("\<diamondop>_") where 
   "except_zero P \<equiv> P \<or>\<^sub>u \<triangleright>\<upharpoonleft>False"
 

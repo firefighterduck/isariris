@@ -8,7 +8,11 @@ method iIntro =
 method remove_emp = (simp_all only: upred_sep_assoc_eq emp_rule)?
 
 method log_prog_solver =
-  auto intro: frame_rule pers_rule iez_rule timeless_rule plain_rule plain_persistent
+  fast intro: log_prog_rule
+| slow intro: log_prog_rule
+| best intro: log_prog_rule
+(*| force intro: log_prog_rule
+| blast 5 intro: log_prog_rule*)
 
 text \<open>A simple attribute to convert upred_holds predicates into entailments.\<close>
 ML \<open> val to_entailment: attribute context_parser = let 
@@ -100,10 +104,10 @@ method entails_substR uses rule =
   \<bar> R[curry]: "upred_holds _" \<Rightarrow> \<open>entails_substR rule: R[to_entailment]\<close>
   \<bar> R[curry]: "_ \<Longrightarrow> upred_holds _" \<Rightarrow> \<open>entails_substR rule: R[to_entailment]\<close>
   
-method dupl_pers = (entails_substL rule: upred_entail_eqR[OF persistent_dupl], (log_prog_solver; fail))?
+method dupl_pers = (entails_substL rule: upred_entail_eqR[OF persistent_dupl], log_prog_solver)?
                                                
 method subst_pers_keepL uses rule =
-  (entails_substL rule: persistent_keep[OF _ rule], (log_prog_solver; fail))
+  (entails_substL rule: persistent_keep[OF _ rule], log_prog_solver)
 | entails_substL rule: rule
 
 text \<open>Unchecked move methods, might not terminate if pattern is not found.\<close>   
@@ -226,33 +230,32 @@ method iApply uses rule =
   \<bar> R[curry]: "_ \<Longrightarrow> upred_holds _" \<Rightarrow> \<open>iApply rule: R[to_entailment]\<close>
 
 text \<open>Looks for the head term in the given pattern and separates matches to the right.\<close>
-method split_pat for pat :: "'a::ucamera upred_f" =
-  ((match conclusion in "can_be_split (_\<^emph>_) _ _" \<Rightarrow> succeed),
+method split_pat for pat :: "'a::ucamera upred_f" = repeat_new
+  \<open>((match conclusion in "can_be_split (_\<^emph>_) _ _" \<Rightarrow> succeed),
   (((match conclusion in "can_be_split (_\<^emph>head) _ _" for head :: "'a upred_f" \<Rightarrow>
       \<open>find_in_pat_sep pat head\<close>), rule can_be_split_sepR)
-    | rule can_be_split_sepL), split_pat pat)
-| ((match conclusion in "can_be_split (_\<or>\<^sub>u_) _ _" \<Rightarrow> succeed),rule can_be_split_disj;split_pat pat)
+    | rule can_be_split_sepL))
+| ((match conclusion in "can_be_split (_\<or>\<^sub>u_) _ _" \<Rightarrow> succeed),rule can_be_split_disj)
 | (((match conclusion in "can_be_split head _ _" for head :: "'a upred_f" \<Rightarrow>
       \<open>find_in_pat_sep pat head\<close>), rule can_be_split_baseR)
-    | rule can_be_split_baseL)
+    | rule can_be_split_baseL)\<close>
 
 text \<open>Separates the top terms (the same number as the patterns) to the right and the rest to the left.
   If it should separate the terms in the pattern, they first need to be moved to the top level.\<close>
 method ord_split_pat for pat :: "'a::ucamera upred_f" =
   (match conclusion in "can_be_split (_\<^emph>_) _ _" \<Rightarrow> succeed),
   match (pat) in "rest\<^emph>_" for rest :: "'a upred_f" \<Rightarrow> 
-    \<open>((rule persistent_dupl_split', (log_prog_solver; fail)) 
+    \<open>((rule persistent_dupl_split', log_prog_solver) 
     | rule can_be_split_sepR), ord_split_pat rest\<close>
   \<bar> "_" \<Rightarrow> \<open>(rule can_be_split_rev, rule can_be_split_refl) 
-    | (rule persistent_dupl_split', (log_prog_solver; fail))
+    | (rule persistent_dupl_split', log_prog_solver)
     | rule can_be_split_baseR\<close>
 | (match conclusion in "frame (_\<or>\<^sub>u_) _ _" \<Rightarrow> succeed),rule frame_disj; 
   ord_split_pat pat
 
-method split_log_prog for pat :: "'a::ucamera upred_f" = 
-  (rule split_rule | (((match conclusion in "can_be_split head _ _" for head :: "'a upred_f" \<Rightarrow>
-    \<open>find_in_pat_sep pat head\<close>), rule can_be_split_baseR) | rule can_be_split_baseL));
-  split_log_prog pat
+method split_log_prog for pat :: "'a::ucamera upred_f" = repeat_new 
+  \<open>(rule split_rule | (((match conclusion in "can_be_split head _ _" for head :: "'a upred_f" \<Rightarrow>
+    \<open>find_in_pat_sep pat head\<close>), rule can_be_split_baseR) | rule can_be_split_baseL))\<close>
   
 text \<open>Linear-time moving that doesn't guarantee the order of the moved parts 
   or that all parts of the pattern where found. Takes an I-pattern.\<close>
@@ -292,18 +295,18 @@ method iApply_wand_as_rule for lhs_pat pat :: "'a::ucamera upred_f" =
     defer_tac\<close>
   
 method iExistsL =
-  (check_moveL "upred_exists ?P", (rule pull_exists_antecedentR)+; rule upred_existsE';
-    (simp only: upred_sep_assoc_eq)?)
+  check_moveL "upred_exists ?P", (rule pull_exists_antecedentR)+; rule upred_existsE';
+    (simp only: upred_sep_assoc_eq)?
 
 method iExistsR for inst =
-  (check_moveR "upred_exists ?P"; (unfold pull_exists_eq pull_exists_eq')?; 
-  rule upred_existsI[of _ _ inst]; (simp only: upred_sep_assoc_eq)?)
+  check_moveR "upred_exists ?P"; (unfold pull_exists_eq pull_exists_eq')?; 
+  rule upred_existsI[of _ _ inst]; (simp only: upred_sep_assoc_eq)?
     
 method iPureL =
-  (check_moveL "upred_pure ?b", rule upred_pure_impl)
+  check_moveL "upred_pure ?b", rule upred_pure_impl
 
 method iPureR = 
-  (check_moveR "upred_pure ?b", rule upred_pureI' upred_pureI; (simp only: simp_thms(6))?; remove_emp)
+  check_moveR "upred_pure ?b", rule upred_pureI' upred_pureI; (simp only: simp_thms(6))?; remove_emp
   
 method find_applicable_wand for trm :: "'a::ucamera upred_f" =
   match (trm) in "P-\<^emph>Q" for P Q :: "'a upred_f" \<Rightarrow>
@@ -330,23 +333,21 @@ method later_elim =
   check_moveL "\<triangleright> ?P", 
   (rule elim_modal_entails'[OF elim_modal_timeless']
   | rule elim_modal_entails[OF elim_modal_timeless']),
-  (log_prog_solver;fail)+
+  log_prog_solver, log_prog_solver (* Once for the timeless goal, once for the is_except_zero goal. *)
 
 method iMod_raw methods later fupd uses rule =
-  iApply rule: rule, (prefer_last, (later | fupd)+, defer_tac)?; remove_emp
+  iApply rule: rule, (prefer_last, (later | fupd)+, defer_tac)?, remove_emp
 
 method iMod_raw_wand for lhs_pat pat :: "'a::ucamera upred_f" methods later fupd =
-  iApply_wand_as_rule lhs_pat pat, (prefer_last, (later | fupd)+, defer_tac)?; remove_emp
-
-method destruct_raw = 
-  (* Try to destruct existential quantifiers at top level.*)  
-  ((rule pull_exists_antecedentR)+; rule upred_existsE';(simp only: upred_sep_assoc_eq)?)
-| (* Also put all new pures into assumptions. *) rule upred_pure_impl
+  iApply_wand_as_rule lhs_pat pat, (prefer_last, (later | fupd)+, defer_tac)?, remove_emp
 
 text \<open>Applies the given rule and destructs the resulting term.\<close>
 method iDestruct uses rule =
-  iApply rule: rule, (prefer_last, destruct_raw+, defer_tac)?; remove_emp
+  iApply rule: rule, (prefer_last, (iPureL | iExistsL)+, defer_tac)?, remove_emp
 
+method iDrop for pat :: "'a::ucamera upred_f" =
+  check_moveL pat; rule upred_entails_trans[OF upred_weakeningL]  
+  
 lemma test_lemma: "S \<^emph> (\<box>P) \<^emph> Q \<^emph> ((\<box>P)-\<^emph>\<box>R) \<^emph> (\<triangleright>R) -\<^emph> (\<box>R) \<^emph> (\<triangleright>R) \<^emph> Q"
 apply iIntro
 apply iApply_wand

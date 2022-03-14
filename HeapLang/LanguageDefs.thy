@@ -163,7 +163,7 @@ lemma pure_exec_snd:
   
 text \<open>Atomicity proofs, but mostly axiomatized.\<close>
     
-lemma atomic_rec [atomic_rule]: "atomic a (Rec f x e)" 
+lemma atomic_rec [atomic_rule,log_prog_rule]: "atomic a (Rec f x e)" 
 proof (auto simp: atomic_def prim_step_def)
   fix \<sigma> \<kappa> \<sigma>' efs K e1' e2'
   assume assms: "Rec f x e = fill K e1'" "e1' \<sigma> \<kappa> \<Rightarrow>\<^sub>h e2' \<sigma>' efs"
@@ -174,24 +174,24 @@ proof (auto simp: atomic_def prim_step_def)
   by (cases a) (auto simp: irred_val)
 qed
 
-lemma atomic_pair [atomic_rule]: "atomic a (Pair (Val v1) (Val v2))" sorry
-lemma atomic_injl [atomic_rule]: "atomic a (InjL (Val v))" sorry
-lemma atomic_injr [atomic_rule]: "atomic a (InjR (Val v))" sorry
-lemma atomic_beta [atomic_rule]: "atomic a (App (RecV f x (Val v1)) (Val v2))" sorry
-lemma atomic_unop [atomic_rule]: "atomic a (UnOp uop (Val v))" sorry
-lemma atomic_binop [atomic_rule]: "atomic a (BinOp bop (Val v1) (Val v2))" sorry
-lemma atomic_if_true [atomic_rule]: "atomic a (If (Val (LitV (LitBool True))) (Val v1) e2)" sorry
-lemma atomic_if_false [atomic_rule]: "atomic a (If (Val (LitV (LitBool False))) e1 (Val v2))" sorry
-lemma atomic_fst [atomic_rule]: "atomic a (Fst (Val v))" sorry
-lemma atomic_snd [atomic_rule]: "atomic a (Snd (Val v))" sorry
-lemma atomic_fork [atomic_rule]: "atomic a (Fork e)" sorry
-lemma atomic_alloc [atomic_rule]: "atomic a (AllocN (Val v1) (Val v2))" sorry
-lemma atomic_free [atomic_rule]: "atomic a (Free (Val v))" sorry
-lemma atomic_load [atomic_rule]: "atomic a (Load (Val v))" sorry
-lemma atomic_xchg [atomic_rule]: "atomic a (Xchg (Val v1) (Val v2))" sorry
-lemma atomic_store [atomic_rule]: "atomic a (Store (Val v1) (Val v2))" sorry
-lemma atomic_cmp_xchg [atomic_rule]: "atomic a (CmpXchg (Val v0) (Val v1) (Val v2))" sorry
-lemma atomic_faa [atomic_rule]: "atomic a (FAA (Val v1) (Val v2))" sorry
-lemma atomic_new_proph [atomic_rule]: "atomic a NewProph" sorry
-lemma atomic_resolve [atomic_rule]: "atomic a e \<Longrightarrow> atomic a (Resolve e (Val v1) (Val v2))" sorry
+lemma atomic_pair [atomic_rule,log_prog_rule]: "atomic a (Pair (Val v1) (Val v2))" sorry
+lemma atomic_injl [atomic_rule,log_prog_rule]: "atomic a (InjL (Val v))" sorry
+lemma atomic_injr [atomic_rule,log_prog_rule]: "atomic a (InjR (Val v))" sorry
+lemma atomic_beta [atomic_rule,log_prog_rule]: "atomic a (App (RecV f x (Val v1)) (Val v2))" sorry
+lemma atomic_unop [atomic_rule,log_prog_rule]: "atomic a (UnOp uop (Val v))" sorry
+lemma atomic_binop [atomic_rule,log_prog_rule]: "atomic a (BinOp bop (Val v1) (Val v2))" sorry
+lemma atomic_if_true [atomic_rule,log_prog_rule]: "atomic a (If (Val (LitV (LitBool True))) (Val v1) e2)" sorry
+lemma atomic_if_false [atomic_rule,log_prog_rule]: "atomic a (If (Val (LitV (LitBool False))) e1 (Val v2))" sorry
+lemma atomic_fst [atomic_rule,log_prog_rule]: "atomic a (Fst (Val v))" sorry
+lemma atomic_snd [atomic_rule,log_prog_rule]: "atomic a (Snd (Val v))" sorry
+lemma atomic_fork [atomic_rule,log_prog_rule]: "atomic a (Fork e)" sorry
+lemma atomic_alloc [atomic_rule,log_prog_rule]: "atomic a (AllocN (Val v1) (Val v2))" sorry
+lemma atomic_free [atomic_rule,log_prog_rule]: "atomic a (Free (Val v))" sorry
+lemma atomic_load [atomic_rule,log_prog_rule]: "atomic a (Load (Val v))" sorry
+lemma atomic_xchg [atomic_rule,log_prog_rule]: "atomic a (Xchg (Val v1) (Val v2))" sorry
+lemma atomic_store [atomic_rule,log_prog_rule]: "atomic a (Store (Val v1) (Val v2))" sorry
+lemma atomic_cmp_xchg [atomic_rule,log_prog_rule]: "atomic a (CmpXchg (Val v0) (Val v1) (Val v2))" sorry
+lemma atomic_faa [atomic_rule,log_prog_rule]: "atomic a (FAA (Val v1) (Val v2))" sorry
+lemma atomic_new_proph [atomic_rule,log_prog_rule]: "atomic a NewProph" sorry
+lemma atomic_resolve [atomic_rule,log_prog_rule]: "atomic a e \<Longrightarrow> atomic a (Resolve e (Val v1) (Val v2))" sorry
 end

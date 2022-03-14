@@ -123,7 +123,7 @@ inductive_cases rel_nstepsE[elim!]: "rel_nsteps R 0 x y"
 lemma rel_one_step: "R x y \<Longrightarrow> rel_nsteps R (Suc 0) x y"
   by auto  
 
-lemma timeless_sep_map_fset [timeless_rule]: "(\<And>x. timeless (f x)) \<Longrightarrow> timeless ([\<^emph>\<^sub>m] f s)"
+lemma timeless_sep_map_fset [timeless_rule,log_prog_rule]: "(\<And>x. timeless (f x)) \<Longrightarrow> timeless ([\<^emph>\<^sub>m] f s)"
 unfolding sep_fold_fset_def
 apply (induction s)
 apply (auto simp: comp_fun_commute.ffold_empty[OF sep_P_comp_fun_commute])

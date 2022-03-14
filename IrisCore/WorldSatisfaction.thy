@@ -52,10 +52,10 @@ lemma pcore_id_inv: "pcore_id_pred (constr_inv \<gamma> (map_view_frag \<iota> D
   apply (rule ran_pcore_id_pred) unfolding ran_def apply simp
   using pcore_id_frag[OF discarded_core_id] by (smt (verit, del_insts) \<epsilon>_pcore_id_def prod_pcore_id_pred)
 
-lemma persistent_ownI [pers_rule]: "persistent (ownI \<iota> P)"
+lemma persistent_ownI [pers_rule,log_prog_rule]: "persistent (ownI \<iota> P)"
   unfolding ownI_def own_inv_def by (rule persistent_core_own2[OF pcore_id_inv])
 
-lemma persistent_inv_raw [pers_rule]: "persistent (inv_raw N P)"
+lemma persistent_inv_raw [pers_rule,log_prog_rule]: "persistent (inv_raw N P)"
   unfolding inv_raw_def
   apply (rule persistent_exists)
   apply (rule persistent_conj)
@@ -137,7 +137,7 @@ lemma invariant_lookup:
   apply (metis dual_order.refl n_incl_def ofe_refl prod_cases3 total_n_inclI)
   by (metis \<epsilon>_left_id ofe_refl prod_cases3) 
 
-lemma lookup_pers [pers_rule]: "persistent (\<exists>\<^sub>u Q. \<upharpoonleft>(fmlookup I \<iota> = Some Q) \<^emph> \<triangleright>(Q=\<^sub>uP))"
+lemma lookup_pers [pers_rule,log_prog_rule]: "persistent (\<exists>\<^sub>u Q. \<upharpoonleft>(fmlookup I \<iota> = Some Q) \<^emph> \<triangleright>(Q=\<^sub>uP))"
   by pers_solver
 
 lemma ownI_open: "wsat \<^emph> ownI i P \<^emph> ownE {i} \<turnstile> wsat \<^emph> (\<triangleright>P) \<^emph> ownD {|i|}"

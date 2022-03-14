@@ -104,15 +104,15 @@ definition graph_inv :: "loc graph \<Rightarrow> (loc\<rightharpoonup>loc) \<Rig
     \<^emph> (Own\<^sub>m(full (fmdom G))) \<^emph> (heap_owns (of_graph g G) markings) 
     \<^emph> (\<upharpoonleft>(strict_subgraph' g (gmon_graph G))))"
 
-lemma own_graph_timeless [timeless_rule]:"timeless (Own\<^sub>g g)"
+lemma own_graph_timeless [timeless_rule,log_prog_rule]:"timeless (Own\<^sub>g g)"
   unfolding timeless_def except_zero_def constr_graph_def
   by transfer (auto simp: singleton_map_n_incl d_equiv)
 
-lemma own_markings_timeless [timeless_rule]:"timeless (Own\<^sub>m m)"
+lemma own_markings_timeless [timeless_rule,log_prog_rule]:"timeless (Own\<^sub>m m)"
   unfolding timeless_def except_zero_def constr_markings_def
   by transfer (auto simp: singleton_map_n_incl d_equiv)
 
-lemma graph_inv_timeless [timeless_rule]: "timeless (graph_inv g m)"
+lemma graph_inv_timeless [timeless_rule,log_prog_rule]: "timeless (graph_inv g m)"
   unfolding graph_inv_def heap_owns_def
   apply timeless_solver
   apply auto by timeless_solver
@@ -120,7 +120,7 @@ lemma graph_inv_timeless [timeless_rule]: "timeless (graph_inv g m)"
 definition graph_ctxt :: "gname \<Rightarrow> loc graph \<Rightarrow> (loc\<rightharpoonup>loc) \<Rightarrow> iprop" where 
   "graph_ctxt \<kappa> g Mrk \<equiv> cinv graphN \<kappa> (graph_inv g Mrk)"
 
-lemma graph_ctxt_persistent [pers_rule]: "persistent (graph_ctxt \<kappa> g Mrk)"
+lemma graph_ctxt_persistent [pers_rule,log_prog_rule]: "persistent (graph_ctxt \<kappa> g Mrk)"
   unfolding graph_ctxt_def by (rule cinv_persistent)
 
 abbreviation gmon_map :: "loc \<Rightarrow> chl \<Rightarrow> gmon" where "gmon_map l v \<equiv> fmupd l (Ex v) fmempty"

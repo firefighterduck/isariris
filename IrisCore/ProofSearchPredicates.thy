@@ -5,6 +5,8 @@ begin
 subsection \<open>Predicates that guide the proof search\<close>
 text \<open>These are based on type classes which the IPM uses to guide its proof search for certain steps.\<close>
 
+named_theorems log_prog_rule
+
 subsubsection \<open>Splitting\<close>
 definition can_be_split :: "('a::ucamera) upred_f \<Rightarrow> 'a upred_f \<Rightarrow> 'a upred_f \<Rightarrow> bool" where
   "can_be_split PQ P Q \<equiv> PQ \<stileturn>\<turnstile> P \<^emph> Q"
@@ -75,13 +77,13 @@ lemma framing: "\<lbrakk>frame P Q R; S \<turnstile> Q\<rbrakk> \<Longrightarrow
 lemma framing_emp: "\<lbrakk>frame P Q R; upred_emp \<turnstile> Q\<rbrakk> \<Longrightarrow> R\<turnstile>P"
   using frameE upred_emp_left upred_entails_trans by blast
 
-lemma frame_refl [frame_rule]: "frame (P\<^emph>Q) P Q"
+lemma frame_refl [frame_rule,log_prog_rule]: "frame (P\<^emph>Q) P Q"
   unfolding frame_def by simp  
   
 lemma frame_baseL: "frame P P upred_emp"
   unfolding frame_def by (rule upred_weakeningL)
 
-lemma frame_baseR [frame_rule]: "frame P upred_emp P"
+lemma frame_baseR [frame_rule,log_prog_rule]: "frame P upred_emp P"
   unfolding frame_def by (rule upred_weakeningR)
 
 lemma can_be_split_frame: "can_be_split P Q R \<Longrightarrow> frame P Q R"
@@ -97,13 +99,13 @@ from upred_sep_mono[OF this[unfolded frame_def]] show "frame (P1\<^emph>P2) (Q1\
   by (simp add: upred_sep_comm2_eq frame_def upred_sep_assoc_eq)
 qed
 
-lemma frame_sepL [frame_rule]: "frame P Q R \<Longrightarrow> frame (P\<^emph>S) (Q\<^emph>S) R"
+lemma frame_sepL [frame_rule,log_prog_rule]: "frame P Q R \<Longrightarrow> frame (P\<^emph>S) (Q\<^emph>S) R"
   by (simp add: frame_def upred_frame upred_sep_comm2_eq)
 
 lemma frame_sepR: "frame P Q R \<Longrightarrow> frame (P\<^emph>S) Q (R\<^emph>S)"
   by (simp add: frame_def upred_frame upred_sep_assoc_eq)
 
-lemma frame_disj [frame_rule]: "\<lbrakk>frame P P' Q; frame R R' Q\<rbrakk> \<Longrightarrow> frame (P\<or>\<^sub>uR) (P'\<or>\<^sub>uR') Q"
+lemma frame_disj [frame_rule,log_prog_rule]: "\<lbrakk>frame P P' Q; frame R R' Q\<rbrakk> \<Longrightarrow> frame (P\<or>\<^sub>uR) (P'\<or>\<^sub>uR') Q"
   unfolding frame_def by transfer metis
 
 method frame_solver = (rule frame_rule)+
@@ -126,47 +128,47 @@ lemma persistent_holds_sep':
 named_theorems pers_rule
 method pers_solver = (rule pers_rule)+
 
-lemma persistent_persis [pers_rule]: "persistent (\<box>P)"
+lemma persistent_persis [pers_rule,log_prog_rule]: "persistent (\<box>P)"
   by (auto simp: persistent_def upred_persis.rep_eq upred_entails.rep_eq camera_core_idem)
 
-lemma persistent_pure [pers_rule]: "persistent (\<upharpoonleft>P)"
+lemma persistent_pure [pers_rule,log_prog_rule]: "persistent (\<upharpoonleft>P)"
   by (auto simp: persistent_def upred_persis.rep_eq upred_entails.rep_eq upred_pure.rep_eq)  
 
-lemma persistent_valid [pers_rule]: "persistent (\<V>(a))"
+lemma persistent_valid [pers_rule,log_prog_rule]: "persistent (\<V>(a))"
   by (auto simp: persistent_def upred_persis.rep_eq upred_entails.rep_eq upred_valid.rep_eq)
   
-lemma persistent_core_own [pers_rule]: "persistent (Own(a::'a::{core_id,ucamera}))"
+lemma persistent_core_own [pers_rule,log_prog_rule]: "persistent (Own(a::'a::{core_id,ucamera}))"
   by (auto simp: persistent_def upred_persis.rep_eq upred_entails.rep_eq upred_own.rep_eq core_id)
 
-lemma persistent_core_own2 [pers_rule]: "pcore_id_pred (a::'a::ucamera) \<Longrightarrow> persistent (Own a)"
+lemma persistent_core_own2 [pers_rule,log_prog_rule]: "pcore_id_pred (a::'a::ucamera) \<Longrightarrow> persistent (Own a)"
   unfolding persistent_def upred_persis.rep_eq upred_entails.rep_eq upred_own.rep_eq core_id_pred
   using camera_core_mono_n by fastforce
 
-lemma persistent_eq [pers_rule]: "persistent (a=\<^sub>ub)"
+lemma persistent_eq [pers_rule,log_prog_rule]: "persistent (a=\<^sub>ub)"
   unfolding persistent_def by transfer simp
 
-lemma persistent_later [pers_rule]: "persistent P \<Longrightarrow> persistent (\<triangleright> P)"
+lemma persistent_later [pers_rule,log_prog_rule]: "persistent P \<Longrightarrow> persistent (\<triangleright> P)"
   unfolding persistent_def
   by (rule upred_entails_trans[OF upred_later_mono[of P "\<box>P"] upred_entail_eqR[OF upred_persis_later]])
 
-lemma persistent_conj [pers_rule]: "\<lbrakk>persistent P; persistent Q\<rbrakk> \<Longrightarrow> persistent (P \<and>\<^sub>u Q)"
+lemma persistent_conj [pers_rule,log_prog_rule]: "\<lbrakk>persistent P; persistent Q\<rbrakk> \<Longrightarrow> persistent (P \<and>\<^sub>u Q)"
   by (auto simp: persistent_def upred_conj.rep_eq upred_entails.rep_eq upred_persis.rep_eq)
 
-lemma persistent_disj [pers_rule]: "\<lbrakk>persistent P; persistent Q\<rbrakk> \<Longrightarrow> persistent (P \<or>\<^sub>u Q)"
+lemma persistent_disj [pers_rule,log_prog_rule]: "\<lbrakk>persistent P; persistent Q\<rbrakk> \<Longrightarrow> persistent (P \<or>\<^sub>u Q)"
   by (auto simp: persistent_def upred_disj.rep_eq upred_entails.rep_eq upred_persis.rep_eq)
   
-lemma persistent_exists [pers_rule]: "(\<And>x. persistent (P x)) \<Longrightarrow> persistent (\<exists>\<^sub>u x. P x)"
+lemma persistent_exists [pers_rule,log_prog_rule]: "(\<And>x. persistent (P x)) \<Longrightarrow> persistent (\<exists>\<^sub>u x. P x)"
   by (auto simp: upred_exists.rep_eq persistent_def upred_persis.rep_eq upred_entails.rep_eq)
 
-lemma persistent_forall [pers_rule]: "(\<And>x. persistent (P x)) \<Longrightarrow> persistent (\<forall>\<^sub>u x. P x)"
+lemma persistent_forall [pers_rule,log_prog_rule]: "(\<And>x. persistent (P x)) \<Longrightarrow> persistent (\<forall>\<^sub>u x. P x)"
   by (auto simp: upred_forall.rep_eq persistent_def upred_persis.rep_eq upred_entails.rep_eq)
 
-lemma persistent_sep [pers_rule]: "\<lbrakk>persistent P; persistent Q\<rbrakk> \<Longrightarrow> persistent (P \<^emph> Q)"
+lemma persistent_sep [pers_rule,log_prog_rule]: "\<lbrakk>persistent P; persistent Q\<rbrakk> \<Longrightarrow> persistent (P \<^emph> Q)"
 by (simp add: persistent_def upred_sep.rep_eq upred_entails.rep_eq upred_persis.rep_eq)
   (metis camera_comm camera_core_id camera_valid_op dual_order.refl n_incl_def ofe_refl 
     upred_def_def upred_def_rep)
 
-lemma persistent_except_zero [pers_rule]: "persistent P \<Longrightarrow> persistent (\<diamondop>P)"
+lemma persistent_except_zero [pers_rule,log_prog_rule]: "persistent P \<Longrightarrow> persistent (\<diamondop>P)"
   unfolding except_zero_def
   apply (pers_solver, assumption)
   by pers_solver
@@ -236,10 +238,10 @@ definition is_except_zero :: "'a::ucamera upred_f \<Rightarrow> bool" where "is_
 named_theorems iez_rule
 method iez_solver = (rule iez_rule)+
 
-lemma is_except_zero_except_zero [iez_rule]: "is_except_zero (\<diamondop>P)"
+lemma is_except_zero_except_zero [iez_rule,log_prog_rule]: "is_except_zero (\<diamondop>P)"
   unfolding is_except_zero_def by (rule except_zero_idem)
 
-lemma is_except_zero_later [iez_rule]: "is_except_zero (\<triangleright>P)"
+lemma is_except_zero_later [iez_rule,log_prog_rule]: "is_except_zero (\<triangleright>P)"
   unfolding is_except_zero_def except_zero_def by transfer blast
 
 subsubsection \<open>Timeless predicates\<close>
@@ -248,40 +250,41 @@ definition timeless :: "'a::ucamera upred_f \<Rightarrow> bool" where "timeless 
 named_theorems timeless_rule
 method timeless_solver = (rule timeless_rule)+
 
-lemma own_timeless [timeless_rule]: "timeless (Own (x::'a::ducamera))"
+lemma own_timeless [timeless_rule,log_prog_rule]: "timeless (Own (x::'a::ducamera))"
   by (auto simp: upred_own.rep_eq upred_entails.rep_eq upred_later.rep_eq except_zero_def 
     upred_disj.rep_eq upred_pure.rep_eq n_incl_def d_equiv timeless_def)
 
-lemma timeless_pure [timeless_rule]: "timeless (\<upharpoonleft>(b))"
+lemma timeless_pure [timeless_rule,log_prog_rule]: "timeless (\<upharpoonleft>(b))"
   unfolding timeless_def except_zero_def by transfer simp
 
-lemma timeless_conj [timeless_rule]: "\<lbrakk>timeless P; timeless Q\<rbrakk> \<Longrightarrow> timeless (P\<and>\<^sub>uQ)"
+lemma timeless_conj [timeless_rule,log_prog_rule]: "\<lbrakk>timeless P; timeless Q\<rbrakk> \<Longrightarrow> timeless (P\<and>\<^sub>uQ)"
   unfolding timeless_def except_zero_def by transfer blast
 
 lemma timeless_disj [timeless_rule]: "\<lbrakk>timeless P; timeless Q\<rbrakk> \<Longrightarrow> timeless (P\<or>\<^sub>uQ)"
   unfolding timeless_def except_zero_def by transfer blast
 
-lemma timeless_impl [timeless_rule]: "timeless Q \<Longrightarrow> timeless (P\<longrightarrow>\<^sub>uQ)"
+lemma timeless_impl [timeless_rule,log_prog_rule]: "timeless Q \<Longrightarrow> timeless (P\<longrightarrow>\<^sub>uQ)"
   unfolding timeless_def except_zero_def apply transfer
   by (metis (mono_tags, lifting) Rep_sprop diff_le_mono diff_le_self diff_self_eq_0 mem_Collect_eq n_incl_refl)
 
-lemma timeless_sep [timeless_rule]: "\<lbrakk>timeless P; timeless Q\<rbrakk> \<Longrightarrow> timeless (P\<^emph>Q)"
+lemma timeless_sep [timeless_rule,log_prog_rule]: "\<lbrakk>timeless P; timeless Q\<rbrakk> \<Longrightarrow> timeless (P\<^emph>Q)"
   unfolding timeless_def 
   apply (rule upred_entails_trans[OF upred_entail_eqL[OF upred_later_sep]])
   apply (rule upred_entails_trans[OF _ upred_entail_eqR[OF except_zero_sep]])
   by (auto intro: upred_sep_mono)
 
-lemma timeless_wand [timeless_rule]: "timeless Q \<Longrightarrow> timeless (P-\<^emph>Q)"
+lemma timeless_wand [timeless_rule,log_prog_rule]: "timeless Q \<Longrightarrow> timeless (P-\<^emph>Q)"
   unfolding timeless_def except_zero_def apply transfer
-  by (smt (verit, ccfv_threshold) Rep_sprop diff_diff_cancel diff_is_0_eq diff_right_commute mem_Collect_eq n_incl_refl nat_le_linear)
+  by (smt (verit, ccfv_threshold) Rep_sprop diff_diff_cancel diff_is_0_eq diff_right_commute 
+    mem_Collect_eq n_incl_refl nat_le_linear)
 
-lemma timeless_forall [timeless_rule]: "(\<And>x. timeless (P x)) \<Longrightarrow> timeless (\<forall>\<^sub>u x. P x)"
+lemma timeless_forall [timeless_rule,log_prog_rule]: "(\<And>x. timeless (P x)) \<Longrightarrow> timeless (\<forall>\<^sub>u x. P x)"
   unfolding timeless_def except_zero_def by transfer' blast
 
-lemma timeless_exists [timeless_rule]: "(\<And>x. timeless (P x)) \<Longrightarrow> timeless (\<exists>\<^sub>u x. P x)"
+lemma timeless_exists [timeless_rule,log_prog_rule]: "(\<And>x. timeless (P x)) \<Longrightarrow> timeless (\<exists>\<^sub>u x. P x)"
   unfolding timeless_def except_zero_def by transfer' blast
 
-lemma timeless_persis [timeless_rule]: "timeless P \<Longrightarrow> timeless (\<box>P)"
+lemma timeless_persis [timeless_rule,log_prog_rule]: "timeless P \<Longrightarrow> timeless (\<box>P)"
   unfolding timeless_def except_zero_def apply transfer using camera_core_n_valid by blast
 
 subsubsection \<open>Modality elimination\<close>
@@ -315,7 +318,7 @@ definition plain :: "'a::ucamera upred_f \<Rightarrow> bool" where "plain P \<eq
 named_theorems plain_rule
 method plain_solver = (rule plain_rule)+
 
-lemma plain_persistent: "plain P \<Longrightarrow> persistent P" 
+lemma plain_persistent [log_prog_rule]: "plain P \<Longrightarrow> persistent P" 
   unfolding plain_def persistent_def apply transfer using n_incl_\<epsilon> by blast
 
 lemma bupd_plain_sound: "\<lbrakk>plain P; \<Rrightarrow>\<^sub>b P\<rbrakk> \<Longrightarrow> P"
@@ -324,27 +327,27 @@ lemma bupd_plain_sound: "\<lbrakk>plain P; \<Rrightarrow>\<^sub>b P\<rbrakk> \<L
 lemma bupd_plain: "plain P \<Longrightarrow> \<Rrightarrow>\<^sub>b P \<turnstile> P"
   unfolding plain_def by transfer (metis \<epsilon>_right_id n_incl_\<epsilon> order_refl)
 
-lemma plain_pure [plain_rule]: "plain (\<upharpoonleft>P)" unfolding plain_def by transfer blast
-lemma plain_conj [plain_rule]: "\<lbrakk>plain P; plain Q\<rbrakk> \<Longrightarrow> plain (P\<and>\<^sub>uQ)" unfolding plain_def by transfer fast
-lemma plain_disj [plain_rule]: "\<lbrakk>plain P; plain Q\<rbrakk> \<Longrightarrow> plain (P\<or>\<^sub>uQ)" unfolding plain_def by transfer fast
-lemma plain_forall [plain_rule]: "(\<And>x. plain (P x)) \<Longrightarrow> plain (\<forall>\<^sub>u x. P x)" 
+lemma plain_pure [plain_rule,log_prog_rule]: "plain (\<upharpoonleft>P)" unfolding plain_def by transfer blast
+lemma plain_conj [plain_rule,log_prog_rule]: "\<lbrakk>plain P; plain Q\<rbrakk> \<Longrightarrow> plain (P\<and>\<^sub>uQ)" unfolding plain_def by transfer fast
+lemma plain_disj [plain_rule,log_prog_rule]: "\<lbrakk>plain P; plain Q\<rbrakk> \<Longrightarrow> plain (P\<or>\<^sub>uQ)" unfolding plain_def by transfer fast
+lemma plain_forall [plain_rule,log_prog_rule]: "(\<And>x. plain (P x)) \<Longrightarrow> plain (\<forall>\<^sub>u x. P x)" 
   unfolding plain_def by transfer blast
-lemma plain_exists [plain_rule]: "(\<And>x. plain (P x)) \<Longrightarrow> plain (\<exists>\<^sub>u x. P x)" 
+lemma plain_exists [plain_rule,log_prog_rule]: "(\<And>x. plain (P x)) \<Longrightarrow> plain (\<exists>\<^sub>u x. P x)" 
   unfolding plain_def by transfer blast
-lemma plain_impl [plain_rule]: "\<lbrakk>plain P; plain Q\<rbrakk> \<Longrightarrow> plain (P\<longrightarrow>\<^sub>uQ)" 
+lemma plain_impl [plain_rule,log_prog_rule]: "\<lbrakk>plain P; plain Q\<rbrakk> \<Longrightarrow> plain (P\<longrightarrow>\<^sub>uQ)" 
   unfolding plain_def apply transfer
   by (smt (verit, ccfv_threshold) Rep_sprop \<epsilon>_right_id incl_def mem_Collect_eq n_incl_\<epsilon> order_refl)
-lemma plain_wand [plain_rule]: "\<lbrakk>plain P; plain Q\<rbrakk> \<Longrightarrow> plain (P-\<^emph>Q)"
+lemma plain_wand [plain_rule,log_prog_rule]: "\<lbrakk>plain P; plain Q\<rbrakk> \<Longrightarrow> plain (P-\<^emph>Q)"
   unfolding plain_def apply transfer
   by (metis (mono_tags, lifting) Rep_sprop \<epsilon>_left_id \<epsilon>_right_id mem_Collect_eq n_incl_op_extend order_refl)
-lemma plain_sep [plain_rule]: "\<lbrakk>plain P; plain Q\<rbrakk> \<Longrightarrow> plain (P\<^emph>Q)" 
+lemma plain_sep [plain_rule,log_prog_rule]: "\<lbrakk>plain P; plain Q\<rbrakk> \<Longrightarrow> plain (P\<^emph>Q)" 
   unfolding plain_def apply transfer
   by (metis \<epsilon>_left_id camera_comm n_incl_def ofe_refl order_refl)  
-lemma plain_plainly [plain_rule]: "plain (\<^item>P)" unfolding plain_def by transfer fast
-lemma plain_eq [plain_rule]: "plain (a=\<^sub>ub)" unfolding plain_def by transfer blast
-lemma plain_later [plain_rule]: "plain P \<Longrightarrow> plain (\<triangleright>P)" 
+lemma plain_plainly [plain_rule,log_prog_rule]: "plain (\<^item>P)" unfolding plain_def by transfer fast
+lemma plain_eq [plain_rule,log_prog_rule]: "plain (a=\<^sub>ub)" unfolding plain_def by transfer blast
+lemma plain_later [plain_rule,log_prog_rule]: "plain P \<Longrightarrow> plain (\<triangleright>P)" 
   unfolding plain_def apply transfer using Rep_sprop diff_le_self by blast
-lemma plain_except_zero [plain_rule]: "plain P \<Longrightarrow> plain (\<diamondop>P)" unfolding except_zero_def
+lemma plain_except_zero [plain_rule,log_prog_rule]: "plain P \<Longrightarrow> plain (\<diamondop>P)" unfolding except_zero_def
   by (plain_solver, assumption)+  plain_solver
 
 method pers_solver' = (pers_solver; rule plain_persistent; plain_solver)
