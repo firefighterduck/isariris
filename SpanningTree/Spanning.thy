@@ -31,7 +31,7 @@ definition span :: val where "span \<equiv>
     else FalseE
     endif
   endmatch"
-  
+
 subsubsection \<open>Proofs\<close>
 context wp_rules begin
 lemma wp_try_mark:
@@ -42,26 +42,25 @@ shows "(graph_ctxt \<kappa> g Mrk) \<^emph> (own_graphUR q fmempty) \<^emph> (ci
     ((\<upharpoonleft>(v=#[True])) \<^emph> (\<exists>\<^sub>u u. (((\<upharpoonleft>(fmlookup g x = Some u)) \<^emph> own_graphUR q (x [\<mapsto>\<^sub>g] u)))) \<^emph> is_marked x \<^emph> cinv_own \<kappa> k)
     \<or>\<^sub>u ((\<upharpoonleft>(v=#[False])) \<^emph> own_graphUR q fmempty \<^emph> is_marked x \<^emph> cinv_own \<kappa> k) 
   }}"
-  apply (auto simp: try_mark_def subst'_def intro!: wp_pure[OF pure_exec_beta] wp_let_bind'[where C=Fst])
-  unfolding graph_ctxt_def
+  apply (auto simp: try_mark_def graph_ctxt_def subst'_def intro!: wp_pure[OF pure_exec_beta] wp_let_bind'[where C=Fst])
   apply (iMod rule: cinv_acc[OF subset_UNIV])
   apply (subst (3) graph_inv_def)
   apply iExistsL
   apply (iDestruct rule: graph_open[OF assms]) subgoal for G u m
-  apply (iApply rule: wp_load[simplified, where ?l = x])
-  apply (iApply_step "heap_owns ?g ?m \<^emph> (m \<mapsto>\<^sub>u ?v1) \<^emph> (x \<mapsto>\<^sub>u ?v2)" rule: graph_close[of x])
+  apply (iApply rule: wp_load[ where ?l = x, simplified])
+  apply (iApply_step "heap_owns ?g ?m \<^emph> (?m2 \<mapsto>\<^sub>u ?v1) \<^emph> (x \<mapsto>\<^sub>u ?v2)" rule: graph_close[of x])
   apply (iFrame2 "heap_owns ?g ?m")
   apply (iExistsR u, iExistsR m, iFrame_single+)
   apply (iMod_wand "\<triangleright>?P" "heap_owns ?g ?m \<^emph> Own\<^sub>m ?m2 \<^emph> Own\<^sub>g ?g2")
   subgoal by (unfold graph_inv_def, entails_substR rule: upred_laterI, iExistsR G, iFrame_single+)
   apply (entails_substR rule: fupd_intro)
-  apply (simp, rule wp_pure_let[OF pure_exec_fst, simplified], simp add: subst'_def)
+  apply (simp, iApply rule: wp_pure_let[OF pure_exec_fst, simplified], simp add: subst'_def)
   apply (entails_substR rule: wp_bind'[where C = Snd])
   apply (iMod rule: cinv_acc[OF subset_UNIV])
   apply (subst (3) graph_inv_def)
   apply iExistsL
   apply (iDestruct rule: graph_open[OF assms]) subgoal for G' u' m'
-  apply (iDestruct rule: upred_entails_trans[OF auth_own_graph_valid upred_entail_eqL[OF discrete_valid]])
+  apply (iDestruct rule: auth_own_graph_valid)
   apply (cases u') subgoal for u1 u2 u3
   apply (cases u1)
   apply simp_all
@@ -74,7 +73,7 @@ shows "(graph_ctxt \<kappa> g Mrk) \<^emph> (own_graphUR q fmempty) \<^emph> (ci
     apply (iFrame2 "is_marked x")
     apply (iMod_wand "\<triangleright>?P" "heap_owns ?g ?m \<^emph> Own\<^sub>g ?g2 \<^emph> Own\<^sub>m ?m2")
     subgoal by (unfold graph_inv_def, entails_substR rule: upred_laterI, iExistsR G', (iFrame_single)+)
-    apply (entails_substR rule: fupd_intro, rule wp_pure[OF pure_exec_snd, simplified])
+    apply (iWP rule: wp_pure[OF pure_exec_snd])
     by (entails_substR rule: wp_value, simp, (iFrame_single)+)
   apply (iApply rule: wp_cmpxchg_success[simplified, where ?l = m'], auto simp: vals_compare_safe_def)
   apply (entails_substR rule: wp_value)
@@ -83,7 +82,7 @@ shows "(graph_ctxt \<kappa> g Mrk) \<^emph> (own_graphUR q fmempty) \<^emph> (ci
   apply (iMod rule: new_marked)
   apply (iFrame2 "is_marked ?x \<^emph> cinv_own \<kappa> k")
   apply (subst drop_marked)
-  apply (iDestruct rule: upred_entails_trans[OF auth_own_graph_valid upred_entail_eqL[OF discrete_valid]])
+  apply (iDestruct rule: auth_own_graph_valid)
   apply (iApply_step "heap_owns ?g ?m \<^emph> (x\<mapsto>\<^sub>u?v1) \<^emph> (m'\<mapsto>\<^sub>u?v2)" rule: graph_close)
   apply (iFrame2 "heap_owns ?g ?m", iExistsR "(True,u2,u3)", iExistsR m', simp, (iFrame_single)+)
   apply iPureR using mark_update_lookup[OF assms] apply blast
@@ -91,7 +90,7 @@ shows "(graph_ctxt \<kappa> g Mrk) \<^emph> (own_graphUR q fmempty) \<^emph> (ci
   subgoal apply (entails_substR rule: upred_laterI, unfold graph_inv_def)
     apply (iExistsR "fmupd x(ex.Ex (u2, u3)) G'", iPureR)
     using mark_strict_subgraph[OF _ assms] apply blast by (simp add: op_fset_def, (iFrame_single)+)
-  apply (entails_substR rule: fupd_intro, iApply rule: wp_pure[OF pure_exec_snd, simplified])
+  apply (iWP rule: wp_pure[OF pure_exec_snd])
   apply (entails_substR rule: wp_value, simp, remove_emp)
   apply (iExistsR "(u2,u3)", iFrame_single)
   apply iPureR using of_graph_unmarked by simp
@@ -137,7 +136,7 @@ have split_cas: "\<lbrakk>fmlookup (of_graph g G) x = Some u; Mrk x = Some m\<rb
   for P Q m G u
   apply (entails_substR rule: wp_bind'[where C = Snd],iMod rule: cinv_acc[OF subset_UNIV])
   apply (subst (3) graph_inv_def, iExistsL, iDestruct rule: graph_open[OF assms]) subgoal for G' u' m'
-  apply (iDestruct rule: upred_entails_trans[OF auth_own_graph_valid upred_entail_eqL[OF discrete_valid]])
+  apply (iDestruct rule: auth_own_graph_valid)
   apply (cases u') subgoal for u1 u2 u3 apply (cases u1) apply simp_all
   subgoal apply (iApply rule: wp_cmpxchg_fail[simplified, where ?l = m'], auto simp: vals_compare_safe_def)
   apply (move_sep_all True "P\<^emph>(cinv_own ?c ?d)\<^emph>(?l={?E1,?E2}=\<^emph>?e)\<^emph>heap_owns ?a ?b\<^emph>Own\<^sub>m full ?gm\<^emph>Own\<^sub>g full ?G\<^emph>(x\<mapsto>\<^sub>u?x)\<^emph>(m'\<mapsto>\<^sub>u?v)")
@@ -170,7 +169,7 @@ have cmpxchg_suc: "\<lbrakk>strict_subgraph' g (gmon_graph G'); fmlookup (of_gra
   apply (entails_substR rule: wp_value, iMod rule: mark_graph[of _ x _ _ "(y,z)"])
   using in_dom_of_graph apply blast apply (iMod rule: new_marked)
   apply (iFrame2 "is_marked ?x \<^emph> cinv_own \<kappa> k", subst drop_marked)
-  apply (iDestruct rule: upred_entails_trans[OF auth_own_graph_valid upred_entail_eqL[OF discrete_valid]])
+  apply (iDestruct rule: auth_own_graph_valid)
   apply (iApply_step "heap_owns ?g ?m \<^emph> (x\<mapsto>\<^sub>u?v1) \<^emph> (m\<mapsto>\<^sub>u?v2)" rule: graph_close)
   apply (iFrame2 "heap_owns ?g ?m", iExistsR "(True,y,z)", iExistsR m, simp, (iFrame_single)+)
   apply iPureR using mark_update_lookup[OF assms] apply blast

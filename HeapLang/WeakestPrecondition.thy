@@ -328,5 +328,10 @@ method iFrame2 for pat :: iprop =
 
 method iFrame3 for pat :: iprop =
   split_move_ord pat, frame_logic_programming pat
-end
+
+method iWP uses rule =
+  (entails_substR rule: fupd_intro | entails_substR rule: upred_laterI 
+    | entails_substR rule: except_zeroI | entails_substR rule: updI)+,
+  iApply rule: rule[simplified]  
+end  
 end   

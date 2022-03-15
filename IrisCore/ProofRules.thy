@@ -368,6 +368,9 @@ lemma upred_existsE_eq: "((\<exists>\<^sub>u x. P x) \<turnstile> Q) \<longleftr
 lemma upred_existsI: "P \<turnstile> Q x \<Longrightarrow> P \<turnstile> (\<exists>\<^sub>u x. Q x)"
   by transfer blast
 
+lemma upred_existsI': "(\<And>x. P x \<turnstile> Q x) \<Longrightarrow> (\<And>x. P x \<turnstile> (\<exists>\<^sub>u x. Q x))"
+  by transfer' blast
+
 lemma pers_forall: "(\<forall>\<^sub>u x. \<box> (P x)) \<stileturn>\<turnstile> \<box> (\<forall>\<^sub>u x. P x)"
   apply (rule upred_entail_eqI) by transfer' simp
 

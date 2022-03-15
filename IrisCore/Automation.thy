@@ -182,12 +182,23 @@ method find_in_pat_sep for pat trm :: "'a::ucamera upred_f" =
   \<bar> "single_pat" for single_pat \<Rightarrow> \<open> match (trm) in single_pat \<Rightarrow> succeed \<close>
 
 method find_other_than_pat_sep for pat trm :: "'a::ucamera upred_f" =
-  match (trm) in "pat" \<Rightarrow> fail
-  \<bar> "rest\<^emph>pat" for rest :: "'a upred_f" \<Rightarrow> \<open>find_other_than_pat_sep pat rest\<close>
+  match (trm) in pat \<Rightarrow> fail
+  \<bar> "\<diamondop>rest" for rest :: "'a upred_f" \<Rightarrow> \<open>find_other_than_pat_sep pat rest\<close>
+  \<bar> "\<triangleright>rest" for rest :: "'a upred_f" \<Rightarrow> \<open>find_other_than_pat_sep pat rest\<close>
+  \<bar> "rest\<^emph>head" for rest head :: "'a upred_f" \<Rightarrow> 
+    \<open>find_other_than_pat_sep pat rest | find_other_than_pat_sep pat head\<close>
   \<bar> "_" \<Rightarrow> succeed  
   
 method check_not_headL for pat :: "'a::ucamera upred_f" =
   match conclusion in "_\<^emph>head\<turnstile>_" for head :: "'a upred_f" \<Rightarrow> \<open>find_other_than_pat_sep pat head\<close>
+  
+method check_head for pat trm :: "'a::ucamera upred_f" =
+  match (pat) in "rest_pat\<^emph>head_pat" for rest_pat head_pat :: "'a upred_f" \<Rightarrow> 
+    \<open>match (trm) in "rest\<^emph>head_pat" for rest :: "'a upred_f" \<Rightarrow> \<open>check_head rest_pat rest\<close>\<close>
+  \<bar> _ \<Rightarrow> \<open>match (trm) in pat \<Rightarrow> succeed \<bar> "_\<^emph>pat" \<Rightarrow> succeed\<close>
+
+method check_headL for pat :: "'a::ucamera upred_f" =
+  match conclusion in "hyps\<turnstile>_" for hyps :: "'a upred_f" \<Rightarrow> \<open>check_head pat hyps\<close>
 
 method check_moveL for pat :: "'a::ucamera upred_f" =
   match conclusion in \<open>hyps \<turnstile> _\<close> for hyps :: "'a upred_f" \<Rightarrow>
@@ -256,7 +267,7 @@ method ord_split_pat for pat :: "'a::ucamera upred_f" =
 method split_log_prog for pat :: "'a::ucamera upred_f" = repeat_new 
   \<open>(rule split_rule | (((match conclusion in "can_be_split head _ _" for head :: "'a upred_f" \<Rightarrow>
     \<open>find_in_pat_sep pat head\<close>), rule can_be_split_baseR) | rule can_be_split_baseL))\<close>
-  
+
 text \<open>Linear-time moving that doesn't guarantee the order of the moved parts 
   or that all parts of the pattern where found. Takes an I-pattern.\<close>
 method split_move for pat :: "'a::ucamera upred_f" =
@@ -265,6 +276,38 @@ method split_move for pat :: "'a::ucamera upred_f" =
   
 method split_move_ord for pat :: "'a::ucamera upred_f" =
   split_move pat, check_move_all True pat
+
+text \<open>O-pattern based splitting. Can only support a single (possible nested) pattern term at a time.\<close>
+method splitO for pat :: "'a::ucamera upred_f" and goal :: "bool" = remove_emp,
+  (match (goal) in "can_be_split head _ _" for head \<Rightarrow>
+    \<open>match (head) in pat \<Rightarrow> \<open>rule can_be_split_baseR\<close>\<close>) (* Pattern found *)
+| match (goal) in "can_be_split (\<triangleright>head) _ _" for head \<Rightarrow>
+    \<open>match (pat) in "\<triangleright>rest" for rest :: "'a upred_f" \<Rightarrow> \<open>rule can_be_split_later, 
+      splitO rest "can_be_split head ?l ?r"\<close> \<bar> _ \<Rightarrow> \<open>rule can_be_split_baseL\<close>\<close>
+  \<bar> "can_be_split (\<diamondop>head) _ _" for head \<Rightarrow>
+    \<open>match (pat) in "\<diamondop>rest" for rest :: "'a upred_f" \<Rightarrow> \<open>rule can_be_split_except_zero,
+      splitO rest "can_be_split head ?l ?r"\<close> \<bar> _ \<Rightarrow> \<open>rule can_be_split_baseL\<close>\<close>
+  \<bar> "can_be_split (tail\<^emph>head) _ _" for head tail \<Rightarrow> 
+    \<open>rule can_be_split_mono, splitO pat "can_be_split tail ?l ?r", splitO pat "can_be_split head ?l ?r"\<close>
+  \<bar> "can_be_split (l\<or>\<^sub>ur) _ _" for l r \<Rightarrow> 
+    \<open>rule can_be_split_disj, splitO pat "can_be_split l ?l ?r", splitO pat "can_be_split r ?l ?r"\<close> 
+  \<bar> _ \<Rightarrow> \<open>rule can_be_split_baseL\<close>
+    
+method split_moveO for pat :: "'a::ucamera upred_f" =
+  match conclusion in "hyps\<turnstile>_" for hyps \<Rightarrow> 
+  \<open>rule upred_entails_trans[OF upred_entail_eqL[OF can_be_splitE]],
+   splitO pat "can_be_split hyps ?l ?r", remove_emp\<close>
+
+method split_move_allO for pat :: "'a::ucamera upred_f" =
+  match (pat) in "tail_pat\<^emph>head_pat" for tail_pat head_pat :: "'a upred_f" \<Rightarrow>
+    \<open>split_move_allO tail_pat, check_headL tail_pat, split_moveO head_pat\<close>
+  \<bar> _ \<Rightarrow> \<open>split_moveO pat, check_headL pat\<close>
+
+lemma "(\<triangleright>((\<diamondop>P)\<^emph>Q)) \<or>\<^sub>u (\<triangleright>\<diamondop>P) \<turnstile> \<triangleright>P" apply (split_moveO "\<triangleright>\<diamondop>P") oops
+lemma "\<diamondop>(R\<^emph>\<triangleright>(P\<^emph>Q)) \<turnstile> R" apply (split_moveO "\<diamondop>\<triangleright>(P\<^emph>Q)") oops
+lemma "\<diamondop>(R\<^emph>\<triangleright>(P\<^emph>S\<^emph>Q)) \<turnstile> R" apply (split_moveO "\<diamondop>\<triangleright>(P\<^emph>Q)") oops (*Strange*)
+lemma "\<diamondop>(R\<^emph>\<triangleright>(P\<^emph>S\<^emph>Q)) \<turnstile> R" apply (split_moveO "\<box>P") oops (*Strange*)
+lemma "\<diamondop>(R\<^emph>\<triangleright>(P\<^emph>Q)) \<turnstile> R" apply (split_move_allO "(\<diamondop>\<triangleright>P)\<^emph>\<diamondop>R") oops
 
 text \<open>Uses the rule to do a step and separates arguments based on the pat.\<close>
 method iApply_step' for pat :: "'a::ucamera upred_f" uses rule =
@@ -328,7 +371,7 @@ method iFrame_single =
       \<bar> P for P :: "'a upred_f" \<Rightarrow> 
         \<open>(move_sepL P; (rule upred_entails_refl | rule upred_weakeningR)) 
          | (iPureR; (assumption | simp))\<close> \<close>
-    
+
 method later_elim =
   check_moveL "\<triangleright> ?P", 
   (rule elim_modal_entails'[OF elim_modal_timeless']
@@ -341,12 +384,17 @@ method iMod_raw methods later fupd uses rule =
 method iMod_raw_wand for lhs_pat pat :: "'a::ucamera upred_f" methods later fupd =
   iApply_wand_as_rule lhs_pat pat, (prefer_last, (later | fupd)+, defer_tac)?, remove_emp
 
+method iDestruct_raw =
+  (check_moveL "\<V> (?c::'a::dcamera)", entails_substL rule: upred_entail_eqL[OF discrete_valid])
+| iPureL
+| iExistsL
+
 text \<open>Applies the given rule and destructs the resulting term.\<close>
 method iDestruct uses rule =
-  iApply rule: rule, (prefer_last, (iPureL | iExistsL)+, defer_tac)?, remove_emp
+  iApply rule: rule, (prefer_last, iDestruct_raw+, defer_tac)?, remove_emp
 
 method iDrop for pat :: "'a::ucamera upred_f" =
-  check_moveL pat; rule upred_entails_trans[OF upred_weakeningL]  
+  check_moveL pat; rule upred_entails_trans[OF upred_weakeningL]
   
 lemma test_lemma: "S \<^emph> (\<box>P) \<^emph> Q \<^emph> ((\<box>P)-\<^emph>\<box>R) \<^emph> (\<triangleright>R) -\<^emph> (\<box>R) \<^emph> (\<triangleright>R) \<^emph> Q"
 apply iIntro

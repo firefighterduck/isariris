@@ -7,7 +7,7 @@
 
 ## Technicalities
 * implicit steps: moving, reordering subgoals, removing emp, unfolding associativity, coercion (upred_holds/entailment by method/attribute, upred_valid/upred_pure valid by rule)
-* problems: can't rewrite terms/unify with unfolding/symbolic execution, matching with subgoal fixation breaks a few nice patterns, duplication handling can be rather involved
+* problems: can't rewrite terms/unify with unfolding/symbolic execution, matching with subgoal fixation breaks a few nice patterns, duplication handling can be rather involved, instantiation of/with skolem variables
 * subgoals often with schematic variables that might connect several subgoals, important to make reasoning less user dependant, often implicitely unified by rules (e.g. splitting)
 
 ## Fundamental Observations
@@ -25,5 +25,5 @@
 
 ## Moving
 * by commutativity: might require checking first, works on both sides, to work for arbitrary large terms either moving bigger subterms or on-the-fly generation of comm lemmata, could be optimized with moving lemmata "from x to head", can't handle wrappers
-* splitting based: can move several terms on lhs at once, can not move out of some wrappers, requires I-pattern, can be done with "logic programming", requires lots of emps, not ordered,not guaranteed to move all parts or at most one per subpattern
+* splitting based: can move several terms on lhs at once, can not move out of some wrappers, requires I-pattern, can be done with "logic programming", requires lots of emps, not ordered,not guaranteed to move all parts or at most one per subpattern, O-pattern can also work but is very hacky
 * framing: works only for rhs, can move out of most wrappers, based on "logic programming",very simple but powerfull
