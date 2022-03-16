@@ -27,3 +27,7 @@
 * by commutativity: might require checking first, works on both sides, to work for arbitrary large terms either moving bigger subterms or on-the-fly generation of comm lemmata, could be optimized with moving lemmata "from x to head", can't handle wrappers
 * splitting based: can move several terms on lhs at once, can not move out of some wrappers, requires I-pattern, can be done with "logic programming", requires lots of emps, not ordered,not guaranteed to move all parts or at most one per subpattern, O-pattern can also work but is very hacky
 * framing: works only for rhs, can move out of most wrappers, based on "logic programming",very simple but powerfull
+
+
+Note: I-pattern = inner pattern, e.g. pattern "P" to transform "later (P*Q)" into "(later Q) * (later P)";
+    O-pattern = outer pattern, e.g. pattern "later P" to transform "(later (P*Q)) * (persistent P)" into "(later Q) * (persistent P) * (later P)"

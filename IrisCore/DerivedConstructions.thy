@@ -73,7 +73,7 @@ lemma prod_n_valid_fun_def: "n_valid (x,y) = (\<lambda>n. n_valid x n \<and> n_v
 
 lemma prod_n_valid_snd: "n_valid (x,y) n \<Longrightarrow> n_valid y n"
   using prod_n_valid_fun_def by metis
-
+  
 instance prod :: (core_id,core_id) core_id by standard (auto simp: pcore_prod_def pcore_id)
 
 instance prod :: (dcamera,dcamera) dcamera 
@@ -198,7 +198,13 @@ fun option_op :: "('a::camera) option \<Rightarrow> 'a option \<Rightarrow> 'a o
   "option_op (Some a) (Some b) = Some (op a b)"
 | "option_op (Some a) (None) = Some a"
 | "option_op (None) (Some a) = Some a"  
-| "option_op _ _ = None"
+| "option_op None None = None"
+
+lemma option_opE: "option_op x y = None \<Longrightarrow> x=None \<and> y=None"
+  by (induction x y rule: option_op.induct) auto
+
+lemma option_op_none_unit [simp]: "option_op None x = x" "option_op x None = x"
+  apply (cases x) apply auto apply (cases x) by auto
 
 lemmas op_ex2 = option.exhaust[case_product option.exhaust]
 lemmas op_ex3 = option.exhaust[case_product op_ex2]
@@ -246,7 +252,7 @@ next
 fix a a' b :: "'a option"
 show "pcore a = Some a' \<Longrightarrow> \<exists>c. b = a \<cdot> c \<Longrightarrow> \<exists>b'. pcore b = Some b' \<and> (\<exists>c. b' = a' \<cdot> c)"
   apply (cases a; cases a'; cases b)
-  apply (simp_all add: pcore_option_def op_option_def)
+  apply (simp_all add: pcore_option_def op_option_def del: option_op_none_unit)
   apply (metis option.exhaust option_op.simps(3) option_op.simps(4))
   apply (metis option_op.simps(4))
   apply (metis option.exhaust option_op.simps(3) option_op.simps(4))
@@ -275,13 +281,12 @@ lemma option_n_incl: "n_incl n o1 o2 \<longleftrightarrow>
   (o1 = None \<or> (\<exists>x y. o1 = Some x \<and> o2 = Some y \<and> (n_equiv n x y \<or> n_incl n x y)))"
   apply (cases o1; cases o2)
   apply (simp_all add: n_incl_def n_equiv_option_def op_option_def)
-  using option_op.simps(4) apply blast
   apply (meson ofe_eq_limit option_op.simps(3))
   using option_op.elims apply blast 
   apply (rule iffI)
   apply (metis (no_types, lifting) ofe_sym option.discI option.sel option_op.elims)
   using ofe_sym option_op.simps(1) option_op.simps(2) by blast
-  
+
 instance option :: (dcamera) dcamera
   apply (standard; auto simp: valid_raw_option_def valid_def split: option.splits)
   using d_valid[simplified valid_def] by blast
@@ -293,7 +298,6 @@ instantiation option :: (camera) ucamera begin
 definition "\<epsilon>_option \<equiv> None"
 instance 
   by (standard; auto simp: valid_def valid_raw_option_def op_option_def pcore_option_def \<epsilon>_option_def)
-  (metis not_Some_eq option_op.simps(3) option_op.simps(4))
 end
 
 instance option :: (dcamera) ducamera ..
@@ -645,7 +649,7 @@ lemma pcore_op_opt[simp]: "(case pcore x of None \<Rightarrow> none | Some a \<R
   apply (cases "pcore x")
   apply (simp_all add: camera_pcore_id)
   using \<epsilon>_left_id none_\<epsilon> by metis
-  
+ 
 instantiation "fun" :: (type, opt) camera begin
 lift_definition valid_raw_fun :: "('a\<Rightarrow>'b) \<Rightarrow> sprop" is
   "\<lambda>m n. \<forall>i. n_valid (m i) n" by simp
@@ -743,7 +747,32 @@ next
     subgoal for i apply (cases "m i") by (auto simp: ofe_refl) done
   then show "n_incl n [k\<mapsto>v] m" by (auto simp: n_incl_def)
 qed
-  
+
+lemma pcore_fun_alt: "pcore (f::'a\<rightharpoonup>'b::camera) = Some (\<lambda>i. Option.bind (f i) pcore)"
+proof -
+have "pcore f = Some (\<lambda>i. case pcore (f i) of Some a \<Rightarrow> a | None \<Rightarrow> None)"
+  by (auto simp: pcore_fun_def comp_def) (metis \<epsilon>_option_def none_\<epsilon>)
+moreover have "(case pcore (f x) of Some a \<Rightarrow> a | None \<Rightarrow> None) = Option.bind (f x) pcore" for x
+  by (cases "f x") (auto simp: pcore_option_def)
+ultimately show ?thesis by simp
+qed
+
+definition merge :: "('a\<Rightarrow>'a\<Rightarrow>'a) \<Rightarrow> ('b\<rightharpoonup>'a) \<Rightarrow> ('b\<rightharpoonup>'a) \<Rightarrow> ('b\<rightharpoonup>'a)" where
+  "merge f m1 m2 = (\<lambda>i. (case m1 i of Some x1 \<Rightarrow> (case m2 i of Some x2 \<Rightarrow> Some (f x1 x2) 
+    | None \<Rightarrow> Some x1) | None \<Rightarrow> m2 i))"
+
+lemma merge_op: "merge op m1 m2 = m1 \<cdot> m2"
+  by (auto simp: merge_def op_fun_def op_option_def split: option.splits) 
+
+lemma merge_dom: "dom (merge f m1 m2) = dom m1 \<union> dom m2"
+  by (auto simp: merge_def split: option.splits)
+
+lemma merge_ne: "non_expansive2 f \<Longrightarrow> non_expansive2 (merge f)"
+  apply (rule non_expansive2I)
+  apply (auto simp: non_expansive2_def merge_def n_equiv_fun_def n_equiv_option_def split: option.splits)
+  apply (metis option.distinct(1))+
+  by (metis option.discI option.inject)+
+
 class d_opt = opt + dcamera
 instance option :: (dcamera) d_opt ..
 
@@ -940,6 +969,30 @@ instance
     split:dfset.splits)
 end
 
+context includes fmap.lifting begin
+lift_definition fmpcore :: "('a,'b::camera) fmap \<Rightarrow> ('a,'b) fmap option" is
+  "\<lambda>m. Some (\<lambda>i. Option.bind (m i) pcore)"
+  by (metis (mono_tags, lifting) bind_eq_None_conv domIff option.pred_inject(2) rev_finite_subset subsetI)
+end
+
+lemma option_op_dom:"dom (\<lambda>i. option_op (f i) (g i)) = dom f \<union> dom g"
+  apply auto using option_opE by auto
+
+lemma option_op_finite: "\<lbrakk>finite (dom f); finite (dom g)\<rbrakk> \<Longrightarrow> (\<lambda>i. option_op (f i) (g i)) \<in> {m. finite (dom m)}"
+  using option_op_dom by (metis finite_Un mem_Collect_eq)
+lemmas option_op_fmlookup = option_op_finite[OF dom_fmlookup_finite dom_fmlookup_finite]
+lemma upd_dom: "dom (\<lambda>i. if x = i then Some y else fmlookup m2 i) = fmdom' m2 \<union> {x}"
+  apply (auto simp: fmlookup_dom'_iff) by (metis domI domIff)
+lemma upd_fin: "finite (dom (\<lambda>i. if x = i then Some y else fmlookup m2 i))"
+  unfolding upd_dom by simp
+lemma drop_dom: "dom (\<lambda>i. if i \<noteq> x then fmlookup m2 i else None) = fmdom' m2 - {x}"
+  apply (auto simp: fmlookup_dom'_iff) apply (meson option.distinct(1)) by (meson domI domIff)
+lemma drop_fin: "finite (dom (\<lambda>i. if i \<noteq> x then fmlookup m2 i else None))"
+  unfolding drop_dom by simp
+
+lemma map_upd_fin: "m \<in> {m. finite (dom m)} \<Longrightarrow> (map_upd a b m) \<in> {m. finite (dom m)}"
+  by (simp add: map_upd_def)
+
 instance dfset :: (type) ducamera ..
 subsubsection \<open> Finite map camera \<close>
 instantiation fmap :: (type,camera) camera begin
@@ -948,17 +1001,8 @@ lift_definition valid_raw_fmap :: "('a, 'b) fmap \<Rightarrow> sprop" is valid_r
 lift_definition pcore_fmap :: "('a, 'b) fmap \<Rightarrow> ('a, 'b) fmap option" is pcore
   apply (auto simp: pcore_fun_def comp_def)
   by (metis (mono_tags, lifting) domIff finite_subset option.case(1) option.case(2) pcore_option_def subsetI)
-lift_definition op_fmap :: "('a, 'b) fmap \<Rightarrow> ('a, 'b) fmap \<Rightarrow> ('a, 'b) fmap" is op
-proof -
-  fix f1 f2 :: "'a\<rightharpoonup>'b"
-  assume assms: "finite (dom f1)" "finite (dom f2)"
-  have "i \<in> dom (\<lambda>i. option_op (f1 i) (f2 i)) \<longleftrightarrow> i\<in>dom f1 \<or> i\<in>dom f2" for i
-    by (cases "f1 i"; cases "f2 i") auto  
-  then have "dom (\<lambda>i. option_op (f1 i) (f2 i)) = dom f1 \<union> dom f2" by blast
-  then have "finite (dom (\<lambda>i. option_op (f1 i) (f2 i))) \<longleftrightarrow> finite (dom f1)\<and>finite (dom f2)"
-    by simp
-    with assms show "finite (dom (f1 \<cdot> f2))" by (auto simp: op_fun_def op_option_def)
-qed
+lift_definition op_fmap :: "('a, 'b) fmap \<Rightarrow> ('a, 'b) fmap \<Rightarrow> ('a, 'b) fmap" is "merge op"
+  using merge_dom by (metis infinite_Un)
 end  
 instance proof 
 show "non_expansive (valid_raw::('a, 'b) fmap \<Rightarrow> sprop)"
@@ -972,36 +1016,184 @@ show "non_expansive (pcore::('a, 'b) fmap \<Rightarrow> ('a, 'b) fmap option)"
     map_option_eq_Some n_equiv_fmap.abs_eq n_equiv_option_def option.map_disc_iff pcore_fmap.rep_eq)
 next
 show "non_expansive2 (op::('a, 'b) fmap \<Rightarrow> ('a, 'b) fmap \<Rightarrow> ('a, 'b) fmap)"
-  by (rule non_expansive2I) (auto simp: op_fmap.rep_eq n_equiv_fmap_def)
+  apply (auto simp: op_fmap.rep_eq n_equiv_fmap_def non_expansive2_def)
+  using non_expansive2E[OF merge_ne[OF op_non_expansive]] by blast
 next
 fix a b c :: "('a,'b) fmap"
-show "a \<cdot> b \<cdot> c = a \<cdot> (b \<cdot> c)" apply (auto simp: op_fmap_def)
-  by (metis (mono_tags, opaque_lifting) camera_assoc fmlookup_inverse op_fmap.rep_eq)
+show "a \<cdot> b \<cdot> c = a \<cdot> (b \<cdot> c)" apply (auto simp: op_fmap_def merge_op)
+  by (metis (mono_tags, lifting) Abs_fmap_inverse camera_assoc fmlookup merge_op op_fmap.rep_eq)
 next
 fix a b :: "('a,'b) fmap"
-show "a \<cdot> b = b \<cdot> a" 
-  by (metis (mono_tags, lifting) DerivedConstructions.op_fmap.rep_eq camera_comm fmlookup_inject)
+show "a \<cdot> b = b \<cdot> a"
+  by (metis (mono_tags) camera_comm fmlookup_inject merge_op op_fmap.rep_eq)
 next
 fix a a' :: "('a,'b) fmap"
 show "pcore a = Some a' \<Longrightarrow> a' \<cdot> a = a"
-  by (metis (mono_tags) camera_pcore_id fmlookup_inject op_fmap.rep_eq option.simps(9) pcore_fmap.rep_eq)
+  by (metis (mono_tags, lifting) DerivedConstructions.op_fmap.rep_eq camera_pcore_id fmlookup_inject 
+    merge_op option.simps(9) pcore_fmap.rep_eq)
 next
 fix a a' :: "('a,'b) fmap"
-show " pcore a = Some a' \<Longrightarrow> pcore a' = pcore a"
+show "pcore a = Some a' \<Longrightarrow> pcore a' = pcore a"
   by (smt (verit, del_insts) DerivedConstructions.pcore_fmap.abs_eq camera_pcore_idem 
     dom_fmlookup_finite eq_onp_same_args fmlookup_inverse option.simps(9) pcore_fmap.rep_eq)
 next
 fix a a' b :: "('a,'b) fmap"
-show "pcore a = Some a' \<Longrightarrow> \<exists>c. b = a \<cdot> c \<Longrightarrow> \<exists>b'. pcore b = Some b' \<and> (\<exists>c. b' = a' \<cdot> c)"
-  including fmap.lifting apply transfer apply auto using camera_pcore_mono sorry
+assume assms: "pcore a = Some a'" "\<exists>c. b = a \<cdot> c"
+let ?b' = "Abs_fmap (\<lambda>x. case pcore (fmlookup b x) of None \<Rightarrow> none | Some x' \<Rightarrow> x')"
+have b': "pcore b = Some ?b'" by (auto simp: pcore_fmap_def pcore_fun_def comp_def)
+have fmlookup_op: "fmlookup (x\<cdot>y) i = fmlookup x i \<cdot> fmlookup y i" for x y i
+  by (auto simp: op_fmap.rep_eq merge_op op_fun_def)
+have "dom (\<lambda>x. case case fmlookup m x of None \<Rightarrow> Some None | Some a \<Rightarrow> Some (pcore a) of None \<Rightarrow> none | Some a \<Rightarrow> a)
+  \<subseteq> fmdom' m" for m :: "('a,'b) fmap"
+  by (auto simp: fmdom'I split: option.splits) 
+then have fin: "(\<lambda>x. case case fmlookup m x of None \<Rightarrow> Some None | Some a \<Rightarrow> Some (pcore a) of None \<Rightarrow> none | Some a \<Rightarrow> a)
+  \<in> {m. finite (dom m)}" for m :: "('a,'b) fmap"
+  by (metis finite_fmdom' mem_Collect_eq rev_finite_subset)
+have lookup_pcore: "pcore m = Some m' \<Longrightarrow> Some (fmlookup m' i) = pcore (fmlookup m i)" for m m' i
+  apply (cases "fmlookup m i"; cases "fmlookup m' i")
+  by (auto simp: pcore_fmap_def pcore_option_def pcore_fun_def comp_def Abs_fmap_inverse[OF fin] split: option.splits)
+have fmlookup_pcore: "fmlookup (the (pcore m)) i = the (pcore (fmlookup m i))" for m i
+  by (metis lookup_pcore option.distinct(1) option.exhaust_sel option.sel option.simps(8) pcore_fmap.rep_eq total_pcore)
+have "(\<exists>m3. n_equiv n m1 (m2\<cdot>m3)) \<longleftrightarrow> (\<forall>i. n_incl n (fmlookup m2 i) (fmlookup m1 i))" for n m1 m2
+apply auto
+apply (metis (mono_tags) fmlookup_op n_equiv_fmap.rep_eq n_equiv_fun_def n_incl_def)
+proof (induction m2)
+  case fmempty
+  then show ?case by (metis (full_types) camera_comm fmap_ext fmempty_lookup fmlookup_op ofe_refl 
+    op_option_def option_op_none_unit(2))
+next
+  case (fmupd x y m2)
+  then have "\<forall>i. \<exists>j. n_equiv n (fmlookup m1 i) (fmlookup (fmupd x y m2) i \<cdot> j)"
+    by (simp add: n_incl_def)
+  then have "\<forall>i. \<exists>j. n_equiv n (fmlookup m1 i) (fmlookup m2 i \<cdot> (if i=x then Some y \<cdot> j else j))"
+  using fmupd(2) apply (auto simp: op_option_def) by (metis (full_types))
+  then have "\<forall>i. \<exists>j. n_equiv n (fmlookup m1 i) (fmlookup m2 i \<cdot> j)" by auto
+  with fmupd(1) obtain m3 where m3: "n_equiv n m1 (m2 \<cdot> m3)" by (auto simp: n_incl_def)
+  from fmupd(2,3) have "\<exists>y. fmlookup m1 x = Some y"
+    apply (auto simp: n_incl_def n_equiv_fmap_def n_equiv_option_def) 
+    by (metis (full_types) op_option_def option_opE)
+  then obtain y2 where y2: "fmlookup m1 x = Some y2" by blast
+  with fmupd(3) have "\<exists>y3. n_equiv n (Some y2) (Some y\<cdot>y3)"
+    apply (auto simp: n_incl_def) by (metis (full_types))
+  then obtain y3 where y3: "n_equiv n (Some y2) (Some y\<cdot>y3)" by auto
+  define m3' where "m3' = (case y3 of Some y3' \<Rightarrow> fmupd x y3' m3 | None \<Rightarrow> fmdrop x m3)"
+  with y2 y3 m3 fmupd(2) have "n_equiv n m1 ((fmupd x y m2)\<cdot> m3')" 
+    by (cases y3) (auto simp: n_equiv_fmap_def op_fmap.rep_eq merge_op op_option_def n_equiv_fun_def
+    op_fun_def split: option.splits)     
+  then show ?case by auto
+qed
+have lookup_incl:"(\<exists>m3. m1 = (m2\<cdot>m3)) \<longleftrightarrow> (\<forall>i. incl (fmlookup m2 i) (fmlookup m1 i))" for m1 m2
+apply auto
+using fmlookup_op incl_def apply blast
+proof (induction m2)
+  case fmempty
+  then show ?case by (auto simp: op_fmap_def merge_op op_fun_def op_option_def incl_def fmlookup_inverse)
+next
+  case (fmupd x y m2)
+  then have "\<forall>i. \<exists>j. fmlookup m1 i = fmlookup (fmupd x y m2) i \<cdot> j"
+    by (simp add: incl_def)
+  then have "\<forall>i. \<exists>j. fmlookup m1 i = fmlookup m2 i \<cdot> (if i=x then Some y \<cdot> j else j)"
+  using fmupd(2) apply (auto simp: op_option_def) by (metis (full_types))
+  then have "\<forall>i. \<exists>j. fmlookup m1 i = fmlookup m2 i \<cdot> j" by auto
+  with fmupd(1) obtain m3 where m3: "m1 = (m2 \<cdot> m3)" by (auto simp: incl_def)
+  from fmupd(2,3) have "\<exists>y. fmlookup m1 x = Some y"
+    apply (auto simp: incl_def) by (metis (mono_tags) ofe_eq_limit option_n_equiv_Some_op)
+  then obtain y2 where y2: "fmlookup m1 x = Some y2" by blast
+  with m3 fmupd(2) have y2': "fmlookup m3 x = Some y2" by (simp add: fmlookup_op op_option_def)  
+  from y2 fmupd(3) have "\<exists>y3. Some y2 = (Some y\<cdot>y3)"
+    apply (auto simp: incl_def) by (metis (full_types))
+  then obtain y3 where y3: "Some y2 = (Some y\<cdot>y3)" by auto
+  define m3' where "m3' = (case y3 of Some y3' \<Rightarrow> fmupd x y3' m3 | None \<Rightarrow> fmdrop x m3)"
+  with y2 y2' y3 m3 fmupd(2) have "m1 = ((fmupd x y m2)\<cdot> m3')" 
+  apply (cases y3) apply (auto simp: op_option_def op_fmap_def merge_op op_fun_def split: option.splits)
+  unfolding Abs_fmap_inverse[OF option_op_fmlookup] 
+    Abs_fmap_inject[OF option_op_fmlookup option_op_finite[OF upd_fin drop_fin]]
+  apply auto
+  unfolding Abs_fmap_inject[OF option_op_fmlookup option_op_finite[OF upd_fin upd_fin]]
+  by force
+  then show ?case by auto  
+  qed
+have core_mono: "(\<exists>m3. (the (pcore m1)) = (the (pcore m2) \<cdot> m3))" if wo_pcore: "(\<exists>m3. m1 = (m2\<cdot>m3))"
+for m1 m2 :: "('a,'b) fmap"
+  apply (auto simp: lookup_incl fmlookup_pcore) using camera_core_mono wo_pcore[unfolded lookup_incl]
+  core_def by (simp add: pcore_mono total_pcore)
+from this[OF assms(2)] assms(1) show "\<exists>b'. pcore b = Some b' \<and> (\<exists>c. b' = a' \<cdot> c)" by (simp add: b')
 next
 fix a b :: "('a,'b) fmap" and n
 show "Rep_sprop (valid_raw (a \<cdot> b)) n \<Longrightarrow> Rep_sprop (valid_raw a) n"
-  including fmap.lifting apply transfer using camera_valid_op by blast
+  including fmap.lifting apply transfer unfolding merge_op using camera_valid_op by blast
 next
 fix a b1 b2 :: "('a,'b) fmap" and n
-show "Rep_sprop (valid_raw a) n \<Longrightarrow> n_equiv n a (b1 \<cdot> b2) \<Longrightarrow> \<exists>c1 c2. a = c1 \<cdot> c2 \<and> n_equiv n c1 b1 \<and> n_equiv n c2 b2"
-  including fmap.lifting apply transfer using camera_extend sorry
+assume assms: "Rep_sprop (valid_raw a) n" "n_equiv n a (b1 \<cdot> b2)" 
+then show "\<exists>c1 c2. a = c1 \<cdot> c2 \<and> n_equiv n c1 b1 \<and> n_equiv n c2 b2"
+proof (induction a arbitrary: b1 b2)
+  case fmempty
+  then have "\<forall>i. n_equiv n None (fmlookup b1 i \<cdot> fmlookup b2 i)"
+    by (auto simp: n_equiv_fmap_def op_fmap.rep_eq merge_op n_equiv_fun_def op_fun_def)
+  then have "b1 = fmempty \<and> b2 = fmempty" apply (auto simp: n_equiv_option_def op_option_def)
+    using option_opE by (metis fmap_ext fmempty_lookup)+
+  then have "fmempty = b1 \<cdot> b2 \<and> n_equiv n b1 b1 \<and> n_equiv n b2 b2"
+    apply (auto simp: ofe_refl op_fmap_def merge_op op_fun_def op_option_def) 
+    by (simp add:  fmempty_def)
+  then show ?case by auto
+next
+  case (fmupd x y a)
+  from fmupd(2,3) have valid_a: "Rep_sprop (valid_raw a) n"
+    apply (auto simp: valid_raw_fmap.rep_eq valid_raw_fun.rep_eq valid_raw_option_def split: option.splits)
+    by (metis option.distinct(1))
+  from fmupd(3) have valid_y: "n_valid y n"
+    apply (auto simp: valid_raw_fmap.rep_eq valid_raw_fun.rep_eq valid_raw_option_def split: option.splits)
+    by presburger  
+  let ?b1x = "fmlookup b1 x" let ?b2x = "fmlookup b2 x"
+  from fmupd(4) have y:"n_equiv n (Some y) (?b1x \<cdot> ?b2x)"
+    apply (auto simp: n_equiv_fmap_def op_fmap.rep_eq merge_op n_equiv_fun_def op_fun_def) by presburger
+  from fmupd(2,4) have equiv_a: "n_equiv n a (fmdrop x b1 \<cdot> fmdrop x b2)"
+    apply (auto simp: n_equiv_fmap_def op_fmap.rep_eq merge_op n_equiv_fun_def op_fun_def op_option_def ofe_refl)
+    by presburger
+  from fmupd(1)[OF valid_a this] obtain c1 c2 where c12: 
+    "a = c1 \<cdot> c2 \<and> n_equiv n c1 (fmdrop x b1) \<and> n_equiv n c2 (fmdrop x b2)" by blast
+  { fix i
+  from fmupd(3) have validi: "n_valid (fmlookup (fmupd x y a) i) n" 
+      by (auto simp: valid_raw_fmap.rep_eq valid_raw_fun.rep_eq)
+  from fmupd(4) have equivi: "n_equiv n (fmlookup (fmupd x y a) i) (fmlookup b1 i \<cdot> fmlookup b2 i)"
+    by (auto simp: n_equiv_fmap_def op_fmap.rep_eq merge_op n_equiv_fun_def op_fun_def)
+  from camera_extend[OF validi equivi] have "\<exists>c1 c2. fmlookup (fmupd x y a) i = c1 \<cdot> c2 
+    \<and> n_equiv n c1 (fmlookup b1 i) \<and> n_equiv n c2 (fmlookup b2 i)" .}
+  then have "\<forall>i. \<exists>c1 c2. fmlookup (fmupd x y a) i = c1 \<cdot> c2 \<and> n_equiv n c1 (fmlookup b1 i) 
+    \<and> n_equiv n c2 (fmlookup b2 i)" by blast
+  then have "\<exists>c1 c2. Some y = c1 \<cdot> c2 \<and> n_equiv n c1 ?b1x \<and> n_equiv n c2 ?b2x"
+    by (metis fmupd_lookup)
+  then obtain c1x c2x where c12x: "Some y = c1x \<cdot> c2x \<and> n_equiv n c1x ?b1x \<and> n_equiv n c2x?b2x"
+    by auto
+  then have cx_none: "c1x \<noteq> None \<or> c2x \<noteq> None" by (auto simp: op_option_def)
+  have eq_onp_op:
+    "eq_onp (\<lambda>m. finite (dom m)) (\<lambda>i. option_op (fmlookup c1 i) (fmlookup c2 i)) (\<lambda>i. option_op (fmlookup c1 i) (fmlookup c2 i))"
+    using option_op_finite by (auto simp: eq_onp_def)
+  define c1' where c1': "c1' \<equiv> (case c1x of Some y' \<Rightarrow> fmupd x y' c1 | None \<Rightarrow> c1)"
+  define c2' where c2': "c2' \<equiv> (case c2x of Some y' \<Rightarrow> fmupd x y' c2 | None \<Rightarrow> c2)"  
+  with c1' c12 cx_none y c12x have "fmupd x y a = c1' \<cdot> c2' \<and> n_equiv n c1' b1 \<and> n_equiv n c2' b2"
+  apply (cases c1x; cases c2x) 
+  apply (auto simp: op_option_def op_fmap_def merge_op op_fun_def split: option.splits)
+  unfolding fmupd.abs_eq[OF eq_onp_op] Abs_fmap_inject[OF map_upd_fin[OF option_op_fmlookup] option_op_finite[OF dom_fmlookup_finite upd_fin]]
+  subgoal apply (rule ext) by (smt (verit) Abs_fmap_inverse camera_comm eq_onp_def eq_onp_op fmupd(2) fmupd.rep_eq fmupd_lookup mem_Collect_eq op_option_def option_op.simps(2) option_opE)
+  subgoal by (metis c12 fmap_ext fmlookup_drop is_none_code(2) is_none_simps(1) n_equiv_option_def)
+  subgoal apply (auto simp: n_equiv_fmap_def n_equiv_fun_def) by presburger
+  subgoal unfolding Abs_fmap_inject[OF map_upd_fin[OF option_op_fmlookup] option_op_finite[OF upd_fin dom_fmlookup_finite]]
+    proof -
+    assume "c1x = Some y"
+    assume "a = Abs_fmap (\<lambda>i. option_op (fmlookup c1 i) (fmlookup c2 i))"
+    then have "\<forall>a. option_op (if x = a then Some y else fmlookup c1 a) (fmlookup c2 a) = map_upd x y (\<lambda>a. option_op (fmlookup c1 a) (fmlookup c2 a)) a"
+    by (smt (z3) Abs_fmap_inverse camera_comm eq_onp_def eq_onp_op fmupd.hyps fmupd.rep_eq fmupd_lookup mem_Collect_eq op_option_def option_opE option_op_none_unit(1))
+    then show "map_upd x y (\<lambda>a. option_op (fmlookup c1 a) (fmlookup c2 a)) = (\<lambda>a. option_op (if x = a then Some y else fmlookup c1 a) (fmlookup c2 a))"
+    by presburger qed
+  subgoal by (smt (verit, del_insts) fmlookup_drop fmupd_lookup n_equiv_fmap.rep_eq n_equiv_fun_def)
+  subgoal by (metis (mono_tags, lifting) fmfilter_alt_defs(1) fmfilter_true n_equiv_option_def option.distinct(1))  
+  subgoal unfolding Abs_fmap_inject[OF map_upd_fin[OF option_op_fmlookup] option_op_finite[OF upd_fin upd_fin]]
+    apply (rule ext) by (smt (verit) Abs_fmap_inverse c12x eq_onp_def eq_onp_op fmupd.rep_eq fmupd_lookup mem_Collect_eq op_option_def)
+  subgoal apply (auto simp: n_equiv_fmap_def n_equiv_fun_def) by presburger
+  apply (auto simp: n_equiv_fmap_def n_equiv_fun_def) by presburger  
+  then show ?case by auto
+  qed
 qed
 end
 
@@ -1018,7 +1210,7 @@ lift_definition \<epsilon>_fmap :: "('a, 'b) fmap" is "\<epsilon>::'a\<rightharp
 end
 instance apply standard
 by (auto simp: \<epsilon>_fmap_def valid_def valid_raw_fmap_def op_fmap_def pcore_fmap_def Abs_fmap_inverse[OF empty_finite]
-  \<epsilon>_valid[unfolded valid_def] \<epsilon>_left_id fmlookup_inverse \<epsilon>_pcore)
+  \<epsilon>_valid[unfolded valid_def] \<epsilon>_left_id fmlookup_inverse \<epsilon>_pcore merge_op)
 end
 
 instance fmap :: (type, dcamera) ducamera ..

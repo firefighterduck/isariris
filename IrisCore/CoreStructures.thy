@@ -1,5 +1,6 @@
 theory CoreStructures
 imports COFEs
+keywords "iris_camera" "iris_camera_instance" :: thy_decl
 begin
 
 section \<open> Core Structures \<close>
@@ -107,6 +108,9 @@ lemma n_incl_extend: "\<lbrakk>n_incl n a b; m\<le>n\<rbrakk> \<Longrightarrow> 
   by (smt (verit, ccfv_SIG) camera_n_incl_le local.camera_assoc local.camera_comm ofe_class.ofe_eq_limit op_ne)
 lemma incl_n_incl: "incl a b \<Longrightarrow> n_incl n a b"
   using ofe_class.ofe_refl by (auto simp: incl_def n_incl_def) 
+
+lemma pcore_mono: "\<lbrakk>\<forall>x. \<exists>y. pcore x = Some y; incl a b\<rbrakk> \<Longrightarrow> incl (the (pcore a)) (the (pcore b))"
+  apply (auto simp: incl_def) using local.camera_pcore_mono by fastforce
 
 lemmas camera_props = camera_assoc camera_comm camera_pcore_id camera_pcore_idem camera_pcore_mono
   camera_valid_op camera_extend valid_raw_ne pcore_ne op_ne
@@ -263,4 +267,33 @@ instance by (standard; transfer) (auto simp: ofe_refl ofe_sym ofe_limit intro: o
 end
 
 instance cmra_morph :: (ducamera,ducamera) discrete by (standard; transfer) (auto simp: d_equiv d_eq)
+
+ML \<open>
+  local
+
+  val aT = \<^typ>\<open>'a\<close>;
+  fun getterT classT = aT --> classT;                                                
+  fun getter classT classN = let val getN = Binding.name ("get_"^classN) in
+    Element.Fixes [(getN, SOME (getterT classT), NoSyn)] end;
+
+  fun gen_class typ thy = 
+    let val ctxt = Proof_Context.init_global thy
+      val classT = Syntax.parse_typ ctxt typ 
+      val classN = Term.dest_Type classT |> #1 |> Long_Name.base_name
+    in #2 (Class_Declaration.class (Binding.name ("has_"^classN)) [] [] [getter classT classN] thy)
+    end
+
+  val _ = Outer_Syntax.command \<^command_keyword>\<open>iris_camera\<close>
+    "Generate an in_type class for a given type."
+    (Parse.type_const >> (fn typ => Toplevel.begin_main_target false (gen_class typ)));
+
+  val _ = Outer_Syntax.command \<^command_keyword>\<open>iris_camera_instance\<close> 
+    "Generate the has_type class and instantiate the camera class."
+    (Parse.multi_arity --| Parse.begin
+     >> (fn arities => let val typ = arities |> #1 |> hd
+      fun gen_and_inst thy = let val thy' = gen_class typ thy |> Local_Theory.exit_global
+        in Class.instantiation_cmd arities thy' end
+     in Toplevel.begin_main_target true gen_and_inst end));
+  in end;
+\<close>
 end

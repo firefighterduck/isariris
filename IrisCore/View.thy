@@ -10,6 +10,10 @@ definition map_view_rel :: "nat \<Rightarrow> ('a,'b::ofe) fmap \<Rightarrow> ('
   "map_view_rel n m f \<equiv>
     \<forall>k d vag. f k = Some (d,vag) \<longrightarrow> (\<exists>v. n_equiv n vag (to_ag v) \<and> valid d \<and> fmlookup m k = Some v)"
 
+lemma map_view_relE: "\<lbrakk>map_view_rel n m f; f k = Some (d,vag)\<rbrakk> \<Longrightarrow>
+  \<exists>v. n_equiv n vag (to_ag v) \<and> valid d \<and> fmlookup m k = Some v"
+  by (simp add: map_view_rel_def)
+  
 lemma map_view_rel_mono: 
   assumes "map_view_rel n1 m1 f1" "n_equiv n2 m1 m2" "n_incl n2 f2 f1" "n2 \<le> n1"
   shows "map_view_rel n2 m2 f2"
@@ -50,8 +54,18 @@ proof -
   then show ?thesis unfolding map_view_rel_def by simp
 qed
 
-lemma map_view_rel_n_valid: "map_view_rel n a b \<Longrightarrow> n_valid b n" sorry
-lemma map_view_rel_unit: "\<exists>a. map_view_rel n a \<epsilon>" sorry
+lemma map_view_rel_n_valid: "map_view_rel n a b \<Longrightarrow> n_valid b n" 
+  apply (auto simp: valid_raw_fun.rep_eq valid_raw_option_def split: option.splits)
+  subgoal for k d vag apply (drule map_view_relE) 
+  apply (auto simp: prod_n_valid_def valid_def valid_raw_ag.rep_eq n_equiv_ag.rep_eq)
+  by (metis Set.set_insert ofe_trans_eqR singleton_insert_inj_eq to_ag.rep_eq) done
+
+lemma map_view_rel_unit: "\<exists>a. map_view_rel n a \<epsilon>"
+proof -
+  have "map_view_rel n fmempty \<epsilon>" by (auto simp: map_view_rel_def \<epsilon>_fun_def \<epsilon>_option_def)
+  then show ?thesis by auto
+qed
+  
 lemma map_view_rel_ne: "\<lbrakk>n_equiv n m1 m2; n_equiv n f1 f2\<rbrakk> \<Longrightarrow> map_view_rel n m1 f1 \<longleftrightarrow> map_view_rel n m2 f2"
   apply (rule iffI)
   using map_view_rel_mono[of n m1 f1 n m2 f2] apply (simp add: ofe_sym total_n_inclI)
@@ -166,16 +180,46 @@ show "pcore a = Some a' \<Longrightarrow> pcore a' = pcore a"
 next
 fix a a' b :: "('a,'b) map_view"
 show "pcore a = Some a' \<Longrightarrow> \<exists>c. b = a \<cdot> c \<Longrightarrow> \<exists>b'. pcore b = Some b' \<and> (\<exists>c. b' = a' \<cdot> c)"
-apply (cases a; cases a'; cases b) unfolding pcore_map_view_def unfolding mv_pcore_alt
-apply (auto simp: op_map_view_def camera_pcore_mono total_pcore pcore_fun_def split: option.splits)
-by (metis camera_pcore_mono map_view.sel(1) map_view.sel(2) option.sel pcore_fun_def)
+  apply (cases a; cases a'; cases b) unfolding pcore_map_view_def unfolding mv_pcore_alt
+  apply (auto simp: op_map_view_def camera_pcore_mono total_pcore pcore_fun_def split: option.splits)
+  by (metis camera_pcore_mono map_view.sel(1) map_view.sel(2) option.sel pcore_fun_def)
 next
 fix a b :: "('a,'b) map_view" and n
-show "Rep_sprop (valid_raw (a \<cdot> b)) n \<Longrightarrow> Rep_sprop (valid_raw a) n" sorry
+show "Rep_sprop (valid_raw (a \<cdot> b)) n \<Longrightarrow> Rep_sprop (valid_raw a) n"
+apply (unfold valid_raw_map_view.rep_eq) apply (cases a; cases b)
+subgoal for a1 a2 b1 b2 apply (cases a1; cases b1)
+subgoal apply (auto simp: map_view_auth_proj_def op_map_view_def op_option_def split: map_view.splits)
+  using map_view_rel_mono n_incl_op_extend ofe_refl by blast
+subgoal apply (auto simp: map_view_auth_proj_def op_map_view_def op_option_def split: map_view.splits)
+  using map_view_rel_mono n_incl_op_extend ofe_refl by blast
+subgoal apply (auto simp: map_view_auth_proj_def op_map_view_def op_option_def split: map_view.splits)
+  using map_view_rel_mono n_incl_op_extend ofe_refl by blast
+apply (simp add: map_view_auth_proj_def op_map_view_def op_option_def op_prod_def split: map_view.splits prod.splits)
+subgoal for a1' b1' c1 a11 m a12 b11 b12
+  apply auto
+  prefer 2 using map_view_rel_mono[of n m "a2\<cdot>b2" n m a2, unfolded n_incl_def]
+  apply (meson ag_valid_n_incl camera_props(8) linorder_le_cases n_equiv_sprop_def n_incl_op_extend ofe_refl ofe_trans to_ag_n_valid)
+  using camera_valid_op by fast done done
 next
 fix a b c :: "('a,'b) map_view" and n
-show "Rep_sprop (valid_raw a) n \<Longrightarrow> n_equiv n a (b \<cdot> c) \<Longrightarrow> 
-  \<exists>c1 c2. a = c1 \<cdot> c2 \<and> n_equiv n c1 b \<and> n_equiv n c2 c" sorry
+assume assms: "Rep_sprop (valid_raw a) n" "n_equiv n a (b \<cdot> c)"
+obtain a1 a2 b1 b2 c1 c2 where abc: "a=MapView a1 a2" "b=MapView b1 b2" "c=MapView c1 c2"
+  by (metis map_view.collapse)
+with assms(2) have n_eq: "n_equiv n a1 (b1\<cdot>c1)" "n_equiv n a2 (b2\<cdot>c2)"
+  by (auto simp: op_map_view_def n_equiv_map_view_def) 
+then have n_eq_prod: "n_equiv n (a1,a2) ((b1,b2)\<cdot>(c1,c2))"
+  by (auto simp: op_prod_def)
+from assms(1) abc have valid_prod: "n_valid (a1,a2) n"
+  apply (cases a1)
+  apply (auto simp: valid_raw_map_view.rep_eq prod_n_valid_def valid_raw_option_def map_view_rel_n_valid)
+  using n_valid_ne ofe_sym to_ag_n_valid by blast
+from camera_extend[OF valid_prod n_eq_prod] obtain d1 d2 e1 e2 where de:
+  "(a1, a2) = (d1,d2) \<cdot> (e1,e2)" "n_equiv n (d1,d2) (b1, b2)" "n_equiv n (e1,e2) (c1, c2)"
+  by auto
+let ?d = "MapView d1 d2" and ?e = "MapView e1 e2"
+from de abc have  "a=?d\<cdot>?e" "n_equiv n ?d b" "n_equiv n ?e c" 
+  by (auto simp: n_equiv_map_view_def op_map_view_def op_prod_def)
+then show "\<exists>c1 c2. a = c1 \<cdot> c2 \<and> n_equiv n c1 b \<and> n_equiv n c2 c" by blast
 qed
 end
 
