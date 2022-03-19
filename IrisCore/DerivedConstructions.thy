@@ -1054,34 +1054,6 @@ have lookup_pcore: "pcore m = Some m' \<Longrightarrow> Some (fmlookup m' i) = p
   by (auto simp: pcore_fmap_def pcore_option_def pcore_fun_def comp_def Abs_fmap_inverse[OF fin] split: option.splits)
 have fmlookup_pcore: "fmlookup (the (pcore m)) i = the (pcore (fmlookup m i))" for m i
   by (metis lookup_pcore option.distinct(1) option.exhaust_sel option.sel option.simps(8) pcore_fmap.rep_eq total_pcore)
-have "(\<exists>m3. n_equiv n m1 (m2\<cdot>m3)) \<longleftrightarrow> (\<forall>i. n_incl n (fmlookup m2 i) (fmlookup m1 i))" for n m1 m2
-apply auto
-apply (metis (mono_tags) fmlookup_op n_equiv_fmap.rep_eq n_equiv_fun_def n_incl_def)
-proof (induction m2)
-  case fmempty
-  then show ?case by (metis (full_types) camera_comm fmap_ext fmempty_lookup fmlookup_op ofe_refl 
-    op_option_def option_op_none_unit(2))
-next
-  case (fmupd x y m2)
-  then have "\<forall>i. \<exists>j. n_equiv n (fmlookup m1 i) (fmlookup (fmupd x y m2) i \<cdot> j)"
-    by (simp add: n_incl_def)
-  then have "\<forall>i. \<exists>j. n_equiv n (fmlookup m1 i) (fmlookup m2 i \<cdot> (if i=x then Some y \<cdot> j else j))"
-  using fmupd(2) apply (auto simp: op_option_def) by (metis (full_types))
-  then have "\<forall>i. \<exists>j. n_equiv n (fmlookup m1 i) (fmlookup m2 i \<cdot> j)" by auto
-  with fmupd(1) obtain m3 where m3: "n_equiv n m1 (m2 \<cdot> m3)" by (auto simp: n_incl_def)
-  from fmupd(2,3) have "\<exists>y. fmlookup m1 x = Some y"
-    apply (auto simp: n_incl_def n_equiv_fmap_def n_equiv_option_def) 
-    by (metis (full_types) op_option_def option_opE)
-  then obtain y2 where y2: "fmlookup m1 x = Some y2" by blast
-  with fmupd(3) have "\<exists>y3. n_equiv n (Some y2) (Some y\<cdot>y3)"
-    apply (auto simp: n_incl_def) by (metis (full_types))
-  then obtain y3 where y3: "n_equiv n (Some y2) (Some y\<cdot>y3)" by auto
-  define m3' where "m3' = (case y3 of Some y3' \<Rightarrow> fmupd x y3' m3 | None \<Rightarrow> fmdrop x m3)"
-  with y2 y3 m3 fmupd(2) have "n_equiv n m1 ((fmupd x y m2)\<cdot> m3')" 
-    by (cases y3) (auto simp: n_equiv_fmap_def op_fmap.rep_eq merge_op op_option_def n_equiv_fun_def
-    op_fun_def split: option.splits)     
-  then show ?case by auto
-qed
 have lookup_incl:"(\<exists>m3. m1 = (m2\<cdot>m3)) \<longleftrightarrow> (\<forall>i. incl (fmlookup m2 i) (fmlookup m1 i))" for m1 m2
 apply auto
 using fmlookup_op incl_def apply blast

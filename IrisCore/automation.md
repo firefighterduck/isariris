@@ -29,5 +29,21 @@
 * framing: works only for rhs, can move out of most wrappers, based on "logic programming",very simple but powerfull
 
 
-Note: I-pattern = inner pattern, e.g. pattern "P" to transform "later (P*Q)" into "(later Q) * (later P)";
-    O-pattern = outer pattern, e.g. pattern "later P" to transform "(later (P*Q)) * (persistent P)" into "(later Q) * (persistent P) * (later P)"
+Note: I-pattern = inner pattern, e.g. pattern "P" to transform "later (P\*Q)" into "(later Q) \* (later P)"; O-pattern = outer pattern, e.g. pattern "later P" to transform "(later (P\*Q)) \* (persistent P)" into "(later Q) \* (persistent P) \* (later P)"
+
+
+## About further automation
+* Diaframe approach: syntax directed (by symbolic execution with preconditions), possibly under modalities/quantifiers
+* Diaframe hints based on bi-abduction (single hypothesis + goal as keys), allows to consume hypothesis and exchange goal for antiframe+frame with modalities and quantifiers, lhs abduction hints (all the rest in antiframe, no frame)
+* Hints for several classes of rules: ghost state updates, combination of predicates, ghost state allocations, invariant allocation, framing, etc., higher order hints
+* In general first hints that match a specific hypothesis/goal pair, then those that only match a goal (e.g. allocation)
+* Proof search procedure by case distinction on goal (no backtracking, only one case applicable):
+    * introduce id modality if goal has no top level modality
+    * split modalities if two and top is not introducible (e.g. needs to do view-shift or close an invariant)
+    * otherwise combine into single or introduce right away
+    * lift universal quantifier
+    * ...
+* case distinction essentially parsing a formal language on top of Iris base logic that consists of the same terms but separates them into different classes that guide the case distinction (e.g. a modality on top of a later is different than the same modality on top of a pure), this kinda aims at normalizing into a form that has a modality on top, a quantifier below that and then an actual goal to match against
+* Hint search: needs to traverse all known hints + apply recursive rules to find new ones on demand, actual strategy: first use all hypotheses related hints (e.i. that oly require a certain structure of the hypotheses and doesn't require any goal structure), and only afterwards use goal related rules (until user defined hint is found), does backtrack to find a suitable hint (but doesn't backtrack if proof search step fails), whether a hint is suitable might depend on properties
+* Toplevel tactics do chunks of steps, repeat until stuck/solved
+* Diaframe does not use the IPM environment approach to represent goals but has an own format that is more suitable for automation and single steps

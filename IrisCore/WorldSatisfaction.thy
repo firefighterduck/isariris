@@ -98,7 +98,7 @@ lemma ownE_op': "(\<upharpoonleft>(E1 \<inter> E2 = {})) \<and>\<^sub>u ownE (E1
   apply (auto simp: op_dset_def prod_n_valid_def \<epsilon>_n_valid valid_raw_dset_def split: dset.splits)
   apply (auto simp: n_equiv_dset_def singleton_map_n_incl op_option_def n_equiv_option_def)
   unfolding valid_raw_fun.rep_eq prod_n_valid_def
-  subgoal for E1 E2 a b c d e f n x I E D g I' D'
+  subgoal for E1 E2 a b c d _ e f n x I E D g I' D'
 proof -
   assume assm: "\<forall>i. n_valid (e i) n" "e enabled_name = Some (I, E, D)" 
     "option_op (Some (\<epsilon>, DBot, \<epsilon>)) g = Some (I', E, D')"

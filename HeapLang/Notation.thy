@@ -21,6 +21,7 @@ abbreviation "MatchOpt \<equiv> \<lambda>e0 e1 x2 e2. MatchE e1 None e1  x2 e2"
 abbreviation "Seq \<equiv> \<lambda>e2 e1. App (LamE None e1) e2"
 abbreviation "UnitE \<equiv> Val (LitV LitUnit)"
 abbreviation "Alloc \<equiv> AllocN (Val (LitV (LitInt 1)))"
+abbreviation "Ref \<equiv> \<lambda>e. Alloc e"
 
 notation LamE ("E\<lambda>_: _")
 notation LamV ("V\<lambda>_: _")
@@ -31,6 +32,7 @@ notation MatchOpt ("match: _ with NoneCase \<Rightarrow> _ | SomeCase _ \<Righta
 notation If ("if: _ then _ else _ endif")
 notation Seq (infixl ";;" 40)
 notation Var ("V_")
+notation RecV ("rec: _ _ := _")
 
 class to_val = fixes to_val :: "'a \<Rightarrow> val" ("#[_]")
 named_theorems to_val_simp

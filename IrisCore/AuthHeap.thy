@@ -52,7 +52,7 @@ lemma heap_op_val_eq: "[l\<mapsto>(dq1, to_ag v)]\<cdot>[l\<mapsto>(dq2, to_ag v
 
 lemma iprop_heap_valid: "\<V>(constr_heap \<gamma> h) \<turnstile> \<V>(h::heap_lang_heap)"
   apply (simp add: upred_valid_def upred_entails.rep_eq Abs_upred_f_inverse constr_heap_def)
-  using prod_n_valid_snd[OF prod_n_valid_snd[OF prod_n_valid_snd[OF prod_n_valid_snd[OF prod_n_valid_snd]]]] 
+  using prod_n_valid_snd[OF prod_n_valid_snd[OF prod_n_valid_snd[OF prod_n_valid_snd[OF prod_n_valid_snd[OF prod_n_valid_snd]]]]]
   by fastforce
 
 text \<open>Heap camera operations\<close>

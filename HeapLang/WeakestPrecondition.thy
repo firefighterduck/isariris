@@ -17,6 +17,9 @@ by auto
 abbreviation WP :: "expr \<Rightarrow> (val \<Rightarrow> iprop) \<Rightarrow> iprop" ("WP _ {{ _ }}") where
   "WP e {{ \<Phi> }} \<equiv> wp NotStuck UNIV e \<Phi>"
 
+abbreviation hoare :: "iprop \<Rightarrow> expr \<Rightarrow> (val \<Rightarrow> iprop) \<Rightarrow> bool" ("{{ _ }} _ {{ _ }}") where
+  "{{ P }} e {{ \<Phi> }} \<equiv> P \<turnstile> WP e {{ \<Phi> }}"
+
 text \<open>
   First we show that some basic properties of wp hold for inputs in the domain, then we 
   always assume that all values lie in the domain.
@@ -272,8 +275,11 @@ lemma wp_cmpxchg_fail: "\<lbrakk>v\<noteq>v1; vals_compare_safe v v1; P \<^emph>
 
 lemma wp_cmpxchg_success: "\<lbrakk>v=v1; vals_compare_safe v v1; P \<^emph> (l\<mapsto>{p}v2) \<turnstile> wp s E (#[(v,True)]) Q\<rbrakk>
   \<Longrightarrow> P \<^emph> (l\<mapsto>{p}v) \<turnstile> wp s E (CmpXchg (Val #[l]) v1 v2) Q"
+  sorry
+
+lemma wp_alloc: "wp s E (Alloc (Val v)) (\<lambda>lv. (\<exists>\<^sub>u l. ((\<upharpoonleft>(lv=#[l])) \<^emph> (l\<mapsto>\<^sub>uv))))"
 sorry
-  
+
 lemma wp_frame': "(\<And>x. can_be_split (Q x) (Q' x) P) \<Longrightarrow> (wp s E e Q') \<^emph> P \<turnstile> wp s E e Q"
 sorry  
 

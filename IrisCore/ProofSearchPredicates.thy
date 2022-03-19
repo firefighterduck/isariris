@@ -5,7 +5,7 @@ begin
 subsection \<open>Predicates that guide the proof search\<close>
 text \<open>These are based on type classes which the IPM uses to guide its proof search for certain steps.\<close>
 
-named_theorems log_prog_rule
+named_theorems log_prog_rule "Rules that can be used for logic programming reasoning in Iris"
 
 subsubsection \<open>Splitting\<close>
 definition can_be_split :: "('a::ucamera) upred_f \<Rightarrow> 'a upred_f \<Rightarrow> 'a upred_f \<Rightarrow> bool" where
@@ -249,6 +249,12 @@ definition timeless :: "'a::ucamera upred_f \<Rightarrow> bool" where "timeless 
 
 named_theorems timeless_rule
 method timeless_solver = (rule timeless_rule)+
+
+lemma own_timeless' [timeless_rule,log_prog_rule]: "dcamera_val x \<Longrightarrow> timeless (Own x)"
+  apply (auto simp: timeless_def dcamera_val_def discrete_val_def except_zero_def; transfer) 
+  apply (auto simp: n_incl_def)
+  apply (metis (mono_tags, lifting) Rep_sprop bot_nat_0.extremum camera_valid_op diff_le_self mem_Collect_eq n_valid_ne)
+  by (metis camera_extend diff_le_self ne_sprop_weaken ofe_eq_limit ofe_sym valid_raw_non_expansive)
 
 lemma own_timeless [timeless_rule,log_prog_rule]: "timeless (Own (x::'a::ducamera))"
   by (auto simp: upred_own.rep_eq upred_entails.rep_eq upred_later.rep_eq except_zero_def 

@@ -221,6 +221,9 @@ lemma dcamera_valid_iff: "valid x \<longleftrightarrow> n_valid x n"
 by (auto simp: d_valid)(auto simp: valid_def)
 end
 
+definition dcamera_val :: "'a::camera \<Rightarrow> bool" where
+  "dcamera_val v \<equiv> discrete_val v \<and> (n_valid v 0 \<longrightarrow> valid v)"
+
 text \<open>Discrete Unital Camera\<close>
 class ducamera = dcamera + ucamera
 

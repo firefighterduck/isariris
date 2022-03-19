@@ -3,7 +3,7 @@ imports ProofSearchPredicates "HOL-Eisbach.Eisbach_Tools"
 begin
 
 method iIntro = 
-  (match conclusion in "upred_holds _" \<Rightarrow> \<open>rule upred_wand_holdsI\<close>)?,((rule upred_wandI)+)?
+  (match conclusion in "upred_holds _" \<Rightarrow> \<open>rule upred_wand_holdsI | subst upred_holds_entails\<close>)?,((rule upred_wandI)+)?
 
 method remove_emp = (simp_all only: upred_sep_assoc_eq emp_rule)?
 
@@ -70,6 +70,7 @@ method_setup apply_prefer =
         | NONE => false
       in (if applicable then prefer_tac i thm else no_tac thm) end
     in SIMPLE_METHOD ((FIRSTGOAL prefer_first) THEN (method_evaluate m ctxt facts)) facts end)\<close>
+  "Find a subgoal that the method can work on and move it to the top."
 
 text \<open>Find a subgoal on which the given method is applicable and apply the method there.
   This will not move any subgoals around and resulting subgoals will not be at the head. 
@@ -79,7 +80,25 @@ method_setup apply_first =
     let fun eval_method i = 
       SELECT_GOAL (method_evaluate m ctxt facts) i
     in SIMPLE_METHOD (FIRSTGOAL eval_method) facts end)\<close>
+  "Find the first subgoal that the method can work on."
 
+method_setup get_concl = \<open> let 
+  fun get_concl m ctxt facts (ctxt',thm) = let
+    val trm = Thm.prop_of thm
+    val concl = (case try (HOLogic.dest_Trueprop o Logic.concl_of_goal trm) 1 of SOME trm' => trm'
+      | NONE => trm)
+  in
+    case concl of Const (\<^const_name>\<open>Pure.prop\<close>,_)$(Const (\<^const_name>\<open>Pure.term\<close>, _ )$_) 
+      => CONTEXT_TACTIC all_tac (ctxt',thm)
+    | Const (\<^const_name>\<open>Pure.prop\<close>,_)$(Const (\<^const_name>\<open>HOL.Trueprop\<close>,_)$_) => 
+      CONTEXT_TACTIC no_tac (ctxt',thm)
+    | _ => Method_Closure.apply_method ctxt m [concl] [] [] ctxt facts (ctxt',thm)
+  end
+  fun get_concl_m m = get_concl m
+in 
+  (Scan.lift Parse.name >> (fn m => fn ctxt => get_concl_m m ctxt))
+end \<close> "Allows to match against conclusions with schematic variables."
+  
 method entails_substL uses rule =
   match rule[uncurry] in "_ = _" \<Rightarrow> \<open>rule upred_entails_trans[OF upred_entails_eq[OF rule]]\<close>
   \<bar> "_ \<Longrightarrow> (_=_)" \<Rightarrow> \<open>rule upred_entails_trans[OF upred_entails_eq[OF rule]]\<close>
@@ -311,11 +330,11 @@ lemma "\<diamondop>(R\<^emph>\<triangleright>(P\<^emph>Q)) \<turnstile> R" apply
 
 text \<open>Uses the rule to do a step and separates arguments based on the pat.\<close>
 method iApply_step' for pat :: "'a::ucamera upred_f" uses rule =
-  check_move_all True pat, rule split_trans_rule[OF rule], rule can_be_split_rev,
+  check_move_all True pat, rule split_trans_rule[OF rule[to_entailment]], rule can_be_split_rev,
   ord_split_pat pat; (simp_all only: upred_sep_assoc_eq)?
 
 method iApply_step for pat :: "'a::ucamera upred_f" uses rule =
-  rule split_trans_rule[OF rule], rule can_be_split_rev, (* The rule has the order of things reversed. *)
+  rule split_trans_rule[OF rule[to_entailment]], rule can_be_split_rev, (* The rule has the order of things reversed. *)
   split_pat pat; remove_emp
   
 text \<open>Does a transitive step with the given step term and separates arguments based on pat.\<close>
@@ -338,7 +357,7 @@ method iApply_wand_as_rule for lhs_pat pat :: "'a::ucamera upred_f" =
     defer_tac\<close>
   
 method iExistsL =
-  check_moveL "upred_exists ?P", (rule pull_exists_antecedentR)+; rule upred_existsE';
+  check_moveL "upred_exists ?P", ((rule pull_exists_antecedentR)+)?; rule upred_existsE';
     (simp only: upred_sep_assoc_eq)?
 
 method iExistsR for inst =
@@ -349,7 +368,7 @@ method iPureL =
   check_moveL "upred_pure ?b", rule upred_pure_impl
 
 method iPureR = 
-  check_moveR "upred_pure ?b", rule upred_pureI' upred_pureI; (simp only: simp_thms(6))?; remove_emp
+  check_moveR "upred_pure ?b", rule upred_pureI' upred_pureI, (assumption |simp only: simp_thms(6))?
   
 method find_applicable_wand for trm :: "'a::ucamera upred_f" =
   match (trm) in "P-\<^emph>Q" for P Q :: "'a upred_f" \<Rightarrow>
@@ -361,16 +380,20 @@ method find_applicable_wand for trm :: "'a::ucamera upred_f" =
 method iApply_wand =
   match conclusion in \<open>hyps \<turnstile> _\<close> for hyps \<Rightarrow>
     \<open>find_applicable_wand hyps, subst_pers_keepL rule: upred_wand_apply, remove_emp\<close>
+
+method iFrame_single_safe for trm :: bool  =
+  match (trm) in \<open>_ \<turnstile> goal\<close> for goal \<Rightarrow>
+    \<open> match (goal) in "_\<^emph>P" for P \<Rightarrow> 
+        \<open>(check_moveL P; dupl_pers; rule upred_frame upred_emp_left) | iPureR\<close>
+      \<bar> _ \<Rightarrow> 
+        \<open>(move_sepL goal; (rule upred_entails_refl | rule upred_weakeningR)) | iPureR\<close> \<close>
     
 text \<open>Tries to remove the head goal term by either framing or reasoning with iPure and assumptions.\<close>
-method iFrame_single = 
-  remove_emp, match conclusion in \<open>_ \<turnstile> goal\<close> for goal :: "'a::ucamera upred_f" \<Rightarrow>
-    \<open> match (goal) in "_\<^emph>P" for P \<Rightarrow> 
-        \<open> (check_moveL P; dupl_pers; rule upred_frame upred_emp_left)
-        | (iPureR; (assumption | simp))\<close>
-      \<bar> P for P :: "'a upred_f" \<Rightarrow> 
-        \<open>(move_sepL P; (rule upred_entails_refl | rule upred_weakeningR)) 
-         | (iPureR; (assumption | simp))\<close> \<close>
+method iFrame_single = remove_emp, catch \<open>get_concl "Automation.iFrame_single_safe"\<close> \<open>fail\<close>
+
+method iExistsR2 =
+  (check_moveR "upred_exists ?P"; (unfold pull_exists_eq pull_exists_eq')?; 
+  rule upred_exists_lift, rule exI)+, (simp only: upred_sep_assoc_eq)?
 
 method later_elim =
   check_moveL "\<triangleright> ?P", 
