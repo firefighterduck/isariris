@@ -355,7 +355,7 @@ lemma pull_forall_antecedent: "(\<forall>\<^sub>u x. (P x \<^emph> Q)) \<turnsti
 
 lemma pull_forall_antecedent': "(\<forall>\<^sub>u x. (Q \<^emph> P x)) \<turnstile> R \<Longrightarrow> Q \<^emph> (\<forall>\<^sub>u x. P x) \<turnstile> R"
   by transfer' blast
-
+  
 lemma upred_existsE: "(\<forall>x. (P x \<turnstile> Q)) \<Longrightarrow> (\<exists>\<^sub>u x. P x) \<turnstile> Q"
   by transfer' blast
 
@@ -382,7 +382,7 @@ lemma pers_forall: "(\<forall>\<^sub>u x. \<box> (P x)) \<stileturn>\<turnstile>
 
 lemma upred_forallI: "(\<And>x. P \<turnstile> Q x) \<Longrightarrow> P \<turnstile> (\<forall>\<^sub>u x. Q x)"
   by transfer simp
-
+  
 lemma upred_forall_inst: "\<And>y. (\<forall>\<^sub>u x. P x) \<turnstile> P y"
   by transfer' blast
 

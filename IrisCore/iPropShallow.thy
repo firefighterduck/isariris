@@ -183,7 +183,7 @@ type_synonym lockG = "unit ex"
 
 setup \<open>mk_iprop [(\<^typ>\<open>graphUR auth\<close>, "graph"), (\<^typ>\<open>markingUR auth\<close>, "markings"), 
   (\<^typ>\<open>heap_lang_proph_map\<close>, "proph"), (\<^typ>\<open>lockG\<close>, "lock")]\<close>
-
+  
 lemma iprop_fp: "iProp (pre P) = P" sorry
 declare [[coercion iProp]]
 

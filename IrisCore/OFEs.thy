@@ -25,6 +25,9 @@ class discrete = ofe + assumes d_equiv: "n_equiv n a b = (a=b)" and d_eq: "ofe_e
 definition discrete_val :: "'a::ofe \<Rightarrow> bool" where
   "discrete_val v \<equiv> (\<forall>x n. n_equiv n v x \<longleftrightarrow> (v=x)) \<and> (\<forall>y. ofe_eq v y \<longleftrightarrow> (v=y))"
 
+lemma discrete_discrete_val [simp]: "discrete_val (x::'a::discrete)" 
+  by (simp add: discrete_val_def d_equiv d_eq)
+
 lemma ofe_down_contr: "n_equiv n x y \<longleftrightarrow> (\<forall>m\<le>n. n_equiv m x y)"
   by (auto simp: ofe_trans ofe_sym intro: ofe_mono)
 

@@ -74,6 +74,10 @@ text \<open>Central lemma of framing.\<close>
 lemma framing: "\<lbrakk>frame P Q R; S \<turnstile> Q\<rbrakk> \<Longrightarrow> S\<^emph>R\<turnstile>P"
   by (simp add: frame_def upred_entails_substE upred_sep_comm)
 
+lemma framing': "\<lbrakk>can_be_split S T Q; T \<turnstile> P\<rbrakk> \<Longrightarrow> S\<turnstile>P\<^emph>Q"
+  unfolding can_be_split_def upred_entail_eq_def
+  using upred_entails_trans upred_frame by blast
+
 lemma framing_emp: "\<lbrakk>frame P Q R; upred_emp \<turnstile> Q\<rbrakk> \<Longrightarrow> R\<turnstile>P"
   using frameE upred_emp_left upred_entails_trans by blast
 

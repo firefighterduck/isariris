@@ -300,7 +300,9 @@ method fupd_elimL =
 method iMod uses rule = iMod_raw later_elim fupd_elimL rule: rule
 method iMod_wand for lhs_pat pat :: "'a::ucamera upred_f" = 
   iMod_raw_wand lhs_pat pat later_elim fupd_elimL
-
+method iMod_step for pat :: "'a::ucamera upred_f" uses rule = 
+  iMod_raw_step pat later_elim fupd_elimL rule: rule
+  
 method lift_modL for trm :: iprop methods m =
   match (trm) in "\<Turnstile>{_,_}=>P" for P :: iprop \<Rightarrow> 
     \<open>apply_prefer \<open>entails_substL rule: fupd_mono\<close>, lift_modL P m\<close>
@@ -317,8 +319,8 @@ method lift_frame for pat :: iprop =
  rule upred_entails_trans[OF _ frameE], apply_first \<open>split_pat pat\<close>
    
 method iFrame for pat :: iprop = 
-  remove_emp, lift_splitL pat, lift_frame pat, remove_emp, move_sep_all_both pat,
-  (rule upred_frame upred_emp_left | rule upred_entails_refl | rule upred_weakeningR)+
+  iris_simp, lift_splitL pat, lift_frame pat, iris_simp, move_sep_all_both pat,
+  (rule upred_frame upred_emp_left | rule upred_entails_refl | rule upred_weakeningR)+, iris_simp
 
 method frame_single =
   rule upred_entails_refl | rule upred_weakeningR | rule upred_weakeningL
@@ -330,14 +332,14 @@ method frame_logic_programming for pat :: iprop =
   \<bar> _ \<Rightarrow> \<open>frame_single\<close>
     
 method iFrame2 for pat :: iprop =
-  split_move pat, frame_logic_programming pat
+  iris_simp, split_move pat, frame_logic_programming pat, iris_simp
 
 method iFrame3 for pat :: iprop =
-  split_move_ord pat, frame_logic_programming pat
+  iris_simp, split_move_ord pat, frame_logic_programming pat, iris_simp
 
-method iWP uses rule =
-  (entails_substR rule: fupd_intro | entails_substR rule: upred_laterI 
-    | entails_substR rule: except_zeroI | entails_substR rule: updI)+,
-  iApply rule: rule[simplified]  
+method iWP uses rule = iris_simp,
+  ((entails_substR rule: fupd_intro | entails_substR rule: upred_laterI 
+    | entails_substR rule: except_zeroI | entails_substR rule: updI)+)?,
+  iApply rule: rule[simplified], iris_simp
 end  
 end   

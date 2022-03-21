@@ -80,6 +80,10 @@ instance prod :: (dcamera,dcamera) dcamera
   apply (standard; auto simp: valid_raw_prod_def valid_def sprop_conj.rep_eq)
   using d_valid[simplified valid_def] by blast+
 
+lemma prod_dcamera_val [intro!]: "\<lbrakk>dcamera_val x; dcamera_val y\<rbrakk> \<Longrightarrow> dcamera_val (x,y)"
+  apply (auto simp: dcamera_val_def discrete_val_def valid_def)
+  using prod_n_valid_def by blast+
+
 instantiation prod :: (ucamera,ucamera) ucamera begin
 definition \<epsilon>_prod :: "'a \<times> 'b" where [simp]: "\<epsilon>_prod = (\<epsilon>,\<epsilon>)"
 instance by standard 
@@ -779,7 +783,7 @@ instance option :: (dcamera) d_opt ..
 instance "fun" :: (type,d_opt) dcamera 
   apply (standard; auto simp: valid_raw_fun.rep_eq valid_def)
   using d_valid[simplified valid_def] by blast
-
+  
 class opt_core_id = opt + core_id
 instance option :: (core_id) opt_core_id ..
 
@@ -793,6 +797,13 @@ subgoal using Rep_sprop_inverse \<epsilon>_valid valid_def by (auto simp: \<epsi
 subgoal by (auto simp: op_fun_def \<epsilon>_left_id \<epsilon>_fun_def)
 by (auto simp: pcore_fun_def \<epsilon>_pcore \<epsilon>_fun_def split: option.splits )
 end
+
+lemma \<epsilon>_map_equiv [simp]: "n_equiv n (\<epsilon>::('a\<rightharpoonup>'b::camera)) x \<longleftrightarrow> x=\<epsilon>"
+  by (auto simp: n_equiv_fun_def \<epsilon>_fun_def n_equiv_option_def \<epsilon>_option_def) 
+
+lemma dcamera_val_\<epsilon>_map [simp]: "dcamera_val (\<epsilon>::('a\<rightharpoonup>'b::camera))"
+  by (simp add: dcamera_val_def discrete_val_def ofe_limit valid_def valid_raw_fun.rep_eq)
+    (auto simp: \<epsilon>_fun_def \<epsilon>_option_def valid_raw_option_def)
 
 lemma map_empty_left_id: "Map.empty \<cdot> f = (f:: 'a\<rightharpoonup>'b::camera)"
 unfolding op_fun_def op_option_def HOL.fun_eq_iff

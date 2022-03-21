@@ -224,6 +224,9 @@ end
 definition dcamera_val :: "'a::camera \<Rightarrow> bool" where
   "dcamera_val v \<equiv> discrete_val v \<and> (n_valid v 0 \<longrightarrow> valid v)"
 
+lemma dcamera_dcamera_val [simp]: "dcamera_val (x::'a::dcamera)"
+  by (simp add: dcamera_val_def d_valid discrete_val_def d_equiv d_eq)
+
 text \<open>Discrete Unital Camera\<close>
 class ducamera = dcamera + ucamera
 

@@ -7,10 +7,17 @@ method iIntro =
 
 method remove_emp = (simp_all only: upred_sep_assoc_eq emp_rule)?
 
+named_theorems iris_simp
+
+declare upred_sep_assoc_eq[iris_simp]
+
+method iris_simp declares iris_simp = 
+  (simp_all add: emp_rule iris_simp)?
+
 method log_prog_solver =
   fast intro: log_prog_rule
-| slow intro: log_prog_rule
-| best intro: log_prog_rule
+(* | slow intro: log_prog_rule *)
+(* | best intro: log_prog_rule *)
 (*| force intro: log_prog_rule
 | blast 5 intro: log_prog_rule*)
 
@@ -90,13 +97,12 @@ method_setup get_concl = \<open> let
   in
     case concl of Const (\<^const_name>\<open>Pure.prop\<close>,_)$(Const (\<^const_name>\<open>Pure.term\<close>, _ )$_) 
       => CONTEXT_TACTIC all_tac (ctxt',thm)
-    | Const (\<^const_name>\<open>Pure.prop\<close>,_)$(Const (\<^const_name>\<open>HOL.Trueprop\<close>,_)$_) => 
-      CONTEXT_TACTIC no_tac (ctxt',thm)
-    | _ => Method_Closure.apply_method ctxt m [concl] [] [] ctxt facts (ctxt',thm)
+    | Const (\<^const_name>\<open>Pure.prop\<close>,_)$_ => CONTEXT_TACTIC no_tac (ctxt',thm)
+    | _ => (case try (Method_Closure.apply_method ctxt m [concl] [] [] ctxt facts) (ctxt',thm) of
+      SOME res => res | NONE => Seq.empty)
   end
-  fun get_concl_m m = get_concl m
 in 
-  (Scan.lift Parse.name >> (fn m => fn ctxt => get_concl_m m ctxt))
+  (Scan.lift Parse.name >> (fn m => fn ctxt => get_concl m ctxt))
 end \<close> "Allows to match against conclusions with schematic variables."
   
 method entails_substL uses rule =
@@ -220,7 +226,7 @@ method check_headL for pat :: "'a::ucamera upred_f" =
   match conclusion in "hyps\<turnstile>_" for hyps :: "'a upred_f" \<Rightarrow> \<open>check_head pat hyps\<close>
 
 method check_moveL for pat :: "'a::ucamera upred_f" =
-  match conclusion in \<open>hyps \<turnstile> _\<close> for hyps :: "'a upred_f" \<Rightarrow>
+  match conclusion in "hyps\<turnstile>_" for hyps :: "'a upred_f" \<Rightarrow>
     \<open> find_pat_sep pat hyps; move_sepL pat\<close>
     
 method check_moveR for pat :: "'a::ucamera upred_f" =
@@ -251,13 +257,13 @@ method check_move_all_both for pat :: "'a::ucamera upred_f" =
   
 text \<open>Moves all hypotheses while duplicating all persistent, then moves again but unchecked to get 
   correct order of hypotheses. Then applies given rule.\<close>
-method iApply uses rule =
+method iApply uses rule = iris_simp,
   match rule[uncurry] in "hyps \<turnstile> _" for hyps \<Rightarrow> \<open>check_move_dupl_all True True hyps, move_sep_all True hyps, 
     subst_pers_keepL rule: rule\<close>
   \<bar> "_ \<Longrightarrow> hyps \<turnstile> _" for hyps \<Rightarrow> \<open>check_move_dupl_all True True hyps, move_sep_all True hyps,
     subst_pers_keepL rule: rule\<close>
-  \<bar> R[curry]: "upred_holds _" \<Rightarrow> \<open>iApply rule: R[to_entailment]\<close>
-  \<bar> R[curry]: "_ \<Longrightarrow> upred_holds _" \<Rightarrow> \<open>iApply rule: R[to_entailment]\<close>
+  \<bar> R[curry]: "upred_holds _" \<Rightarrow> \<open>iApply rule: R[to_entailment] | rule add_holds[OF rule]\<close>
+  \<bar> R[curry]: "_ \<Longrightarrow> upred_holds _" \<Rightarrow> \<open>iApply rule: R[to_entailment]\<close>, iris_simp
 
 text \<open>Looks for the head term in the given pattern and separates matches to the right.\<close>
 method split_pat for pat :: "'a::ucamera upred_f" = repeat_new
@@ -329,46 +335,48 @@ lemma "\<diamondop>(R\<^emph>\<triangleright>(P\<^emph>S\<^emph>Q)) \<turnstile>
 lemma "\<diamondop>(R\<^emph>\<triangleright>(P\<^emph>Q)) \<turnstile> R" apply (split_move_allO "(\<diamondop>\<triangleright>P)\<^emph>\<diamondop>R") oops
 
 text \<open>Uses the rule to do a step and separates arguments based on the pat.\<close>
-method iApply_step' for pat :: "'a::ucamera upred_f" uses rule =
+method iApply_step' for pat :: "'a::ucamera upred_f" uses rule = iris_simp,
   check_move_all True pat, rule split_trans_rule[OF rule[to_entailment]], rule can_be_split_rev,
-  ord_split_pat pat; (simp_all only: upred_sep_assoc_eq)?
+  ord_split_pat pat; iris_simp
 
-method iApply_step for pat :: "'a::ucamera upred_f" uses rule =
+method iApply_step for pat :: "'a::ucamera upred_f" uses rule = iris_simp,
   rule split_trans_rule[OF rule[to_entailment]], rule can_be_split_rev, (* The rule has the order of things reversed. *)
-  split_pat pat; remove_emp
+  split_pat pat; iris_simp
   
 text \<open>Does a transitive step with the given step term and separates arguments based on pat.\<close>
-method iApply_step2' for step pat :: "'a::ucamera upred_f" =
+method iApply_step2' for step pat :: "'a::ucamera upred_f" = iris_simp,
   check_move_all True pat, rule split_trans[where ?Q = step], rule can_be_split_rev,
-  ord_split_pat pat; (simp_all only: upred_sep_assoc_eq)?
+  ord_split_pat pat; iris_simp
 
-method iApply_step2 for step pat :: "'a::ucamera upred_f" =
+method iApply_step2 for step pat :: "'a::ucamera upred_f" = iris_simp,
   rule split_trans[where ?Q = step], rule can_be_split_rev, (* The rule has the order of things reversed. *)
-  split_pat pat; remove_emp
+  split_pat pat; iris_simp
 
 text \<open>Search for a wand with left hand side lhs_pat, obtain the lhs term from other hypotheses
   matching pat and apply the wand to the newly obtained lhs term.\<close>
-method iApply_wand_as_rule for lhs_pat pat :: "'a::ucamera upred_f" =
+method iApply_wand_as_rule for lhs_pat pat :: "'a::ucamera upred_f" = iris_simp,
   check_moveL "lhs_pat-\<^emph>?a_schematic_variable_name_that_noone_would_use_in_setp_pat";
   match conclusion in "_\<^emph>(step_trm-\<^emph>P)\<turnstile>_" for step_trm P :: "'a upred_f" \<Rightarrow>
     \<open>iApply_step2 step_trm pat,
     prefer_last,
       move_sepL step_trm, move_sepL "step_trm-\<^emph>P", subst_pers_keepL rule: upred_wand_apply,
-    defer_tac\<close>
+    defer_tac\<close>, iris_simp
   
-method iExistsL =
-  check_moveL "upred_exists ?P", ((rule pull_exists_antecedentR)+)?; rule upred_existsE';
-    (simp only: upred_sep_assoc_eq)?
+method iExistsL = iris_simp,
+  check_moveL "upred_exists ?P", ((rule pull_exists_antecedentR)+)?; rule upred_existsE',
+  iris_simp
 
-method iExistsR for inst =
+method iExistsR for inst = iris_simp,
   check_moveR "upred_exists ?P"; (unfold pull_exists_eq pull_exists_eq')?; 
-  rule upred_existsI[of _ _ inst]; (simp only: upred_sep_assoc_eq)?
-    
+  rule upred_existsI[of _ _ inst], iris_simp
+
+method iForallR = iris_simp, check_moveR "upred_forall ?P"; rule upred_forallI, iris_simp
+  
 method iPureL =
-  check_moveL "upred_pure ?b", rule upred_pure_impl
+  iris_simp, check_moveL "upred_pure ?b", rule upred_pure_impl, iris_simp
 
 method iPureR = 
-  check_moveR "upred_pure ?b", rule upred_pureI' upred_pureI, (assumption |simp only: simp_thms(6))?
+  iris_simp, check_moveR "upred_pure ?b", rule upred_pureI' upred_pureI, assumption?, iris_simp
   
 method find_applicable_wand for trm :: "'a::ucamera upred_f" =
   match (trm) in "P-\<^emph>Q" for P Q :: "'a upred_f" \<Rightarrow>
@@ -377,47 +385,52 @@ method find_applicable_wand for trm :: "'a::ucamera upred_f" =
     \<open>(check_moveL P, dupl_pers, move_sepL "P-\<^emph>Q") | find_applicable_wand rest\<close>
   \<bar> "rest\<^emph>_" for rest :: "'a upred_f" \<Rightarrow> \<open>find_applicable_wand rest\<close>
 
-method iApply_wand =
+method iApply_wand = iris_simp,
   match conclusion in \<open>hyps \<turnstile> _\<close> for hyps \<Rightarrow>
-    \<open>find_applicable_wand hyps, subst_pers_keepL rule: upred_wand_apply, remove_emp\<close>
+    \<open>find_applicable_wand hyps, subst_pers_keepL rule: upred_wand_apply, iris_simp\<close>
 
-method iFrame_single_safe for trm :: bool  =
+method iFrame_single_safe for trm :: bool = iris_simp,
   match (trm) in \<open>_ \<turnstile> goal\<close> for goal \<Rightarrow>
     \<open> match (goal) in "_\<^emph>P" for P \<Rightarrow> 
         \<open>(check_moveL P; dupl_pers; rule upred_frame upred_emp_left) | iPureR\<close>
-      \<bar> _ \<Rightarrow> 
-        \<open>(move_sepL goal; (rule upred_entails_refl | rule upred_weakeningR)) | iPureR\<close> \<close>
+      \<bar> _ \<Rightarrow>
+        \<open>(check_moveL goal; (rule upred_entails_refl | rule upred_weakeningR)) | iPureR\<close> \<close>,
+  iris_simp
     
 text \<open>Tries to remove the head goal term by either framing or reasoning with iPure and assumptions.\<close>
-method iFrame_single = remove_emp, catch \<open>get_concl "Automation.iFrame_single_safe"\<close> \<open>fail\<close>
+method iFrame_single = iris_simp, get_concl "Automation.iFrame_single_safe", iris_simp
 
-method iExistsR2 =
+method iExistsR2 = iris_simp,
   (check_moveR "upred_exists ?P"; (unfold pull_exists_eq pull_exists_eq')?; 
-  rule upred_exists_lift, rule exI)+, (simp only: upred_sep_assoc_eq)?
+  rule upred_exists_lift, rule exI)+, iris_simp
 
-method later_elim =
+method later_elim = iris_simp,
   check_moveL "\<triangleright> ?P", 
   (rule elim_modal_entails'[OF elim_modal_timeless']
   | rule elim_modal_entails[OF elim_modal_timeless']),
-  log_prog_solver, log_prog_solver (* Once for the timeless goal, once for the is_except_zero goal. *)
+  log_prog_solver, log_prog_solver, (* Once for the timeless goal, once for the is_except_zero goal. *)
+  iris_simp
 
 method iMod_raw methods later fupd uses rule =
-  iApply rule: rule, (prefer_last, (later | fupd)+, defer_tac)?, remove_emp
+  iris_simp, iApply rule: rule, (prefer_last, (later | fupd)+, defer_tac)?, iris_simp
 
 method iMod_raw_wand for lhs_pat pat :: "'a::ucamera upred_f" methods later fupd =
-  iApply_wand_as_rule lhs_pat pat, (prefer_last, (later | fupd)+, defer_tac)?, remove_emp
+  iris_simp, iApply_wand_as_rule lhs_pat pat, (prefer_last, (later | fupd)+, defer_tac)?, iris_simp
 
-method iDestruct_raw =
-  (check_moveL "\<V> (?c::'a::dcamera)", entails_substL rule: upred_entail_eqL[OF discrete_valid])
+method iMod_raw_step for pat :: "'a::ucamera upred_f" methods later fupd uses rule = 
+  iris_simp, iApply_step pat rule: rule; all \<open>((later | fupd)+)?\<close>; iris_simp
+  
+method iDestruct_raw = iris_simp,
+  ((check_moveL "\<V> (?c::'a::dcamera)", entails_substL rule: upred_entail_eqL[OF discrete_valid])
 | iPureL
-| iExistsL
+| iExistsL), iris_simp
 
 text \<open>Applies the given rule and destructs the resulting term.\<close>
 method iDestruct uses rule =
-  iApply rule: rule, (prefer_last, iDestruct_raw+, defer_tac)?, remove_emp
+  iris_simp, iApply rule: rule, (prefer_last, iDestruct_raw+, defer_tac)?, iris_simp
 
 method iDrop for pat :: "'a::ucamera upred_f" =
-  check_moveL pat; rule upred_entails_trans[OF upred_weakeningL]
+  iris_simp, check_moveL pat; rule upred_entails_trans[OF upred_weakeningL], iris_simp
   
 lemma test_lemma: "S \<^emph> (\<box>P) \<^emph> Q \<^emph> ((\<box>P)-\<^emph>\<box>R) \<^emph> (\<triangleright>R) -\<^emph> (\<box>R) \<^emph> (\<triangleright>R) \<^emph> Q"
 apply iIntro
