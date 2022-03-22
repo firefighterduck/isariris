@@ -91,7 +91,7 @@ proof -
       upred_entail_eqR[OF ownE_op_minus[OF assm]], unfolded upred_sep_assoc_eq])
 qed
 
-lemma fupd_mask_trans: " \<Turnstile>{E1,E2}=>\<Turnstile>{E2,E3}=>P \<turnstile> \<Turnstile>{E1,E3}=>P"
+lemma fupd_mask_trans: "\<Turnstile>{E1,E2}=>\<Turnstile>{E2,E3}=>P \<turnstile> \<Turnstile>{E1,E3}=>P"
 unfolding fancy_upd_def
 apply (rule upred_wandI)
 apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm]])

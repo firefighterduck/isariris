@@ -254,7 +254,7 @@ definition timeless :: "'a::ucamera upred_f \<Rightarrow> bool" where "timeless 
 named_theorems timeless_rule
 method timeless_solver = (rule timeless_rule)+
 
-lemma own_timeless' [timeless_rule,log_prog_rule]: "dcamera_val x \<Longrightarrow> timeless (Own x)"
+lemma own_timeless': "dcamera_val x \<Longrightarrow> timeless (Own x)"
   apply (auto simp: timeless_def dcamera_val_def discrete_val_def except_zero_def; transfer) 
   apply (auto simp: n_incl_def)
   apply (metis (mono_tags, lifting) Rep_sprop bot_nat_0.extremum camera_valid_op diff_le_self mem_Collect_eq n_valid_ne)

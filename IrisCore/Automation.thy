@@ -227,7 +227,7 @@ method check_headL for pat :: "'a::ucamera upred_f" =
 
 method check_moveL for pat :: "'a::ucamera upred_f" =
   match conclusion in "hyps\<turnstile>_" for hyps :: "'a upred_f" \<Rightarrow>
-    \<open> find_pat_sep pat hyps; move_sepL pat\<close>
+    \<open>find_pat_sep pat hyps; move_sepL pat\<close>
     
 method check_moveR for pat :: "'a::ucamera upred_f" =
   match conclusion in \<open>_ \<turnstile> goal\<close> for goal :: "'a upred_f" \<Rightarrow>
@@ -297,7 +297,7 @@ text \<open>Linear-time moving that doesn't guarantee the order of the moved par
   or that all parts of the pattern where found. Takes an I-pattern.\<close>
 method split_move for pat :: "'a::ucamera upred_f" =
   rule upred_entails_trans[OF upred_entail_eqL[OF can_be_splitE]], split_log_prog pat,
-  check_not_headL upred_emp, remove_emp
+  check_not_headL upred_emp, remove_emp                                    
   
 method split_move_ord for pat :: "'a::ucamera upred_f" =
   split_move pat, check_move_all True pat
@@ -354,7 +354,7 @@ method iApply_step2 for step pat :: "'a::ucamera upred_f" = iris_simp,
 
 text \<open>Search for a wand with left hand side lhs_pat, obtain the lhs term from other hypotheses
   matching pat and apply the wand to the newly obtained lhs term.\<close>
-method iApply_wand_as_rule for lhs_pat pat :: "'a::ucamera upred_f" = iris_simp,
+method iApply_wand_as_rule for lhs_pat pat :: "'a::ucamera upred_f" = iris_simp, 
   check_moveL "lhs_pat-\<^emph>?a_schematic_variable_name_that_noone_would_use_in_setp_pat";
   match conclusion in "_\<^emph>(step_trm-\<^emph>P)\<turnstile>_" for step_trm P :: "'a upred_f" \<Rightarrow>
     \<open>iApply_step2 step_trm pat,
@@ -408,8 +408,7 @@ method later_elim = iris_simp,
   check_moveL "\<triangleright> ?P", 
   (rule elim_modal_entails'[OF elim_modal_timeless']
   | rule elim_modal_entails[OF elim_modal_timeless']),
-  log_prog_solver, log_prog_solver, (* Once for the timeless goal, once for the is_except_zero goal. *)
-  iris_simp
+  log_prog_solver, log_prog_solver (* Once for the timeless goal, once for the is_except_zero goal. *)
 
 method iMod_raw methods later fupd uses rule =
   iris_simp, iApply rule: rule, (prefer_last, (later | fupd)+, defer_tac)?, iris_simp

@@ -236,7 +236,6 @@ shows "(\<forall>\<^sub>u \<sigma>1 \<kappa> \<kappa>s. ((state_interp \<sigma>1
       (wp s E e2 \<Phi>) \<^emph> ([\<^emph>\<^sub>l:] efs (\<lambda>ef. wp s UNIV ef (\<lambda>_. upred_emp))))))))))
    \<turnstile> wp s E e1 \<Phi>" sorry
 
-
 lemma wp_pure': "\<lbrakk>pure_exec b n e1 e2; b; P \<turnstile> wp s E (fill K e2) Q\<rbrakk> \<Longrightarrow>
   P \<turnstile> wp s E (fill K e1) Q" sorry
 
@@ -280,6 +279,15 @@ lemma wp_cmpxchg_success: "\<lbrakk>v=v1; vals_compare_safe v v1; P \<^emph> (l\
 lemma wp_alloc: "wp s E (Alloc (Val v)) (\<lambda>lv. (\<exists>\<^sub>u l. ((\<upharpoonleft>(lv=#[l])) \<^emph> (l\<mapsto>\<^sub>uv))))"
 sorry
 
+lemma wp_alloc': "(\<And>l. P\<^emph>(l\<mapsto>\<^sub>uv) \<turnstile> wp s E #[l] \<Phi>) \<Longrightarrow> P \<turnstile> wp s E (Alloc (Val v)) \<Phi>"
+sorry
+
+lemma wp_store: "\<triangleright>(l\<mapsto>\<^sub>uv') \<turnstile> wp s E (Store #[l] v) (\<lambda>_. l\<mapsto>\<^sub>uv')"
+sorry
+
+lemma wp_store': "P\<^emph>(l\<mapsto>\<^sub>uv) \<turnstile> wp s E (#[()]) \<Phi> \<Longrightarrow> P\<^emph>(l\<mapsto>\<^sub>uv') \<turnstile> wp s E (Store #[l] v) \<Phi>"
+sorry
+
 lemma wp_frame': "(\<And>x. can_be_split (Q x) (Q' x) P) \<Longrightarrow> (wp s E e Q') \<^emph> P \<turnstile> wp s E e Q"
 sorry  
 
@@ -295,7 +303,7 @@ method fupd_elimL =
     | (rule fupd_mono | rule elim_modal_entails[OF elim_modal_fupd])
     | (rule elim_modal_entails[OF elim_modal_fupd_wp_atomic],log_prog_solver)
     | (rule elim_modal_entails'[OF elim_modal_fupd_wp_atomic],log_prog_solver));
-  remove_emp
+  iris_simp
 
 method iMod uses rule = iMod_raw later_elim fupd_elimL rule: rule
 method iMod_wand for lhs_pat pat :: "'a::ucamera upred_f" = 

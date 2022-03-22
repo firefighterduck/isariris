@@ -335,7 +335,13 @@ lemma upred_later_disj: "\<triangleright>(P\<or>\<^sub>uQ) \<stileturn>\<turnsti
   apply (rule upred_entail_eqI)
   by transfer auto
 
+lemma upred_later_exists: "\<triangleright>(\<exists>\<^sub>u x. P x) = (\<exists>\<^sub>u x. \<triangleright> (P x))"
+  by transfer' simp
+
 lemma pull_exists_antecedent: "(\<exists>\<^sub>u x. (P x \<^emph> Q)) \<turnstile> R \<Longrightarrow> (\<exists>\<^sub>u x. P x) \<^emph> Q \<turnstile> R"
+  by transfer' blast
+
+lemma exists_sep_split: "(\<exists>\<^sub>u x. P x \<^emph> Q x) \<turnstile> (\<exists>\<^sub>u x. P x) \<^emph> (\<exists>\<^sub>u x. Q x)"
   by transfer' blast
 
 lemma pull_exists_eq: "(\<exists>\<^sub>u x. P x) \<^emph> Q = (\<exists>\<^sub>u x. (P x \<^emph> Q))"
@@ -410,6 +416,9 @@ lemma upred_pure_impl': "(P \<Longrightarrow> Q \<turnstile> R) \<Longrightarrow
 lemma upred_pure_sep_conj: "(\<upharpoonleft>b) \<^emph> P \<stileturn>\<turnstile> \<upharpoonleft>b \<and>\<^sub>u P"
   apply (rule upred_entail_eqI)
   by transfer (metis camera_comm n_incl_def n_incl_refl order_refl)
+
+lemma upred_pure_sep_conj': "(\<upharpoonleft>b) \<and>\<^sub>u P = (\<upharpoonleft>b) \<^emph> P"
+  apply transfer by (metis camera_comm le_refl n_incl_def n_incl_refl)
 
 lemma upred_eqI: "\<upharpoonleft>(a=b) \<turnstile> a=\<^sub>ub"
   by transfer (simp add: ofe_refl)

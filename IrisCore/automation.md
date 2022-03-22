@@ -48,3 +48,4 @@ Note: I-pattern = inner pattern, e.g. pattern "P" to transform "later (P\*Q)" in
 * Hint search: needs to traverse all known hints + apply recursive rules to find new ones on demand, actual strategy: first use all hypotheses related hints (e.i. that oly require a certain structure of the hypotheses and doesn't require any goal structure), and only afterwards use goal related rules (until user defined hint is found), does backtrack to find a suitable hint (but doesn't backtrack if proof search step fails), whether a hint is suitable might depend on orthogonal properties
 * Top level tactics do chunks of steps, repeat until stuck/solved
 * Diaframe does not use the IPM environment approach to represent goals but has an own format that is more suitable for automation and single steps
+* Brute force approach: can actually do most rewriting steps/normalizing, only invariant opening/closing, allocation, etc. explicitly necessary
