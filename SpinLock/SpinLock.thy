@@ -1,5 +1,5 @@
 theory SpinLock
-imports "../SpanningTree/Spanning"
+imports "../SpanningTree/Spanning" BruteForceAutomation
 begin
 
 definition newlock :: val where "newlock \<equiv>
@@ -59,8 +59,7 @@ lemma newlock_spec:
   apply (rule upred_entails_refl)
   \<comment> \<open>Cleanup\<close>
   apply (rule fupd_mono)
-  apply (iExistsR \<gamma>)
-  by (iExistsR l)
+  by (iExistsR \<gamma>)
   oops
 
 (* Once again with another wp rule. Is more similar to the Coq version.*)
@@ -77,16 +76,14 @@ lemma newlock_spec:
   apply (iMod_step "?P" rule: inv_alloc[of "lock_inv _ _ R" _ lockN])
   apply (entails_substR rule: upred_laterI)
   apply iExistsR2
-  apply (iFrame2 "?l\<mapsto>\<^sub>u?b") apply frame_single+
-  apply (iExistsR \<gamma>)
-  apply (iExistsR l)
+  apply (iFrame2 "?l\<mapsto>\<^sub>u?b") by frame_single+
   oops
 
 lemma release_spec: 
   "{{ is_lock \<gamma> lk R \<^emph> locked \<gamma> \<^emph> R }} App release lk {{ \<lambda>_. upred_emp }}"  
   \<comment> \<open>Unfold release definition\<close>
   apply (simp add: release_def is_lock_def upred_pure_sep_conj' pull_exists_eq pull_exists_eq')
-  apply (iDestruct rule: wp_pure[OF pure_exec_beta]) apply (auto simp: subst'_def) subgoal for l
+  apply (iDestruct rule: wp_pure[OF pure_exec_beta]) subgoal for l
   \<comment> \<open>Open invaraint\<close>
   apply (iMod rule: inv_acc[to_entailment,OF subset_UNIV])
   \<comment> \<open>Apply wp_store\<close>
@@ -98,6 +95,7 @@ lemma release_spec:
   apply (rule elim_modal_entails'[OF elim_modal_timeless']) apply log_prog_solver+
   apply (iWP rule: wp_store'[simplified])
   \<comment> \<open>Cleanup\<close>
+  apply (entails_substR rule: upred_laterI)
   apply (entails_substR rule: wp_value)
   apply (iApply_wand_as_rule "\<exists>\<^sub>u (x::bool). ?P x" "(?l\<mapsto>\<^sub>u?v)\<^emph>Own ?x\<^emph>R")
   apply (iExistsR False)
@@ -106,7 +104,7 @@ lemma release_spec:
   by frame_single+
   oops 
   
-lemmas newlock_intros[intro] = wp_store'[simplified] 
+lemmas spinlock_intros[intro] = wp_store'[simplified] 
   upred_entails_substE[OF upred_entail_eqL[OF upred_later_sep]]
   wp_pure[OF pure_exec_beta] wp_alloc' upred_entails_trans[OF _ wp_value]
   wp_mono upred_forallI upred_wandI upred_existsE'
@@ -123,26 +121,103 @@ lemma move_pure: "(\<upharpoonleft>b) \<^emph> P = P \<^emph> \<upharpoonleft>b"
 
 lemma move_disj: "P\<^emph>(Q\<or>\<^sub>uR) = (Q\<or>\<^sub>uR) \<^emph> P" by (rule upred_sep_comm)
 
-lemmas new_lock_simps[simp] = subst'_def iris_simp emp_rule pull_exists_eq pull_exists_eq' move_pure
-  move_disj upred_pure_sep_conj' upred_later_exists
+lemmas new_lock_simps[simp] = iris_simp pull_exists_eq pull_exists_eq' move_pure
+  move_disj upred_later_exists
+
+definition diaframe_hint :: "iprop \<Rightarrow> ('b \<Rightarrow> iprop) \<Rightarrow> (iprop \<Rightarrow> iprop) \<Rightarrow> ('a \<Rightarrow> iprop) \<Rightarrow> ('b \<Rightarrow> 'a \<Rightarrow> iprop) \<Rightarrow> bool" where
+  "diaframe_hint H L M A U \<equiv> \<forall>y::'b. (H \<^emph> L y \<turnstile> M (\<exists>\<^sub>u x::'a. A x \<^emph> U y x))"
+
+lemma hintE: "diaframe_hint H L M A U \<Longrightarrow> (\<And>y::'b. (H \<^emph> L y \<turnstile> M (\<exists>\<^sub>u x::'a. A x \<^emph> U y x)))"
+  unfolding diaframe_hint_def by simp
+  
+lemma inv_hint: "diaframe_hint upred_emp (\<lambda>x::'a. \<triangleright>(L x)) (linear_fupd E) (\<lambda>x::'a. inv N (L x)) (\<lambda>_ x::'a. inv N (L x))"
+  apply (auto simp: diaframe_hint_def)
+  apply (iMod rule: inv_alloc[to_entailment])
+  apply iExistsR2
+  apply (rule upred_entails_trans[OF upred_entail_eqR[OF persistent_dupl]])
+  by auto
+
+lemma biabd_hint_apply_aux: 
+  assumes "diaframe_hint H L (fancy_upd E3 E2) A U"
+  shows "H \<^emph> \<Turnstile>{E1,E3}=> (\<exists>\<^sub>u y. L y \<^emph> (\<forall>\<^sub>u x. (U y x) -\<^emph> (G x))) \<turnstile> \<Turnstile>{E1,E2}=> (\<exists>\<^sub>u x. G x \<^emph> A x)"
+  apply (entails_substR rule: fupd_mask_trans[of _ E3])
+  apply (iMod rule: fupd_frame_r[where ?R=H])
+  apply iExistsL
+  apply (iApply rule: hintE[OF assms])
+  apply (iMod rule: fupd_frame_r[where ?R="(\<forall>\<^sub>ux. U _ x -\<^emph> G x)"])
+  apply iExistsL subgoal for y x
+  apply (iExistsR x)
+  apply (rule pull_forall_antecedent')
+  apply (rule upred_entails_trans[OF upred_forall_inst[of _ x]])
+  by auto
+  done
+  
+lemma biabd_hint_apply: 
+assumes "diaframe_hint H L (fancy_upd E3 E2) A U" "\<Delta> \<turnstile> \<Turnstile>{E1,E3}=> (\<exists>\<^sub>u y. L y \<^emph> (\<forall>\<^sub>u x. (U y x) -\<^emph> (G x)))"
+shows "\<Delta> \<^emph> H \<turnstile> \<Turnstile>{E1,E2}=> (\<exists>\<^sub>u x. G x \<^emph> A x)"
+proof -
+  from biabd_hint_apply_aux[OF assms(1)] 
+  have aux: "(\<Turnstile>{E1,E3}=>(\<exists>\<^sub>u y. L y \<^emph> (\<forall>\<^sub>u x. (U y x) -\<^emph> (G x)))) \<^emph> H \<turnstile> (\<Turnstile>{E1,E2}=>(\<exists>\<^sub>ux. G x \<^emph> A x))"
+    apply (subst (2) upred_sep_comm) by simp
+  show ?thesis
+    apply (rule upred_entails_trans[OF upred_sep_mono[OF assms(2) upred_entails_refl[of H]]])
+    by (rule aux)
+qed
+
+lemma biabd_hint_apply': 
+assumes "diaframe_hint H L (fancy_upd E3 E2) (\<lambda>_. A) (\<lambda>y _. U y)" "\<Delta> \<turnstile> \<Turnstile>{E1,E3}=> (\<exists>\<^sub>u y. L y \<^emph> ((U y) -\<^emph> G))"
+shows "\<Delta> \<^emph> H \<turnstile> \<Turnstile>{E1,E2}=> (G \<^emph> A)"
+proof -
+  from assms(2) have "\<Delta> \<turnstile> \<Turnstile>{E1,E3}=> (\<exists>\<^sub>u y. L y \<^emph> (\<forall>\<^sub>u x. ((\<lambda>y _. U y) y x) -\<^emph> G))" 
+    by (simp add: drop_forall)
+  from biabd_hint_apply[OF assms(1) this, unfolded drop_exists] show ?thesis .
+qed
+  
+lemma wp_store_hint:"diaframe_hint upred_emp (\<lambda>_. \<Turnstile>{UNIV,E}=>(\<exists>\<^sub>u v'. (\<triangleright>(l\<mapsto>\<^sub>uv')) \<^emph> (\<triangleright>(((l\<mapsto>\<^sub>uv) ={E,UNIV}=\<^emph> \<Phi> #[()])))))
+  (linear_fupd UNIV) (\<lambda>_. WP (Store #[l] (Val v)) {{ \<Phi> }}) (\<lambda>_ _. upred_emp)"
+  unfolding diaframe_hint_def
+  apply (simp add: drop_exists)
+  apply(entails_substR rule: fupd_intro)
+  apply (rule elim_modal_entails[OF elim_modal_fupd_wp_atomic[OF atomic_store]])
+  apply iExistsL
+  apply (move_sepL "\<triangleright>(?l\<mapsto>\<^sub>u?v)")
+  apply later_elim
+  apply (rule wp_store'[unfolded to_val_simp])
+  apply (rule upred_later_mono_extL)
+  apply (rule upred_entails_trans[OF _ wp_value])
+  by iApply_wand
+  
+lemmas inv_alloc' = biabd_hint_apply[OF inv_hint]
+lemmas store_hint = biabd_hint_apply'[OF wp_store_hint]
+
+lemma combine_exist:"(\<exists>\<^sub>u x. (\<exists>\<^sub>u y. P x y)) = (\<exists>\<^sub>u xy. P ((\<lambda>(x,y). x) xy) ((\<lambda>(x,y). y) xy))"
+  apply transfer' by simp
 
 lemma newlock_spec:
   "{{ upred_emp }} App newlock #[()] {{ \<lambda>lk. \<forall>\<^sub>u R. (R ={UNIV}=\<^emph> (\<exists>\<^sub>u \<gamma>. is_lock \<gamma> lk R)) }}"
-  apply (step | simp)+
+  apply (simp | step)+
   apply (rule add_holds[OF lock_alloc])
-  apply (step | simp)+
-  subgoal for l R \<gamma>
-  apply (rule add_holds[OF inv_alloc[of "lock_inv _ _ R"]])
-  by (step | simp)+ (*apply (step|simp)+ fails btw.*)
+  apply (simp | step)+
+  apply (rule inv_alloc'[where ?G = "\<lambda> _. upred_emp",simplified])
+  apply (entails_substR rule: fupd_intro[to_entailment])
+  apply (simp | step)
+  apply (simp | step)
+  apply (simp | step)
+  apply (simp | step)
   oops
 
-lemma newlock_spec:
-  "{{ upred_emp }} App newlock #[()] {{ \<lambda>lk. \<forall>\<^sub>u R. (R ={UNIV}=\<^emph> (\<exists>\<^sub>u \<gamma>. is_lock \<gamma> lk R)) }}"
-  apply (step | simp)+
-  apply (rule add_holds[OF lock_alloc])
-  apply (step | simp)+
-  apply (rule add_holds[OF inv_alloc[of "lock_inv _ _ _"]])
-  by fastforce
+ML \<open>
+  val x = (HOLogic.case_prod_const (dummyT,dummyT,dummyT))$ Abs ("\<gamma>", dummyT, Abs ("y", dummyT, Bound 0))$
+    Var (("x",0), HOLogic.mk_prodT (dummyT,dummyT))
+  val y = Free ("y", \<^typ>\<open>nat\<close>)
+  val init = Envir.empty 0
+  val z = Unify.unifiers (Context.Proof \<^context>, init, [(y,x)])
+  val a = Seq.pull z
+  val b = Unify.matchers (Context.Proof \<^context>) [(y,x)] |> Seq.pull
+  val _ = Syntax.pretty_term \<^context> x |> Pretty.writeln
+  val e = Thm.beta_conversion true (Thm.cterm_of \<^context> x)
+  val f = Term.could_beta_contract x
+\<close>
 
 lemma move_invR: "inv N Q \<^emph> P = P \<^emph> inv N Q" "P \<^emph> inv N R \<^emph> Q = P \<^emph> Q \<^emph> inv N R"
   apply (rule upred_sep_comm) by (rule upred_sep_comm2_eq)
@@ -157,27 +232,97 @@ lemma move_closerR: "(Q={UNIV - names N,UNIV}=\<^emph>upred_emp) \<^emph> P = P 
   apply (rule upred_sep_comm) by (rule upred_sep_comm2_eq)
   
 method inv_opener = 
-  unfold move_invR, rule upred_entails_substE[OF upred_entail_eqR[OF persistent_dupl]],
-  fast, simp, rule upred_entails_substE[OF inv_acc[to_entailment,OF subset_UNIV]],
-  unfold move_closerL
-  
+  ((unfold move_invR upred_pure_sep_conj')+)?,
+  (rule upred_entails_substE[OF upred_entail_eqR[OF persistent_dupl]]
+  | rule upred_entails_substE'[OF upred_entail_eqR[OF persistent_dupl]]),
+  fast, unfold upred_sep_assoc_eq,
+  (rule upred_entails_substE[OF inv_acc[to_entailment,OF subset_UNIV]]
+  | rule upred_entails_substE'[OF inv_acc[to_entailment,OF subset_UNIV]]),
+  (unfold move_closerL)?
+
 lemma release_spec: 
   "{{ is_lock \<gamma> lk R \<^emph> locked \<gamma> \<^emph> R }} App release lk {{ \<lambda>_. upred_emp }}" 
-  apply (step | simp)+
+  apply (simp | step)+
   apply inv_opener
-  apply (step | simp)+
+  apply (simp | step)+
   unfolding move_closerR
-  apply (step | simp)
-  apply (step | simp)
-  apply (step | simp)
-  apply (step | simp)
-  apply (step | simp)
-  apply simp
-  apply (step | simp)
-  apply (step | simp)
-  apply (step | simp)
-  apply (step | simp)
-  subgoal by (meson upred_entails_trans wp_rules.newlock_intros(103) wp_rules_axioms)
-  by (step | simp)
+  apply (simp | step)
+  apply (simp | step)
+  apply (simp | step)
+  apply (simp | step)
+  apply (simp | step)
+  apply (simp | step)
+  apply (simp | step)
+  apply (simp | step)
+  apply (simp | step)
+  apply (simp | step)
+  subgoal apply (rule split_last_frame) by step+
+  by (simp | step)
+
+declare spinlock_intros[rule del]
+declare new_lock_simps[simp del]
+
+lemma newlock_spec:
+  "{{{ upred_emp }}} App newlock #[()] {{{ \<lambda>lk. \<forall>\<^sub>u R. (R ={UNIV}=\<^emph> (\<exists>\<^sub>u \<gamma>. is_lock \<gamma> lk R)) }}}"
+  \<comment> \<open>Automated steps, mostly to rewrite the goal and apply wp steps.\<close>
+  apply iterate_hyps
+  apply iterate_hyps
+  apply iterate_hyps
+  apply iterate_hyps
+  apply iterate_hyps
+  apply iterate_hyps
+  apply iterate_hyps
+  \<comment> \<open>Now revert the allocation of the invariant.\<close>
+  apply (rule upred_entails_trans[OF _ upred_entails_trans[OF fupd_mono[OF upred_entails_trans[OF upred_exist_mono[OF inv_alloc[to_entailment]] fupd_exists_lift]] fupd_mask_trans]])
+  \<comment> \<open>Split out the points-to fact for further steps (somewhat a normalization).\<close>
+  apply (subst upred_later_exists)
+  apply (rule upred_entails_trans[OF _ fupd_mono[OF upred_exist_mono[OF upred_exist_mono[OF upred_entail_eqR[OF upred_later_sep]]]]])
+  apply (subst pull_exists_switch)
+  \<comment> \<open>Frame the points-to_fact.\<close>
+  apply iterate_hyps
+  \<comment> \<open>Split out the lock owning predicate.\<close>
+  apply (rule upred_entails_trans[OF _ fupd_exists_lift])
+  apply (rule upred_entails_trans[OF _ upred_exist_mono[OF fupd_mono[OF upred_later_mono_extR[OF upred_entails_refl]]]])
+  apply (rule upred_entails_trans[OF _ upred_exist_mono[OF fupd_mask_trans[of UNIV UNIV UNIV]]])
+  apply (rule upred_entails_trans[OF _ upred_exist_mono[OF fupd_mono[OF fupd_frame_l[to_entailment]]]])
+  apply (subst upred_sep_comm)
+  apply (rule upred_entails_trans[OF _ upred_exist_mono[OF fupd_frame_r[to_entailment]]])
+  apply (subst pull_exists_eq[symmetric])
+  apply (subst upred_sep_comm)
+  \<comment> \<open>Revert the allocation of the lock owning predicate.\<close>
+  apply (rule upred_entails_substI[OF upred_entails_trans[OF lock_alloc[to_entailment] upred_exist_mono[OF upd_fupd[to_entailment]]], unfolded locked_def])
+  \<comment> \<open>Cleanup the now trivial remaining goal automatically.\<close>
+  apply iterate_hyps
+  apply iterate_hyps
+  by iterate_hyps
+
+lemma release_spec: 
+  "{{{ is_lock \<gamma> lk R \<^emph> locked \<gamma> \<^emph> R }}} App release lk {{{ \<lambda>_. upred_emp }}}"
+  \<comment> \<open>Automated steps, mostly to rewrite the goal and apply wp steps.\<close>
+  apply iterate_hyps+
+  \<comment> \<open>Make the wp step for Store.\<close>
+  apply (rule upred_entails_trans[OF store_hint[where ?G = upred_emp, unfolded emp_rule to_val_simp] fupd_wp])
+  apply iterate_hyps
+  apply iterate_hyps
+  \<comment> \<open>Open the invariant.\<close>
+  apply (move_sepL "inv ?N ?P")
+  apply (rule upred_entails_substE[OF inv_acc[OF subset_UNIV, to_entailment]])
+  \<comment> \<open>Remove the old points-to fact.\<close>
+  apply iterate_hyps
+  apply (move_sepL "\<triangleright>?P")
+  unfolding upred_later_exists
+  apply iterate_hyps
+  apply (rule upred_entails_substE[OF upred_entail_eqL[OF upred_later_sep], unfolded upred_sep_assoc_eq])
+  apply iterate_hyps
+  \<comment> \<open>Cleanup\<close>
+  apply iterate_hyps
+  apply iterate_hyps
+  apply (move_sepL "?P -\<^emph> ?Q") apply (rule upred_wand_goal) apply (fast intro: frame_rule frame_baseL)
+  apply iterate_hyps
+  apply iterate_hyps
+  apply iterate_hyps
+  apply iterate_hyps
+  apply iterate_hyps
+  oops
 end
 end

@@ -20,6 +20,24 @@ abbreviation WP :: "expr \<Rightarrow> (val \<Rightarrow> iprop) \<Rightarrow> i
 abbreviation hoare :: "iprop \<Rightarrow> expr \<Rightarrow> (val \<Rightarrow> iprop) \<Rightarrow> bool" ("{{ _ }} _ {{ _ }}") where
   "{{ P }} e {{ \<Phi> }} \<equiv> P \<turnstile> WP e {{ \<Phi> }}"
 
+abbreviation texan :: "iprop \<Rightarrow> expr \<Rightarrow> (val \<Rightarrow> iprop) \<Rightarrow> iprop" ("{{{ _ }}} _ {{{ _ }}}") where
+  "{{{ P }}} e {{{ Q }}} \<equiv> \<box>(\<forall>\<^sub>u \<Phi>. P -\<^emph> (\<triangleright>(\<forall>\<^sub>u v. Q v -\<^emph> \<Phi> v)) -\<^emph> WP e {{ \<Phi> }})"
+
+abbreviation texan2 :: "iprop \<Rightarrow> expr \<Rightarrow> stuckness \<Rightarrow> mask \<Rightarrow> (val \<Rightarrow> iprop) \<Rightarrow> iprop" 
+  ("{{{ _ }}} _ @ _ ; _ {{{ _ }}}") where
+  "{{{ P }}} e @ s; E {{{ Q }}} \<equiv> \<box>(\<forall>\<^sub>u \<Phi>. P -\<^emph> (\<triangleright>(\<forall>\<^sub>u v. Q v -\<^emph> \<Phi> v)) -\<^emph> wp s E e \<Phi>)"
+
+lemma texan_to_wp: "{{{ P }}} e @ s; E {{{ Q }}} \<turnstile> (P -\<^emph> wp s E e Q)"
+apply (rule upred_entails_trans[OF upred_persisE])
+apply (rule upred_entails_trans[OF upred_forall_inst[of _ Q]])
+apply (rule upred_wandI)
+apply (iApply rule: upred_wand_apply)
+by (rule upred_true_wand)
+
+lemma "{{{ P }}} e {{{ Q }}} \<Longrightarrow> {{ P }} e {{ Q }}"
+  apply (rule upred_wand_holdsE[unfolded upred_holds_entails])
+  unfolding upred_holds_entails using texan_to_wp upred_entails_trans by blast
+
 text \<open>
   First we show that some basic properties of wp hold for inputs in the domain, then we 
   always assume that all values lie in the domain.
@@ -182,9 +200,8 @@ lemma wp_fupd: "wp s E e (\<lambda>v. \<Turnstile>{E}=> P v) \<turnstile> wp s E
   apply (rule upred_entails_substE[OF upred_forall_inst[of _ P]])
   apply (auto intro!: upred_entails_substE[OF upred_entail_eqL[OF upred_emp_impl]]
     upred_entails_trans[OF upred_wand_apply])
-  apply (rule add_holds[OF upred_holds_forall[OF fupd_mask_mono[of E E, simplified], of P]])
-  apply (subst upred_sep_comm)
-  by (rule upred_wand_apply)
+  apply (simp add: emp_rule)
+  by (rule upred_true_wand) 
   
 lemma wp_mono:
 assumes "(\<And>v. P v \<turnstile> Q v)"
@@ -242,6 +259,10 @@ lemma wp_pure': "\<lbrakk>pure_exec b n e1 e2; b; P \<turnstile> wp s E (fill K 
 lemma wp_pure: "\<lbrakk>pure_exec b n e1 e2; b; P \<turnstile> wp s E e2 Q\<rbrakk> \<Longrightarrow>
   P \<turnstile> wp s E e1 Q" by (rule wp_pure'[where K = "[]", unfolded fill_def, simplified])
 
+lemma wp_pure_step_later: "\<lbrakk>pure_exec b n e1 e2; b\<rbrakk> \<Longrightarrow>
+  (upred_later^^n) (wp s E e2 \<Phi>) \<turnstile> wp s E e1 \<Phi>"
+sorry
+  
 lemma wp_let_bind: "Q \<turnstile> wp s E e (\<lambda>v. wp s E (let: x := (of_val v) in e2 endlet) P) \<Longrightarrow> 
   Q \<turnstile> wp s E (let: x := e in e2 endlet) P" sorry (* Would follow from wp_bind *)
 
@@ -282,10 +303,13 @@ sorry
 lemma wp_alloc': "(\<And>l. P\<^emph>(l\<mapsto>\<^sub>uv) \<turnstile> wp s E #[l] \<Phi>) \<Longrightarrow> P \<turnstile> wp s E (Alloc (Val v)) \<Phi>"
 sorry
 
-lemma wp_store: "\<triangleright>(l\<mapsto>\<^sub>uv') \<turnstile> wp s E (Store #[l] v) (\<lambda>_. l\<mapsto>\<^sub>uv')"
+lemma wp_store_texan: "{{{ \<triangleright>(l\<mapsto>\<^sub>uv') }}} #[l] \<leftarrow> (Val v) @ s; E {{{ \<lambda>_. l\<mapsto>\<^sub>u v }}}"
 sorry
 
-lemma wp_store': "P\<^emph>(l\<mapsto>\<^sub>uv) \<turnstile> wp s E (#[()]) \<Phi> \<Longrightarrow> P\<^emph>(l\<mapsto>\<^sub>uv') \<turnstile> wp s E (Store #[l] v) \<Phi>"
+lemma wp_store: "\<triangleright>(l\<mapsto>\<^sub>uv') \<turnstile> wp s E (Store #[l] v) (\<lambda>_. l\<mapsto>\<^sub>uv)"
+  by (rule upred_wandE[OF upred_entails_trans[OF wp_store_texan[to_entailment] texan_to_wp], unfolded emp_rule])
+
+lemma wp_store': "P\<^emph>(l\<mapsto>\<^sub>uv) \<turnstile> \<triangleright>wp s E (#[()]) \<Phi> \<Longrightarrow> P\<^emph>(l\<mapsto>\<^sub>uv') \<turnstile> wp s E (Store #[l] v) \<Phi>"
 sorry
 
 lemma wp_frame': "(\<And>x. can_be_split (Q x) (Q' x) P) \<Longrightarrow> (wp s E e Q') \<^emph> P \<turnstile> wp s E e Q"
@@ -293,14 +317,14 @@ sorry
 
 lemma wp_frame [frame_rule,log_prog_rule]: "(\<And>x. frame (P x) (Q x) R) \<Longrightarrow> frame (wp s E e P) (wp s E e Q) R"
   unfolding frame_def by (smt (verit) upred_entails_trans wp_frame_simp wp_mono)
-
+  
 text \<open>Because fupds often appear with schematic variables which make matching difficult, we just
   try the different elimination methods.\<close>
 
 method fupd_elimL =
   check_moveL "\<Turnstile>{?E1,?E2}=>?P",
     (rule elim_modal_entails'[OF elim_modal_fupd]
-    | (rule fupd_mono | rule elim_modal_entails[OF elim_modal_fupd])
+    | rule fupd_mono | rule elim_modal_entails[OF elim_modal_fupd]
     | (rule elim_modal_entails[OF elim_modal_fupd_wp_atomic],log_prog_solver)
     | (rule elim_modal_entails'[OF elim_modal_fupd_wp_atomic],log_prog_solver));
   iris_simp

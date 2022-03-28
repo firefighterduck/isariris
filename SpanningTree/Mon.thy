@@ -172,9 +172,7 @@ proof -
   apply (entails_substL rule: upred_sep_comm2L)
   apply (move_sepL "[\<^emph>\<^sub>m] ?P ?m")
   apply (iFrame_single)
-  apply (iExistsR m)
-  apply iPureR
-  by (iFrame_single)+
+  by (iExistsR m)
   done
 qed
 

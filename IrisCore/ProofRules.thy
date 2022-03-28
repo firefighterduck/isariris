@@ -114,6 +114,12 @@ lemma upred_conj_comm2R: "P \<and>\<^sub>u Q \<and>\<^sub>u R = P \<and>\<^sub>u
 lemma upred_conj_assoc: "P \<and>\<^sub>u (Q \<and>\<^sub>u R) = P \<and>\<^sub>u Q \<and>\<^sub>u R"
   by transfer blast
 
+lemma drop_exists: "(\<exists>\<^sub>u x. (P::'a::ucamera upred_f)) = P"
+  by transfer' simp
+
+lemma drop_forall: "(\<forall>\<^sub>u x. (P::'a::ucamera upred_f)) = P"
+  by transfer' simp
+
 lemma upred_sep_comm: "P \<^emph> Q = Q \<^emph> P"
   by transfer (metis (no_types, opaque_lifting) camera_comm)
 
@@ -338,6 +344,9 @@ lemma upred_later_disj: "\<triangleright>(P\<or>\<^sub>uQ) \<stileturn>\<turnsti
 lemma upred_later_exists: "\<triangleright>(\<exists>\<^sub>u x. P x) = (\<exists>\<^sub>u x. \<triangleright> (P x))"
   by transfer' simp
 
+lemma upred_later_forall: "\<triangleright>(\<forall>\<^sub>u x. P x) = (\<forall>\<^sub>u x. \<triangleright> (P x))"
+  by transfer' simp
+
 lemma pull_exists_antecedent: "(\<exists>\<^sub>u x. (P x \<^emph> Q)) \<turnstile> R \<Longrightarrow> (\<exists>\<^sub>u x. P x) \<^emph> Q \<turnstile> R"
   by transfer' blast
 
@@ -350,6 +359,9 @@ lemma pull_exists_eq: "(\<exists>\<^sub>u x. P x) \<^emph> Q = (\<exists>\<^sub>
 lemma pull_exists_eq': "Q \<^emph> (\<exists>\<^sub>u x. P x) = (\<exists>\<^sub>u x. (Q \<^emph> P x))"
   by transfer' blast
 
+lemma pull_exists_switch: "(\<exists>\<^sub>u x y. (Q y \<^emph> P y x)) = (\<exists>\<^sub>u y. Q y \<^emph> (\<exists>\<^sub>u x. P y x))"
+  by transfer' blast
+
 lemma pull_exists_antecedentR: "(\<exists>\<^sub>u x. (Q \<^emph> P x)) \<turnstile> R \<Longrightarrow> Q \<^emph> (\<exists>\<^sub>u x. P x) \<turnstile> R"
   by transfer' blast
   
@@ -357,6 +369,9 @@ lemma pull_exists_antecedent2: "(\<exists>\<^sub>u x. (P x \<^emph> Q \<^emph> Q
   by transfer' blast
 
 lemma pull_forall_antecedent: "(\<forall>\<^sub>u x. (P x \<^emph> Q)) \<turnstile> R \<Longrightarrow> (\<forall>\<^sub>u x. P x) \<^emph> Q \<turnstile> R"
+  by transfer' blast
+
+lemma pull_forall_lift: "(\<forall>\<^sub>u x. P x) \<^emph> Q \<turnstile> (\<forall>\<^sub>u x. (P x \<^emph> Q))"
   by transfer' blast
 
 lemma pull_forall_antecedent': "(\<forall>\<^sub>u x. (Q \<^emph> P x)) \<turnstile> R \<Longrightarrow> Q \<^emph> (\<forall>\<^sub>u x. P x) \<turnstile> R"
@@ -367,6 +382,9 @@ lemma upred_existsE: "(\<forall>x. (P x \<turnstile> Q)) \<Longrightarrow> (\<ex
 
 lemma upred_existsE': "(\<And>x. P x \<turnstile> Q) \<Longrightarrow> (\<exists>\<^sub>u x. P x) \<turnstile> Q"
   by (rule upred_existsE) simp
+
+lemma upred_existsE_ext: "(\<And>x. P \<^emph> Q x \<turnstile> R) \<Longrightarrow> P \<^emph> (\<exists>\<^sub>u x. Q x) \<turnstile> R"
+  by (simp add: pull_exists_antecedentR upred_existsE)
 
 lemma upred_existsE_eq: "((\<exists>\<^sub>u x. P x) \<turnstile> Q) \<longleftrightarrow> (\<forall>x. P x \<turnstile> Q)"
   by transfer blast
@@ -383,8 +401,22 @@ lemma upred_existsI_aut: "(\<And>x. Z x \<longrightarrow> (P \<turnstile> Q x)) 
 lemma upred_exists_lift: "\<exists>x. P \<turnstile> Q x \<Longrightarrow> P \<turnstile> (\<exists>\<^sub>u x. Q x)"
   by transfer' auto
 
+lemma upred_exists_lift': "\<exists>x. P \<turnstile> Q \<^emph> R x \<Longrightarrow> P \<turnstile> Q \<^emph> (\<exists>\<^sub>u x. R x)"
+  by (meson upred_entails_eq upred_entails_trans upred_existsI upred_sep_mono)
+
 lemma pers_forall: "(\<forall>\<^sub>u x. \<box> (P x)) \<stileturn>\<turnstile> \<box> (\<forall>\<^sub>u x. P x)"
   apply (rule upred_entail_eqI) by transfer' simp
+
+lemma upred_exist_mono: "(\<And>x. P x \<turnstile> Q x) \<Longrightarrow> (\<exists>\<^sub>u x. P x) \<turnstile> (\<exists>\<^sub>u x. Q x)"
+proof -
+assume assm: "\<And>x. P x \<turnstile> Q x"
+show ?thesis
+  apply (rule upred_existsE')
+  subgoal for x
+  apply (rule upred_existsI[where ?x = x])
+  using assm by simp
+  done
+qed
 
 lemma upred_forallI: "(\<And>x. P \<turnstile> Q x) \<Longrightarrow> P \<turnstile> (\<forall>\<^sub>u x. Q x)"
   by transfer simp
@@ -392,11 +424,23 @@ lemma upred_forallI: "(\<And>x. P \<turnstile> Q x) \<Longrightarrow> P \<turnst
 lemma upred_forall_inst: "\<And>y. (\<forall>\<^sub>u x. P x) \<turnstile> P y"
   by transfer' blast
 
+lemma upred_forall_mono: "(\<And>x. P x \<turnstile> Q x) \<Longrightarrow> (\<forall>\<^sub>u x. P x) \<turnstile> (\<forall>\<^sub>u x. Q x)"
+  by (meson upred_entails_trans upred_forallI upred_forall_inst)
+
 lemma upred_forall_emp [emp_rule]: "(\<forall>\<^sub>u_. upred_emp) = upred_emp"
   by transfer simp
 
 lemma upred_exists_emp [emp_rule]: "(\<exists>\<^sub>u_. upred_emp) = upred_emp"
   by transfer simp
+
+lemma upred_wand_refl [simp]: "(P -\<^emph> P) = upred_emp"
+  by transfer (metis camera_comm le_refl n_incl_def ofe_eq_limit)
+
+lemma upred_exists_eq: "(\<exists>\<^sub>u x. (\<upharpoonleft>(x=y)) \<and>\<^sub>u P x) = P y"
+  by transfer' simp
+
+lemma upred_exists_eq': "(\<exists>\<^sub>u x. (\<upharpoonleft>(y=x)) \<and>\<^sub>u P x) = P y"
+  by transfer' simp
 
 lemma upred_entails_substE: "\<lbrakk>P\<turnstile>Q; R \<^emph> Q \<turnstile> T\<rbrakk> \<Longrightarrow> R \<^emph> P \<turnstile> T"
   by transfer' (metis camera_comm camera_valid_op n_valid_ne)
@@ -420,6 +464,18 @@ lemma upred_pure_sep_conj: "(\<upharpoonleft>b) \<^emph> P \<stileturn>\<turnsti
 lemma upred_pure_sep_conj': "(\<upharpoonleft>b) \<and>\<^sub>u P = (\<upharpoonleft>b) \<^emph> P"
   apply transfer by (metis camera_comm le_refl n_incl_def n_incl_refl)
 
+lemma upred_exists_eq_sep: "(\<exists>\<^sub>u x. (\<upharpoonleft>(x=y)) \<^emph> P x) = P y"
+  unfolding upred_pure_sep_conj'[symmetric] upred_exists_eq ..
+
+lemma upred_exists_eq_sep': "(\<exists>\<^sub>u x. (\<upharpoonleft>(y=x)) \<^emph> P x) = P y"
+  unfolding upred_pure_sep_conj'[symmetric] upred_exists_eq' ..
+
+lemma upred_exists_eq_sepR: "(\<exists>\<^sub>u x. P x \<^emph> (\<upharpoonleft>(x=y))) = P y"
+  by (subst upred_sep_comm) (rule upred_exists_eq_sep)
+
+lemma upred_exists_eq_sepR': "(\<exists>\<^sub>u x. P x \<^emph> (\<upharpoonleft>(y=x))) = P y"
+  by (subst upred_sep_comm) (rule upred_exists_eq_sep')
+  
 lemma upred_eqI: "\<upharpoonleft>(a=b) \<turnstile> a=\<^sub>ub"
   by transfer (simp add: ofe_refl)
 
@@ -633,7 +689,10 @@ lemma upred_plain_emp [emp_rule]: "\<^item>upred_emp = upred_emp"
   by transfer simp
 
 lemma upred_extend: "P \<turnstile> R \<Longrightarrow> Q \<^emph> P \<turnstile> R" using upred_entails_trans upred_weakeningR by blast
-  
+
+lemma upred_universal_wand: "P \<turnstile> Q y \<Longrightarrow> P \<^emph> (\<forall>\<^sub>u x. Q x -\<^emph> R x) \<turnstile> R y"
+  by (meson upred_entails_substE upred_forall_inst upred_wand_apply')
+
 definition except_zero :: "'a::ucamera upred_f \<Rightarrow> 'a upred_f" ("\<diamondop>_") where 
   "except_zero P \<equiv> P \<or>\<^sub>u \<triangleright>\<upharpoonleft>False"
 

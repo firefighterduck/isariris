@@ -10,9 +10,10 @@ method remove_emp = (simp_all only: upred_sep_assoc_eq emp_rule)?
 named_theorems iris_simp
 
 declare upred_sep_assoc_eq[iris_simp]
+declare emp_rule[iris_simp]
 
 method iris_simp declares iris_simp = 
-  (simp_all add: emp_rule iris_simp)?
+  (simp_all add: iris_simp)?
 
 method log_prog_solver =
   fast intro: log_prog_rule
@@ -20,6 +21,8 @@ method log_prog_solver =
 (* | best intro: log_prog_rule *)
 (*| force intro: log_prog_rule
 | blast 5 intro: log_prog_rule*)
+
+method is_entailment = match conclusion in "_\<turnstile>_" \<Rightarrow> succeed
 
 text \<open>A simple attribute to convert upred_holds predicates into entailments.\<close>
 ML \<open> val to_entailment: attribute context_parser = let 
@@ -91,9 +94,12 @@ method_setup apply_first =
 
 method_setup get_concl = \<open> let 
   fun get_concl m ctxt facts (ctxt',thm) = let
+    fun free_to_var (Free (x, ty)) = (if Variable.is_declared ctxt' x then Free (x,ty) else Var ((x,0),ty))
+      | free_to_var t = t
+    val frees_to_vars = Term.map_aterms free_to_var
     val trm = Thm.prop_of thm
     val concl = (case try (HOLogic.dest_Trueprop o Logic.concl_of_goal trm) 1 of SOME trm' => trm'
-      | NONE => trm)
+      | NONE => trm) |> frees_to_vars
   in
     case concl of Const (\<^const_name>\<open>Pure.prop\<close>,_)$(Const (\<^const_name>\<open>Pure.term\<close>, _ )$_) 
       => CONTEXT_TACTIC all_tac (ctxt',thm)
@@ -140,7 +146,7 @@ method move_sepL for pat :: "'a::ucamera upred_f" =
   match conclusion in \<open>hyps \<turnstile> _\<close> for hyps :: "'a upred_f" \<Rightarrow>
     \<open> match (hyps) in "pat" \<Rightarrow> succeed
       \<bar> "_\<^emph>pat" \<Rightarrow> succeed
-      \<bar> "pat\<^emph>_" \<Rightarrow> \<open>subst upred_sep_comm\<close>
+      \<bar> "pat\<^emph>_" \<Rightarrow> \<open>entails_substL rule: upred_sep_comm\<close>
       \<bar> "_\<^emph>pat\<^emph>_" \<Rightarrow> \<open>entails_substL rule: upred_sep_comm2R\<close>
       \<bar> "pat\<^emph>_\<^emph>_" \<Rightarrow> \<open>entails_substL rule: upred_sep_comm2L; move_sepL pat\<close>
       \<bar> "_\<^emph>pat\<^emph>_\<^emph>_" \<Rightarrow> \<open>entails_substL rule: upred_sep_comm3M; move_sepL pat\<close>
@@ -194,7 +200,6 @@ method move_sep_both for trm :: "'a::ucamera upred_f" =
 method move_sep_all_both for pat :: "'a::ucamera upred_f" =
   move_sep_all True pat, move_sep_all False pat
   
-text \<open>Checked move methods, guaranteed to terminate.\<close>
 method find_pat_sep for pat trm :: "'a::ucamera upred_f" = 
   match (trm) in "pat" \<Rightarrow> succeed
   \<bar> "_\<^emph>pat" \<Rightarrow> succeed
@@ -222,6 +227,7 @@ method check_head for pat trm :: "'a::ucamera upred_f" =
     \<open>match (trm) in "rest\<^emph>head_pat" for rest :: "'a upred_f" \<Rightarrow> \<open>check_head rest_pat rest\<close>\<close>
   \<bar> _ \<Rightarrow> \<open>match (trm) in pat \<Rightarrow> succeed \<bar> "_\<^emph>pat" \<Rightarrow> succeed\<close>
 
+text \<open>Checked move methods, guaranteed to terminate.\<close>
 method check_headL for pat :: "'a::ucamera upred_f" =
   match conclusion in "hyps\<turnstile>_" for hyps :: "'a upred_f" \<Rightarrow> \<open>check_head pat hyps\<close>
 
@@ -389,7 +395,7 @@ method iApply_wand = iris_simp,
   match conclusion in \<open>hyps \<turnstile> _\<close> for hyps \<Rightarrow>
     \<open>find_applicable_wand hyps, subst_pers_keepL rule: upred_wand_apply, iris_simp\<close>
 
-method iFrame_single_safe for trm :: bool = iris_simp,
+method iFrame_single_safe for trm :: bool = iris_simp, print_term trm,
   match (trm) in \<open>_ \<turnstile> goal\<close> for goal \<Rightarrow>
     \<open> match (goal) in "_\<^emph>P" for P \<Rightarrow> 
         \<open>(check_moveL P; dupl_pers; rule upred_frame upred_emp_left) | iPureR\<close>

@@ -58,6 +58,10 @@ apply (auto intro!: upred_entails_substE[OF upred_wand_apply, unfolded upred_sep
 apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm]])
 by auto
 
+lemma fupd_frame_l: "((\<Turnstile>{E1,E2}=> R) \<^emph> P) ={E1,E2}=\<^emph> (P \<^emph> R)"
+  apply (subst (2) upred_sep_comm)
+  by (rule fupd_frame_r)
+
 lemma fupd_frame_split:  "can_be_split P P1 P2 \<Longrightarrow> ((\<Turnstile>{E1,E2}=> P1) \<^emph> P2) ={E1,E2}=\<^emph> P"
   unfolding can_be_split_def 
   using fupd_frame_r fupd_mono upred_entail_eqR upred_entails_wand_holdsR by blast
@@ -68,7 +72,10 @@ apply (auto intro!: upred_entails_trans[OF upred_wand_holdsE[OF fupd_frame_r]] f
 apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm]])
 by simp
 
-lemma fupd_frame [frame_rule,log_prog_rule]: "frame P Q R \<Longrightarrow> frame (\<Turnstile>{E1,E2}=>P) (\<Turnstile>{E1,E2}=>Q) R"
+lemma fupd_frameR [frame_rule,log_prog_rule]: "frame P Q R \<Longrightarrow> frame (\<Turnstile>{E1,E2}=>P) Q (\<Turnstile>{E1,E2}=>R)"
+  unfolding frame_def by (rule fupd_frame_mono)
+
+lemma fupd_frameL [frame_rule,log_prog_rule]: "frame P Q R \<Longrightarrow> frame (\<Turnstile>{E1,E2}=>P) (\<Turnstile>{E1,E2}=>Q) R"
   unfolding frame_def using fupd_frame_mono by (simp add: upred_sep_comm)
 
 lemma fupd_mask_subseteq: "E2 \<subseteq> E1 \<Longrightarrow> \<Turnstile>{E1,E2}=>\<Turnstile>{E2,E1}=>upred_emp"
@@ -196,6 +203,26 @@ apply (subst upred_sep_assoc_eq)
 apply (rule upd_mono)
 apply (entails_substR rule: except_zeroI)
 by iFrame_single+
+
+lemma fupd_trans_frame: "((Q ={E2,E3}=\<^emph> upred_emp) \<^emph> \<Turnstile>{E1,E2}=> (Q\<^emph>P)) ={E1,E3}=\<^emph> P"
+proof -
+  have "\<Turnstile>{E1,E3}=>P \<turnstile> \<Turnstile>{E1,E3}=>P" by simp
+  then have "\<Turnstile>{E1,E3}=>(P \<^emph> upred_emp) \<turnstile> \<Turnstile>{E1,E3}=>P"
+    by (simp add: emp_rule)
+  then have "\<Turnstile>{E1,E2}=>\<Turnstile>{E2,E3}=>(P \<^emph> upred_emp) \<turnstile> \<Turnstile>{E1,E3}=>P"
+    using fupd_mask_trans upred_entails_trans by blast
+  then have "\<Turnstile>{E1,E2}=>(P \<^emph> (\<Turnstile>{E2,E3}=>upred_emp)) \<turnstile> \<Turnstile>{E1,E3}=>P"
+    using fupd_frame_mono fupd_mono upred_entails_refl upred_entails_trans by blast
+  then have "\<Turnstile>{E1,E2}=>(P \<^emph> (Q\<^emph>(Q={E2,E3}=\<^emph>upred_emp))) \<turnstile> \<Turnstile>{E1,E3}=>P"
+    by (meson fupd_mono upred_entails_trans upred_frameL upred_wand_apply)
+  then have "(\<Turnstile>{E1,E2}=>(P \<^emph> Q)) \<^emph> (Q={E2,E3}=\<^emph>upred_emp) \<turnstile> \<Turnstile>{E1,E3}=>P"
+    by (simp add: fupd_frame_r upred_entails_wand_holdsR upred_sep_assoc_eq upred_wand_holdsE)
+  then show ?thesis apply - apply iIntro
+  by (simp add: upred_sep_comm)
+qed
+
+lemma fupd_exists_lift: "(\<exists>\<^sub>u x. \<Turnstile>{E1,E2}=>(P x)) \<turnstile> \<Turnstile>{E1,E2}=>(\<exists>\<^sub>u x. P x)"
+  by (meson fupd_mono upred_entails_refl upred_existsE_eq)
 
 lemma elim_modal_fupd: "elim_modal (\<Turnstile>{E1,E2}=>P) P (\<Turnstile>{E1,E3}=>Q) (\<Turnstile>{E2,E3}=>Q)"
   unfolding elim_modal_def by (simp add: fupd_ext upred_wandE)

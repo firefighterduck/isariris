@@ -62,6 +62,17 @@ lemma can_be_split_except_zero [split_rule]: "can_be_split P Q R \<Longrightarro
   unfolding can_be_split_def using except_zero_sep except_zero_mono
   by (smt (verit, ccfv_threshold) upred_entail_eq_def upred_entails_trans)
 
+lemma framing': "\<lbrakk>can_be_split S T Q; T \<turnstile> P\<rbrakk> \<Longrightarrow> S\<turnstile>P\<^emph>Q"
+  unfolding can_be_split_def upred_entail_eq_def
+  using upred_entails_trans upred_frame by blast
+
+lemma framing'': "can_be_split P Q R \<Longrightarrow> S\<^emph>Q\<turnstile>T \<Longrightarrow> S\<^emph>P\<turnstile>T\<^emph>R"
+  by (metis can_be_split_sepL framing' upred_sep_comm)
+  
+lemma split_last_frame: "can_be_split P Q R \<Longrightarrow> P \<turnstile> R"
+  unfolding can_be_split_def upred_entail_eq_def
+  using upred_entails_trans upred_weakeningR by blast
+
 subsubsection \<open>Framing\<close>
 definition frame :: "('a::ucamera) upred_f \<Rightarrow> 'a upred_f \<Rightarrow> 'a upred_f \<Rightarrow> bool" where
   "frame P Q R \<equiv> Q\<^emph>R \<turnstile> P"
@@ -74,22 +85,23 @@ text \<open>Central lemma of framing.\<close>
 lemma framing: "\<lbrakk>frame P Q R; S \<turnstile> Q\<rbrakk> \<Longrightarrow> S\<^emph>R\<turnstile>P"
   by (simp add: frame_def upred_entails_substE upred_sep_comm)
 
-lemma framing': "\<lbrakk>can_be_split S T Q; T \<turnstile> P\<rbrakk> \<Longrightarrow> S\<turnstile>P\<^emph>Q"
-  unfolding can_be_split_def upred_entail_eq_def
-  using upred_entails_trans upred_frame by blast
-
 lemma framing_emp: "\<lbrakk>frame P Q R; upred_emp \<turnstile> Q\<rbrakk> \<Longrightarrow> R\<turnstile>P"
   using frameE upred_emp_left upred_entails_trans by blast
 
+lemma upred_wand_goal: "\<lbrakk>frame T Q S; P \<turnstile> Q \<^emph> R\<rbrakk> \<Longrightarrow> P \<^emph> (R-\<^emph>S) \<turnstile> T"
+  unfolding frame_def
+  by (smt (verit, ccfv_SIG) upred_entails_wand_holdsR upred_sep_comm upred_sep_comm2_eq upred_wandI 
+    upred_wand_apply upred_wand_holds2E upred_wand_holdsI)
+  
 lemma frame_refl [frame_rule,log_prog_rule]: "frame (P\<^emph>Q) P Q"
   unfolding frame_def by simp  
-  
-lemma frame_baseL: "frame P P upred_emp"
-  unfolding frame_def by (rule upred_weakeningL)
 
 lemma frame_baseR [frame_rule,log_prog_rule]: "frame P upred_emp P"
   unfolding frame_def by (rule upred_weakeningR)
 
+lemma frame_baseL: "frame P P upred_emp"
+  unfolding frame_def by (rule upred_weakeningL)
+  
 lemma can_be_split_frame: "can_be_split P Q R \<Longrightarrow> frame P Q R"
   unfolding can_be_split_def upred_entail_eq_def frame_def by simp
 
@@ -106,11 +118,26 @@ qed
 lemma frame_sepL [frame_rule,log_prog_rule]: "frame P Q R \<Longrightarrow> frame (P\<^emph>S) (Q\<^emph>S) R"
   by (simp add: frame_def upred_frame upred_sep_comm2_eq)
 
+lemma frame_sepL' [frame_rule,log_prog_rule]: "frame S Q R \<Longrightarrow> frame (P\<^emph>S) (P\<^emph>Q) R"
+  by (simp add: frame_def upred_entails_substI upred_sep_assoc_rev)
+
 lemma frame_sepR: "frame P Q R \<Longrightarrow> frame (P\<^emph>S) Q (R\<^emph>S)"
   by (simp add: frame_def upred_frame upred_sep_assoc_eq)
 
 lemma frame_disj [frame_rule,log_prog_rule]: "\<lbrakk>frame P P' Q; frame R R' Q\<rbrakk> \<Longrightarrow> frame (P\<or>\<^sub>uR) (P'\<or>\<^sub>uR') Q"
   unfolding frame_def by transfer metis
+
+lemma frame_exists [frame_rule,log_prog_rule]: "(\<And>x. frame (P x) (Q x) R) \<Longrightarrow> frame (\<exists>\<^sub>u x. P x) (\<exists>\<^sub>u x. Q x) R"
+  unfolding frame_def by transfer' blast
+
+lemma frame_exists' [frame_rule,log_prog_rule]: "frame (P x) (\<exists>\<^sub>u x. Q x) R \<Longrightarrow> frame (\<exists>\<^sub>u x. P x) (\<exists>\<^sub>u x. Q x) R"
+unfolding frame_def apply transfer' by blast
+
+lemma frame_exists2 [frame_rule,log_prog_rule]: "frame (P x) Q R \<Longrightarrow> frame (\<exists>\<^sub>u x. P x) Q R"
+unfolding frame_def apply transfer' by blast
+
+lemma frame_later [frame_rule,log_prog_rule]: "frame P Q R \<Longrightarrow> frame (\<triangleright>P) (\<triangleright>Q) R"
+  unfolding frame_def by (rule upred_later_mono_extL) assumption
 
 method frame_solver = (rule frame_rule)+
   
