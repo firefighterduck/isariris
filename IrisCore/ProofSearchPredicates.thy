@@ -92,7 +92,10 @@ lemma upred_wand_goal: "\<lbrakk>frame T Q S; P \<turnstile> Q \<^emph> R\<rbrak
   unfolding frame_def
   by (smt (verit, ccfv_SIG) upred_entails_wand_holdsR upred_sep_comm upred_sep_comm2_eq upred_wandI 
     upred_wand_apply upred_wand_holds2E upred_wand_holdsI)
-  
+
+lemma frame_rule_apply: "\<lbrakk>T \<turnstile> R;frame P Q R; S \<turnstile> Q\<^emph>T\<rbrakk> \<Longrightarrow> S \<turnstile> P"
+  unfolding frame_def using upred_entails_substI upred_entails_trans by blast
+
 lemma frame_refl [frame_rule,log_prog_rule]: "frame (P\<^emph>Q) P Q"
   unfolding frame_def by simp  
 
@@ -127,13 +130,19 @@ lemma frame_sepR: "frame P Q R \<Longrightarrow> frame (P\<^emph>S) Q (R\<^emph>
 lemma frame_disj [frame_rule,log_prog_rule]: "\<lbrakk>frame P P' Q; frame R R' Q\<rbrakk> \<Longrightarrow> frame (P\<or>\<^sub>uR) (P'\<or>\<^sub>uR') Q"
   unfolding frame_def by transfer metis
 
+lemma frame_existsR [frame_rule, log_prog_rule]: "(\<And>x. frame (P x) Q (R x)) \<Longrightarrow> frame (\<exists>\<^sub>u x. P x) Q (\<exists>\<^sub>u x. R x)"
+  unfolding frame_def apply transfer' by blast
+
+lemma frame_existsR' [frame_rule, log_prog_rule]: "(\<And>x. frame P  Q (R x)) \<Longrightarrow> frame P Q (\<exists>\<^sub>u x. R x)"
+  unfolding frame_def apply transfer' by blast
+
+lemma frame_exists2 [frame_rule,log_prog_rule]: "frame (P x) Q R \<Longrightarrow> frame (\<exists>\<^sub>u x. P x) Q R"
+unfolding frame_def apply transfer' by blast
+  
 lemma frame_exists [frame_rule,log_prog_rule]: "(\<And>x. frame (P x) (Q x) R) \<Longrightarrow> frame (\<exists>\<^sub>u x. P x) (\<exists>\<^sub>u x. Q x) R"
   unfolding frame_def by transfer' blast
 
-lemma frame_exists' [frame_rule,log_prog_rule]: "frame (P x) (\<exists>\<^sub>u x. Q x) R \<Longrightarrow> frame (\<exists>\<^sub>u x. P x) (\<exists>\<^sub>u x. Q x) R"
-unfolding frame_def apply transfer' by blast
-
-lemma frame_exists2 [frame_rule,log_prog_rule]: "frame (P x) Q R \<Longrightarrow> frame (\<exists>\<^sub>u x. P x) Q R"
+lemma frame_exists': "frame (P x) (\<exists>\<^sub>u x. Q x) R \<Longrightarrow> frame (\<exists>\<^sub>u x. P x) (\<exists>\<^sub>u x. Q x) R"
 unfolding frame_def apply transfer' by blast
 
 lemma frame_later [frame_rule,log_prog_rule]: "frame P Q R \<Longrightarrow> frame (\<triangleright>P) (\<triangleright>Q) R"

@@ -257,72 +257,23 @@ lemma release_spec:
   apply (simp | step)
   apply (simp | step)
   subgoal apply (rule split_last_frame) by step+
-  by (simp | step)
+  apply (simp | step)
+  oops
 
 declare spinlock_intros[rule del]
 declare new_lock_simps[simp del]
 
+declare frame_rule_apply[OF upred_entails_trans[OF upred_entails_trans[OF lock_alloc[to_entailment] upred_exist_mono[OF upd_fupd[to_entailment]], unfolded locked_def] fupd_exists_lift], alloc_rule]
+declare upred_later_exists[iris_simp]
+declare upred_entails_trans[OF store_hint[where ?G = upred_emp, unfolded emp_rule to_val_simp] fupd_wp, wp_symbolic_execution_steps]
+declare frame_baseL[frame_rule]
+
 lemma newlock_spec:
   "{{{ upred_emp }}} App newlock #[()] {{{ \<lambda>lk. \<forall>\<^sub>u R. (R ={UNIV}=\<^emph> (\<exists>\<^sub>u \<gamma>. is_lock \<gamma> lk R)) }}}"
-  \<comment> \<open>Automated steps, mostly to rewrite the goal and apply wp steps.\<close>
-  apply iterate_hyps
-  apply iterate_hyps
-  apply iterate_hyps
-  apply iterate_hyps
-  apply iterate_hyps
-  apply iterate_hyps
-  apply iterate_hyps
-  \<comment> \<open>Now revert the allocation of the invariant.\<close>
-  apply (rule upred_entails_trans[OF _ upred_entails_trans[OF fupd_mono[OF upred_entails_trans[OF upred_exist_mono[OF inv_alloc[to_entailment]] fupd_exists_lift]] fupd_mask_trans]])
-  \<comment> \<open>Split out the points-to fact for further steps (somewhat a normalization).\<close>
-  apply (subst upred_later_exists)
-  apply (rule upred_entails_trans[OF _ fupd_mono[OF upred_exist_mono[OF upred_exist_mono[OF upred_entail_eqR[OF upred_later_sep]]]]])
-  apply (subst pull_exists_switch)
-  \<comment> \<open>Frame the points-to_fact.\<close>
-  apply iterate_hyps
-  \<comment> \<open>Split out the lock owning predicate.\<close>
-  apply (rule upred_entails_trans[OF _ fupd_exists_lift])
-  apply (rule upred_entails_trans[OF _ upred_exist_mono[OF fupd_mono[OF upred_later_mono_extR[OF upred_entails_refl]]]])
-  apply (rule upred_entails_trans[OF _ upred_exist_mono[OF fupd_mask_trans[of UNIV UNIV UNIV]]])
-  apply (rule upred_entails_trans[OF _ upred_exist_mono[OF fupd_mono[OF fupd_frame_l[to_entailment]]]])
-  apply (subst upred_sep_comm)
-  apply (rule upred_entails_trans[OF _ upred_exist_mono[OF fupd_frame_r[to_entailment]]])
-  apply (subst pull_exists_eq[symmetric])
-  apply (subst upred_sep_comm)
-  \<comment> \<open>Revert the allocation of the lock owning predicate.\<close>
-  apply (rule upred_entails_substI[OF upred_entails_trans[OF lock_alloc[to_entailment] upred_exist_mono[OF upd_fupd[to_entailment]]], unfolded locked_def])
-  \<comment> \<open>Cleanup the now trivial remaining goal automatically.\<close>
-  apply iterate_hyps
-  apply iterate_hyps
-  by iterate_hyps
+  by brute_force_solver
 
 lemma release_spec: 
   "{{{ is_lock \<gamma> lk R \<^emph> locked \<gamma> \<^emph> R }}} App release lk {{{ \<lambda>_. upred_emp }}}"
-  \<comment> \<open>Automated steps, mostly to rewrite the goal and apply wp steps.\<close>
-  apply iterate_hyps+
-  \<comment> \<open>Make the wp step for Store.\<close>
-  apply (rule upred_entails_trans[OF store_hint[where ?G = upred_emp, unfolded emp_rule to_val_simp] fupd_wp])
-  apply iterate_hyps
-  apply iterate_hyps
-  \<comment> \<open>Open the invariant.\<close>
-  apply (move_sepL "inv ?N ?P")
-  apply (rule upred_entails_substE[OF inv_acc[OF subset_UNIV, to_entailment]])
-  \<comment> \<open>Remove the old points-to fact.\<close>
-  apply iterate_hyps
-  apply (move_sepL "\<triangleright>?P")
-  unfolding upred_later_exists
-  apply iterate_hyps
-  apply (rule upred_entails_substE[OF upred_entail_eqL[OF upred_later_sep], unfolded upred_sep_assoc_eq])
-  apply iterate_hyps
-  \<comment> \<open>Cleanup\<close>
-  apply iterate_hyps
-  apply iterate_hyps
-  apply (move_sepL "?P -\<^emph> ?Q") apply (rule upred_wand_goal) apply (fast intro: frame_rule frame_baseL)
-  apply iterate_hyps
-  apply iterate_hyps
-  apply iterate_hyps
-  apply iterate_hyps
-  apply iterate_hyps
-  oops
+  by brute_force_solver
 end
 end

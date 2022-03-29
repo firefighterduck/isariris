@@ -395,7 +395,7 @@ method iApply_wand = iris_simp,
   match conclusion in \<open>hyps \<turnstile> _\<close> for hyps \<Rightarrow>
     \<open>find_applicable_wand hyps, subst_pers_keepL rule: upred_wand_apply, iris_simp\<close>
 
-method iFrame_single_safe for trm :: bool = iris_simp, print_term trm,
+method iFrame_single_safe for trm :: bool = iris_simp,
   match (trm) in \<open>_ \<turnstile> goal\<close> for goal \<Rightarrow>
     \<open> match (goal) in "_\<^emph>P" for P \<Rightarrow> 
         \<open>(check_moveL P; dupl_pers; rule upred_frame upred_emp_left) | iPureR\<close>

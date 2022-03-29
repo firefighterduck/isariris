@@ -72,12 +72,6 @@ apply (auto intro!: upred_entails_trans[OF upred_wand_holdsE[OF fupd_frame_r]] f
 apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm]])
 by simp
 
-lemma fupd_frameR [frame_rule,log_prog_rule]: "frame P Q R \<Longrightarrow> frame (\<Turnstile>{E1,E2}=>P) Q (\<Turnstile>{E1,E2}=>R)"
-  unfolding frame_def by (rule fupd_frame_mono)
-
-lemma fupd_frameL [frame_rule,log_prog_rule]: "frame P Q R \<Longrightarrow> frame (\<Turnstile>{E1,E2}=>P) (\<Turnstile>{E1,E2}=>Q) R"
-  unfolding frame_def using fupd_frame_mono by (simp add: upred_sep_comm)
-
 lemma fupd_mask_subseteq: "E2 \<subseteq> E1 \<Longrightarrow> \<Turnstile>{E1,E2}=>\<Turnstile>{E2,E1}=>upred_emp"
 proof -
   assume assm: "E2 \<subseteq> E1"
@@ -195,6 +189,21 @@ proof -
   show ?thesis .
 qed
 
+lemma fupd_frameR : "frame P Q R \<Longrightarrow> frame (\<Turnstile>{E1,E2}=>P) Q (\<Turnstile>{E1,E2}=>R)"
+  unfolding frame_def by (rule fupd_frame_mono)
+
+lemma fupd_frame_refl [frame_rule,log_prog_rule]: "frame P Q R \<Longrightarrow> frame (\<Turnstile>{E1,E2}=>P) (\<Turnstile>{E3,E2}=>Q) (\<Turnstile>{E1,E3}=>R)"
+  unfolding frame_def
+  apply (entails_substR rule: fupd_mask_trans)
+  apply (iApply rule: fupd_frame_mono)+
+  by (simp add: upred_sep_comm)
+
+lemma fupd_frame_refl' [frame_rule,log_prog_rule]: "frame P Q R \<Longrightarrow> frame (\<Turnstile>{E1,E2}=>P) (\<Turnstile>{E1,E3}=>Q) (\<Turnstile>{E3,E2}=>R)"
+  using frame_rev fupd_frame_refl by blast
+
+lemma fupd_frameL [frame_rule,log_prog_rule]: "frame P Q R \<Longrightarrow> frame (\<Turnstile>{E1,E2}=>P) (\<Turnstile>{E1,E2}=>Q) R"
+  unfolding frame_def using fupd_frame_mono by (simp add: upred_sep_comm)
+  
 lemma upd_fupd: "(\<Rrightarrow>\<^sub>b P) ={E}=\<^emph> P"
 unfolding fancy_upd_def
 apply iIntro
@@ -230,7 +239,7 @@ lemma elim_modal_fupd: "elim_modal (\<Turnstile>{E1,E2}=>P) P (\<Turnstile>{E1,E
 lemma elim_modal_upd: "elim_modal (\<Rrightarrow>\<^sub>b P) P (\<Turnstile>{E1,E2}=>Q) (\<Turnstile>{E1,E2}=>Q)"
   unfolding elim_modal_def using upd_fupd elim_modal_fupd[unfolded elim_modal_def]
   using fupd_ext upred_entails_wand_holdsR upred_wand_holds2E by blast
-
+  
 abbreviation fancy_step :: "mask \<Rightarrow> mask \<Rightarrow> iprop \<Rightarrow> iprop" ("\<Turnstile>{_}[_]\<triangleright>=>_") where
   "fancy_step Eo Ei Q \<equiv> \<Turnstile>{Eo,Ei}=> \<triangleright> \<Turnstile>{Ei,Eo}=> Q"
 abbreviation fancy_wand_step :: "iprop \<Rightarrow> mask \<Rightarrow> mask \<Rightarrow> iprop \<Rightarrow> iprop" ("_={_}[_]\<triangleright>=\<^emph>_") where
