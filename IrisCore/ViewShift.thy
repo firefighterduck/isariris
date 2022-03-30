@@ -22,6 +22,14 @@ definition view_shift :: "iprop \<Rightarrow> mask \<Rightarrow> mask \<Rightarr
   "view_shift P \<E>\<^sub>1 \<E>\<^sub>2 Q = \<box>(P -\<^emph> \<Turnstile>{\<E>\<^sub>1, \<E>\<^sub>2}=>Q)"
 abbreviation linear_vs :: "iprop \<Rightarrow> mask \<Rightarrow> iprop \<Rightarrow> iprop" ("_ ={_}=>_") where
   "linear_vs P \<E> Q \<equiv> P ={\<E>,\<E>}=> Q"
+
+lemma fupd_ne [upred_ne_rule]: "\<lbrakk>n_equiv n E1 E2; n_equiv n E3 E4; n_equiv n P Q\<rbrakk> \<Longrightarrow>
+  n_equiv n (\<Turnstile>{E1, E3}=>P) (\<Turnstile>{E2, E4}=>Q)"
+  by (auto simp: fancy_upd_def ofe_refl intro!: upred_ne_rule)
+
+lemma vs_ne [upred_ne_rule]: "\<lbrakk>n_equiv n E1 E2; n_equiv n E3 E4; n_equiv n P Q; n_equiv n R S\<rbrakk> \<Longrightarrow>
+  n_equiv n (P={E1, E3}=>R) (Q={E2, E4}=>S)"
+  by (auto simp: view_shift_def intro: upred_ne_rule)
   
 lemma fupd_mono: "P\<turnstile>Q \<Longrightarrow> \<Turnstile>{\<E>\<^sub>1, \<E>\<^sub>2}=>P \<turnstile> \<Turnstile>{\<E>\<^sub>1, \<E>\<^sub>2}=>Q"
 proof -

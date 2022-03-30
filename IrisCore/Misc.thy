@@ -38,6 +38,19 @@ abbreviation sep_fold_multiset :: "iprop multiset \<Rightarrow> iprop" ("[\<^emp
 abbreviation sep_map_multiset :: "iprop \<Rightarrow> iprop multiset \<Rightarrow> iprop" ("[\<^emph>\<^sub># _] _") where
   "sep_map_multiset acc m \<equiv> fold_mset (\<^emph>) acc m"
 
+lemma sep_fold_ne [upred_ne_rule]: 
+  "\<lbrakk>n_equiv n f g; n_equiv n acc1 acc2\<rbrakk> \<Longrightarrow> n_equiv n (foldl (\<lambda>P x. P \<^emph> f x) acc1 l) (foldl (\<lambda>P x. P \<^emph> g x) acc2 l)"
+proof (induction l arbitrary: acc1 acc2)
+  case Nil
+  then show ?case by (simp add: ofe_refl)
+next
+  case (Cons a l)
+  then have "n_equiv n (f a) (g a)" by (auto simp: n_equiv_fun_def)
+  with Cons(3) have "n_equiv n (acc1 \<^emph> f a) (acc2 \<^emph> g a)" 
+    by (auto intro: upred_ne_rule)
+  from Cons(1)[OF Cons(2) this] show ?case by auto
+qed
+
 lemma sep_emp_map_list_entails:
   "\<lbrakk>\<And>x. f x \<turnstile> g x; acc1 \<turnstile> acc2\<rbrakk> \<Longrightarrow> (foldl (\<lambda>P x. P \<^emph> f x) acc1 l) \<turnstile> (foldl (\<lambda>P x. P \<^emph> g x) acc2 l)"
 proof (induction l arbitrary: acc1 acc2)

@@ -9,6 +9,7 @@ session IsarIris = "HOL-Eisbach" +
       "HeapLang"
       "IrisCore"
       "SpanningTree"
+      "SpinLock"
     theories
       "IsarIris"
     document_files

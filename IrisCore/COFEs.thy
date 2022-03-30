@@ -160,4 +160,14 @@ instance apply standard apply (simp add: n_equiv_ne_def lim_ne.rep_eq ne_chain_d
   by (smt (verit, best) Abs_chain_inverse Rep_chain core_compl mem_Collect_eq ne_chain.rep_eq)
 end
 
+subsubsection \<open>Function COFE\<close>
+lift_definition fun_chain :: "('a \<Rightarrow> 'b::ofe) chain \<Rightarrow> 'a \<Rightarrow> 'b chain" is
+  "\<lambda>(c::nat\<Rightarrow>('a\<Rightarrow>'b)) x n. c n x" by (simp add: n_equiv_fun_def)
+
+instantiation "fun" :: (type,cofe) cofe begin
+definition lim_fun :: "('a \<Rightarrow> 'b) chain \<Rightarrow> 'a \<Rightarrow> 'b" where
+  "lim_fun c x = lim (fun_chain c x)"
+instance apply standard apply (simp add: n_equiv_fun_def lim_fun_def fun_chain_def)
+using core_compl by (smt (verit, best) Abs_chain_inverse fun_chain.rep_eq mem_Collect_eq ofe_mono ofe_sym ofe_trans)
+end
 end

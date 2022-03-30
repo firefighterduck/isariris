@@ -14,6 +14,26 @@ function wp :: "stuckness \<Rightarrow> mask \<Rightarrow> expr \<Rightarrow> (v
             (wp s E e2 \<Phi>) \<^emph> ([\<^emph>\<^sub>l:] efs (\<lambda>ef. wp s UNIV ef (\<lambda>_. upred_emp)))))))))))"
 by auto
 
+lift_definition wp_pre :: "stuckness \<Rightarrow> ((mask \<Rightarrow> expr \<Rightarrow> (val \<Rightarrow> iprop) \<Rightarrow> iprop) -c>
+  (mask \<Rightarrow> expr \<Rightarrow> (val \<Rightarrow> iprop) \<Rightarrow> iprop))" is
+  "\<lambda>s wp_arg E e1 \<Phi>. (case HeapLang.to_val e1 of Some v \<Rightarrow> \<Turnstile>{E}=> (\<Phi> v)
+    | None \<Rightarrow> (\<forall>\<^sub>u \<sigma>1 \<kappa> \<kappa>s.
+      ((state_interp \<sigma>1 (\<kappa>@\<kappa>s)) ={E,Set.empty}=\<^emph>
+        ((\<upharpoonleft>(case s of NotStuck \<Rightarrow> reducible e1 \<sigma>1 | _ \<Rightarrow> True)) \<^emph>
+        (\<forall>\<^sub>u e2 \<sigma>2 efs. ((\<upharpoonleft>(prim_step e1 \<sigma>1 \<kappa> e2 \<sigma>2 efs))
+          ={Set.empty}\<triangleright>=\<^emph> (\<Turnstile>{Set.empty,E}=> ((state_interp \<sigma>2 \<kappa>s) \<^emph>
+            (wp_arg E e2 \<Phi>) \<^emph> ([\<^emph>\<^sub>l:] efs (\<lambda>ef. wp_arg UNIV ef (\<lambda>_. upred_emp)))))))))))"
+apply (auto simp: contractive_alt_def contr_contr_alt n_equiv_fun_def split: option.splits nat.splits)
+apply (auto simp: ofe_refl less_Suc_eq_le ofe_mono intro!: upred_ne_rule contractiveE[OF upred_later_contr])
+by (simp add: n_equiv_fun_def ofe_mono)
+
+definition wp_def :: "stuckness \<Rightarrow> mask \<Rightarrow> expr \<Rightarrow> (val \<Rightarrow> iprop) \<Rightarrow> iprop" where
+  "wp_def s \<equiv> fixpoint (wp_pre s)"
+
+lemma wp_unfold: "wp_def s E e P \<stileturn>\<turnstile> Rep_contr (wp_pre s) (wp_def s) E e P"
+  unfolding wp_def_def using upred_eq_entails fixpoint_unfold[of "wp_pre s", unfolded ofe_eq_fun_def]
+  by blast
+
 abbreviation WP :: "expr \<Rightarrow> (val \<Rightarrow> iprop) \<Rightarrow> iprop" ("WP _ {{ _ }}") where
   "WP e {{ \<Phi> }} \<equiv> wp NotStuck UNIV e \<Phi>"
 

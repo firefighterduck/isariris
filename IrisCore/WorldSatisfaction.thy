@@ -47,6 +47,24 @@ definition wsat :: iprop where
     \<^emph> (sep_map_fmdom (\<lambda>\<iota>. (\<triangleright>(the (fmlookup I \<iota>))) \<^emph> ownD {|\<iota>|} \<or>\<^sub>u (ownE {\<iota>})) I)
   )"
 
+lemma own_inv_ne [upred_ne_rule]: "\<lbrakk>n_equiv n \<gamma>1 \<gamma>2; n_equiv n i j\<rbrakk> \<Longrightarrow> n_equiv n (Own\<^sub>i \<gamma>1 i) (Own\<^sub>i \<gamma>2 j)"
+  by (auto simp: own_inv_def constr_inv_def n_equiv_fun_def ofe_refl n_equiv_option_def intro!: upred_ne_rule intro: n_equiv_prod.elims(2))
+
+lemma ownI_ne [upred_ne_rule]: "\<lbrakk>n_equiv n n1 n2; n_equiv n P Q\<rbrakk> \<Longrightarrow> n_equiv n (ownI n1 P) (ownI n2 Q)"
+apply (auto simp: ownI_def ofe_refl n_equiv_map_view_def map_view_auth_proj_def map_view_frag_proj_def 
+  map_view_frag_def view_frag_def n_equiv_fun_def n_equiv_option_def n_equiv_ag.rep_eq to_ag.rep_eq 
+  n_equiv_later_def intro!: upred_ne_rule split: map_view.splits)
+using diff_le_self ofe_mono by blast
+
+lemma inv_raw_ne [upred_ne_rule]: "\<lbrakk>n_equiv n N M; n_equiv n P Q\<rbrakk> \<Longrightarrow> n_equiv n (inv_raw N P) (inv_raw M Q)"
+  by (auto simp: inv_raw_def intro!: upred_ne_rule)
+
+lemma inv_ownE_ne [upred_ne_rule]: "n_equiv n N M \<Longrightarrow> n_equiv n (ownE N) (ownE M)"
+  by (auto simp: ownE_def ofe_refl n_equiv_dset_def d_equiv intro!: upred_ne_rule)
+
+lemma inv_ownD_ne [upred_ne_rule]: "n_equiv n N M \<Longrightarrow> n_equiv n (ownD N) (ownD M)"
+  by (auto simp: ownD_def ofe_refl n_equiv_dfset_def d_equiv intro!: upred_ne_rule)
+  
 lemma pcore_id_inv: "pcore_id_pred (constr_inv \<gamma> (map_view_frag \<iota> DfracDiscarded (Next (pre P)), \<epsilon>, \<epsilon>))"
   unfolding constr_inv_def prod_pcore_id_pred apply (simp add: \<epsilon>_pcore_id_def)
   apply (rule ran_pcore_id_pred) unfolding ran_def apply simp

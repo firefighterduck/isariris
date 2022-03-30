@@ -693,6 +693,9 @@ lemma upred_extend: "P \<turnstile> R \<Longrightarrow> Q \<^emph> P \<turnstile
 lemma upred_universal_wand: "P \<turnstile> Q y \<Longrightarrow> P \<^emph> (\<forall>\<^sub>u x. Q x -\<^emph> R x) \<turnstile> R y"
   by (meson upred_entails_substE upred_forall_inst upred_wand_apply')
 
+lemma upred_eq_entails: "ofe_eq P Q \<Longrightarrow> P \<stileturn>\<turnstile> Q"
+  unfolding upred_entail_eq_def by transfer blast
+
 definition except_zero :: "'a::ucamera upred_f \<Rightarrow> 'a upred_f" ("\<diamondop>_") where 
   "except_zero P \<equiv> P \<or>\<^sub>u \<triangleright>\<upharpoonleft>False"
 
@@ -723,4 +726,7 @@ lemma except_zero_mono_ext: "P\<^emph>Q\<turnstile>R \<Longrightarrow> P\<^emph>
 
 lemma except_zero_bupd: "\<diamondop>\<Rrightarrow>\<^sub>bP\<turnstile>\<Rrightarrow>\<^sub>b\<diamondop>P"
   unfolding except_zero_def by transfer blast
+
+lemma except_zero_ne [upred_ne_rule]: "n_equiv n P Q \<Longrightarrow> n_equiv n (\<diamondop>P) (\<diamondop>Q)"
+  by (auto simp: except_zero_def intro!: upred_ne_rule contractiveE[OF upred_later_contr])
 end

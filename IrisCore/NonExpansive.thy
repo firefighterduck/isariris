@@ -114,6 +114,8 @@ setup_lifting type_definition_contr
 lemmas [simp] = Rep_contr_inverse Rep_contr_inject
 lemmas [simp, intro!] = Rep_contr[unfolded mem_Collect_eq]
 
+type_notation contr (infixr "-c>" 60)
+
 lemma ne_power_contr: "non_expansive ((Rep_contr (f::('a::ofe,'a)contr))^^n)"
   apply (rule non_expansiveI) apply (induction n)
   using Rep_contr[unfolded contractive_def] apply (auto)

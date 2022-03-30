@@ -38,10 +38,10 @@ end
 definition map_upred_ne :: "(('b::ucamera) -n> ('a::ucamera)) \<Rightarrow> (('a upred_f) -n> ('b upred_f))" where
   "map_upred_ne (f::'b-n>'a) = Abs_ne (\<lambda>(x::'a upred_f). Abs_upred_f (\<lambda>(c::'b) n. Rep_upred_f x (Rep_ne f c) n))"
 
-lemma upred_f_ne: "\<lbrakk>n_equiv m (P::('a::ucamera) upred_f) Q; m\<le>n; n_valid x m; Rep_upred_f Q x n\<rbrakk> 
+lemma upred_f_ne: "\<lbrakk>n_equiv m (P::('a::ucamera) upred_f) Q; m\<le>n; n_valid x m; Rep_upred_f P x n\<rbrakk> 
   \<Longrightarrow> Rep_upred_f Q x m"
-  by (transfer; auto simp: n_incl_def) (metis \<epsilon>_left_id camera_comm ofe_refl) 
-
+  apply transfer using n_incl_refl by blast
+  
 subsubsection \<open>upred Functor\<close>
 text \<open>A functor for \<^typ>\<open>'a upred_f\<close> based on sound camera morphisms.\<close>
 context begin
@@ -259,4 +259,38 @@ abbreviation "upred_emp \<equiv> \<upharpoonleft>True"
 
 declare [[coercion upred_holds, coercion_enabled = true]]
 
+subsubsection \<open>Upred n_equiv rules\<close>
+named_theorems upred_ne_rule
+lemma upred_pure_ne [upred_ne_rule]: "(x\<longleftrightarrow>y) \<Longrightarrow> n_equiv n (\<upharpoonleft>x) (\<upharpoonleft>y)" by transfer simp
+lemma upred_eq_ne [upred_ne_rule]: "\<lbrakk>n_equiv n x a; n_equiv n y b\<rbrakk> \<Longrightarrow> n_equiv n (x=\<^sub>ua) (y=\<^sub>ub)"
+  by transfer (auto intro: ofe_mono)
+lemma upred_conj_ne [upred_ne_rule]: "\<lbrakk>n_equiv n P Q; n_equiv n R S\<rbrakk> \<Longrightarrow> n_equiv n (P\<and>\<^sub>uR) (Q\<and>\<^sub>uS)"
+  by transfer simp  
+lemma upred_disj_ne [upred_ne_rule]: "\<lbrakk>n_equiv n P Q; n_equiv n R S\<rbrakk> \<Longrightarrow> n_equiv n (P\<or>\<^sub>uR) (Q\<or>\<^sub>uS)"
+  by transfer simp
+lemma upred_impl_ne [upred_ne_rule]: "\<lbrakk>n_equiv n P Q; n_equiv n R S\<rbrakk> \<Longrightarrow> n_equiv n (P\<longrightarrow>\<^sub>uR) (Q\<longrightarrow>\<^sub>uS)"
+  by transfer simp
+lemma upred_forall_ne [upred_ne_rule]: "(\<And>x. n_equiv n (P x) (Q x)) \<Longrightarrow> n_equiv n (\<forall>\<^sub>u x. P x) (\<forall>\<^sub>u x. Q x)"
+  by transfer' simp  
+lemma upred_exists_ne [upred_ne_rule]: "(\<And>x. n_equiv n (P x) (Q x)) \<Longrightarrow> n_equiv n (\<exists>\<^sub>u x. P x) (\<exists>\<^sub>u x. Q x)"
+  by transfer' simp
+lemma upred_sep_ne [upred_ne_rule]: "\<lbrakk>n_equiv n P Q; n_equiv n R S\<rbrakk> \<Longrightarrow> n_equiv n (P\<^emph>R) (Q\<^emph>S)"
+  by transfer (metis camera_comm camera_valid_op n_valid_ne)  
+lemma upred_wand_ne [upred_ne_rule]: "\<lbrakk>n_equiv n P Q; n_equiv n R S\<rbrakk> \<Longrightarrow> n_equiv n (P-\<^emph>R) (Q-\<^emph>S)"
+  by transfer (metis camera_comm camera_valid_op le_trans)  
+lemma upred_own_ne [upred_ne_rule]: "n_equiv n x y \<Longrightarrow> n_equiv n (Own x) (Own y)"
+  by transfer (meson n_incl_def ofe_sym op_equiv_subst)
+lemma upred_valid_ne [upred_ne_rule]: "n_equiv n x y \<Longrightarrow> n_equiv n (\<V> x) (\<V> y)"
+  apply transfer using camera_props(8) n_equiv_sprop_def by blast
+lemma upred_persis_ne [upred_ne_rule]: "n_equiv n P Q \<Longrightarrow> n_equiv n (\<box>P) (\<box>Q)"
+  by transfer (metis camera_core_n_valid)  
+lemma upred_plain_ne [upred_ne_rule]: "n_equiv n P Q \<Longrightarrow> n_equiv n (\<^item>P) (\<^item>Q)"  
+  apply transfer using \<epsilon>_n_valid by blast
+lemma upred_later_ne: "n_equiv n P Q \<Longrightarrow> n_equiv n (\<triangleright>P) (\<triangleright>Q)"
+  apply transfer by (meson diff_le_self dual_order.trans ne_sprop_weaken ofe_eq_limit valid_raw_non_expansive)
+lemma upred_later_contr: "contractive upred_later"
+  unfolding contractive_def apply transfer
+  by (smt (verit, best) One_nat_def Rep_sprop Suc_pred bot_nat_0.not_eq_extremum diff_le_mono diff_le_self less_Suc_eq_le mem_Collect_eq nle_le)
+lemma upred_bupd_ne [upred_ne_rule]: "n_equiv n P Q \<Longrightarrow> n_equiv n (\<Rrightarrow>\<^sub>bP) (\<Rrightarrow>\<^sub>bQ)"
+  by transfer (meson camera_valid_op order_trans)
 end

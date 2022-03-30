@@ -2,11 +2,11 @@ theory BruteForceAutomation
 imports "../HeapLang/WeakestPrecondition"
 begin
 
-subsection \<open>Brute force automation\<close>
+subsection \<open>Brute auto automation\<close>
 context wp_rules begin
 (*
   General idea: iterate over all hypotheses (i.e. all single iprop terms connected by separating
-  conjunctions), move them to the top and try all rules in a brute force approach.
+  conjunctions), move them to the top and try all rules in a brute auto approach.
   Only backtrack to the next hypothesis if there is nothing that can be done for the
   current hypothesis (plus goal).
   
@@ -70,7 +70,7 @@ lemmas [alloc_rule] =
   frame_rule_apply[OF upred_entails_trans[OF fupd_mono[OF upred_entails_trans[OF upred_exist_mono[OF inv_alloc[to_entailment]] fupd_exists_lift]] fupd_mask_trans]]
   frame_rule_apply[OF upred_entails_trans[OF fupd_mono[OF inv_alloc[to_entailment]] fupd_mask_trans]]
 
-subsubsection \<open>Brute force iteration methods\<close>
+subsubsection \<open>Brute auto iteration methods\<close>
 
 method allocate =
   rule alloc_rule, fast intro: frame_rule, iris_simp?, is_entailment
@@ -97,16 +97,16 @@ method brute_force_hyp =
   intro: log_prog_rule later_elim_hyps(3-5)
   | framing | open_inv)
     
-text \<open>Apply brute force search to all hypotheses by destructuring the antecedent.\<close>
+text \<open>Apply brute auto search to all hypotheses by destructuring the antecedent.\<close>
 method brute_force_hyps for hyps :: iprop =
   match (hyps) in "rest\<^emph>hyp" for rest hyp :: iprop \<Rightarrow> \<open>(move_sepL hyp, brute_force_hyp) | brute_force_hyps rest\<close>
   \<bar> _ \<Rightarrow> \<open>(move_sepL hyps, brute_force_hyp) | last_resort\<close>
 
 text \<open>Get the antecedent from the conclusion entailment term and start the iteration process.\<close>
-method iterate_hyps_safe for concl_trm :: bool = 
+method iterate_hyps_safe for concl_trm :: bool =
   match (concl_trm) in "hyps\<turnstile>_" for hyps :: iprop \<Rightarrow> \<open>brute_force_hyps hyps\<close>
 
-text \<open>Iterate over the hypotheses and apply possible rules in a brute force manner.\<close>
+text \<open>Iterate over the hypotheses and apply possible rules in a brute auto manner.\<close>
 method iterate_hyps =
   iris_simp; get_concl "BruteForceAutomation.wp_rules.iterate_hyps_safe"
 

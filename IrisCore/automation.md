@@ -49,3 +49,10 @@ Note: I-pattern = inner pattern, e.g. pattern "P" to transform "later (P\*Q)" in
 * Top level tactics do chunks of steps, repeat until stuck/solved
 * Diaframe does not use the IPM environment approach to represent goals but has an own format that is more suitable for automation and single steps
 * Brute force approach: can actually do most rewriting steps/normalizing, only invariant opening/closing, allocation, etc. explicitly necessary
+* Brute force approach in detail: 
+    * first simplify (mostly normalizing rewriting like associativity, dropping emp, local definitions and a few optimized simplifications)
+    * then iterate over the hypotheses (i.e. all single terms of the lhs that are separated by a separating conjunction), due to Eisbach match based on hacky term extraction
+    * for each hypothesis: move it to the top (rules are normalized to work on the top hypothesis only), then try automated standard steps (e.g. lifting pures, quantifier elimination, modality elimination on lhs), or framing with this hypothesis, or opening it if it's an invariant
+    * if no hypothesis did allow for any step, try allocating a goal term, dropping modalities in the goal, doing a symbolic execution step (i.e. wp) or framing based on the goal terms
+* Does not use an explicit hint format/recursive hint rules (the latter could be simulated by building wrappers for lemmas to apply, although this could be done better in ML)
+* Backtracking only internally for class instance search and while iterating over hypotheses

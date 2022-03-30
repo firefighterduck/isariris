@@ -366,6 +366,4 @@ next
 fix a b :: "'a auth"
 show "ofe_eq a b = (a = b)" by (cases a; cases b) (auto simp: d_eq)
 qed
-
-
 end

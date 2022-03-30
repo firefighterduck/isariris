@@ -1,4 +1,4 @@
 theory IsarIris
-imports "SpanningTree/Spanning"
+imports "SpinLock/SpinLock"
 begin
 end
