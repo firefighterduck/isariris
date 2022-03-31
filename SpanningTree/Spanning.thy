@@ -39,7 +39,6 @@ method print_exists for trm :: iprop =
 method get_exists = match conclusion in "_ \<turnstile> goal" for goal :: iprop \<Rightarrow> \<open>print_exists goal\<close>
 
 subsubsection \<open>Proofs\<close>
-context wp_rules begin
 lemma wp_try_mark:
 assumes "x\<in>fmdom' g"
 shows "(graph_ctxt \<kappa> g Mrk) \<^emph> (own_graphUR q fmempty) \<^emph> (cinv_own \<kappa> k) \<turnstile>
@@ -217,5 +216,4 @@ have cmpxchg_fail: "\<lbrakk>strict_subgraph' g (gmon_graph G'); fmlookup (of_gr
 show ?thesis apply (iApply rule: try_mark_to_CAS[simplified]) apply (iDrop "graph_ctxt ?x ?y ?z")+
   by (auto intro!: split_cas cmpxchg_suc cmpxchg_fail)
 qed
-end
 end

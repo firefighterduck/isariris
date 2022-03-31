@@ -3,7 +3,6 @@ imports "../HeapLang/WeakestPrecondition"
 begin
 
 subsection \<open>Brute auto automation\<close>
-context wp_rules begin
 (*
   General idea: iterate over all hypotheses (i.e. all single iprop terms connected by separating
   conjunctions), move them to the top and try all rules in a brute auto approach.
@@ -108,8 +107,7 @@ method iterate_hyps_safe for concl_trm :: bool =
 
 text \<open>Iterate over the hypotheses and apply possible rules in a brute auto manner.\<close>
 method iterate_hyps =
-  iris_simp; get_concl "BruteForceAutomation.wp_rules.iterate_hyps_safe"
+  iris_simp; get_concl "BruteForceAutomation.iterate_hyps_safe"
 
 method brute_force_solver = repeat_new \<open>iterate_hyps\<close>
-end
 end

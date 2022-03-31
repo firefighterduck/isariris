@@ -39,7 +39,6 @@ lemma lock_alloc: "\<exists>\<^sub>u \<gamma>.\<Rrightarrow>\<^sub>b (locked \<g
 
 lemmas [iris_simp] = lock_inv_def locked_def is_lock_def newlock_def acquire_def release_def
   
-context wp_rules begin
 lemma newlock_spec:
   "{{ upred_emp }} App newlock #[()] {{ \<lambda>lk. \<forall>\<^sub>u R. (R ={UNIV}=\<^emph> (\<exists>\<^sub>u \<gamma>. is_lock \<gamma> lk R)) }}"
   \<comment> \<open>Unfold newlock definition\<close>
@@ -275,5 +274,4 @@ lemma newlock_spec:
 lemma release_spec: 
   "{{{ is_lock \<gamma> lk R \<^emph> locked \<gamma> \<^emph> R }}} App release lk {{{ \<lambda>_. upred_emp }}}"
   by brute_force_solver
-end
 end

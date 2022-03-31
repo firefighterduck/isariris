@@ -19,6 +19,9 @@ lemma upred_entail_eqR: "P\<stileturn>\<turnstile>Q \<Longrightarrow> Q\<turnsti
 lemma upred_entails_trans: "\<lbrakk>P\<turnstile>Q; Q\<turnstile>R\<rbrakk> \<Longrightarrow> P\<turnstile>R"
   by (auto simp: upred_entails.rep_eq)
 
+lemma upred_entail_eq_trans: "\<lbrakk>P\<stileturn>\<turnstile>Q; Q\<stileturn>\<turnstile>R\<rbrakk> \<Longrightarrow> P\<stileturn>\<turnstile>R"
+  unfolding upred_entail_eq_def using upred_entails_trans by auto
+
 lemma upred_weakeningL: "P\<^emph>Q \<turnstile> P"
   apply transfer using n_incl_def by blast
 

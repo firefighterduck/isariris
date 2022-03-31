@@ -376,6 +376,11 @@ method iExistsR for inst = iris_simp,
   check_moveR "upred_exists ?P"; (unfold pull_exists_eq pull_exists_eq')?; 
   rule upred_existsI[of _ _ inst], iris_simp
 
+method iForallL for inst = iris_simp,
+  check_moveL "upred_forall ?P";
+  rule upred_entails_trans[OF upred_forall_inst[of _ inst]] upred_entails_substE[OF upred_forall_inst[of _ inst]], 
+  iris_simp
+  
 method iForallR = iris_simp, check_moveR "upred_forall ?P"; rule upred_forallI, iris_simp
   
 method iPureL =
