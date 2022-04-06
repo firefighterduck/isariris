@@ -47,7 +47,7 @@ shows "(graph_ctxt \<kappa> g Mrk) \<^emph> (own_graphUR q fmempty) \<^emph> (ci
     ((\<upharpoonleft>(v=#[True])) \<^emph> (\<exists>\<^sub>u u. (((\<upharpoonleft>(fmlookup g x = Some u)) \<^emph> own_graphUR q (x [\<mapsto>\<^sub>g] u)))) \<^emph> is_marked x \<^emph> cinv_own \<kappa> k)
     \<or>\<^sub>u ((\<upharpoonleft>(v=#[False])) \<^emph> own_graphUR q fmempty \<^emph> is_marked x \<^emph> cinv_own \<kappa> k) 
   }}"
-  \<comment> \<open>Unfold the definition of try_mark and start evaluating the load from the let.\<close>
+  \<comment> \<open>Unfold the definition of \<^const>\<open>try_mark\<close> and start evaluating the load from the let.\<close>
   apply (auto simp: try_mark_def graph_ctxt_def subst'_def intro!: wp_pure[OF pure_exec_beta] wp_let_bind'[where C=Fst])
   \<comment> \<open>Open the graph invariant for the atomic load instruction.\<close>
   apply (iMod rule: cinv_acc[OF subset_UNIV])
@@ -65,13 +65,13 @@ shows "(graph_ctxt \<kappa> g Mrk) \<^emph> (own_graphUR q fmempty) \<^emph> (ci
   \<comment> \<open>Move the evaluated value inside the let-in block.\<close>
   apply (iApply rule: wp_pure_let[OF pure_exec_fst, simplified], simp add: subst'_def)
   apply (entails_substR rule: wp_bind'[where C = Snd])
-  \<comment> \<open>Open the graph invariant again for the atomic CAS instruction.\<close>
+  \<comment> \<open>Open the graph invariant again for the atomic \<^const>\<open>CAS\<close> instruction.\<close>
   apply (iMod rule: cinv_acc[OF subset_UNIV])
   apply (subst (3) graph_inv_def)
   apply iExistsL
   apply (iDestruct rule: graph_open[OF assms]) subgoal for G' u' m'
   apply (iDestruct rule: auth_own_graph_valid)
-  \<comment> \<open>Handle the two different possible outcomes of CAS.\<close>
+  \<comment> \<open>Handle the two different possible outcomes of \<^const>\<open>CAS\<close>.\<close>
   apply (cases u') subgoal for u1 u2 u3
   apply (cases u1)
   apply iris_simp
@@ -109,7 +109,7 @@ shows "(graph_ctxt \<kappa> g Mrk) \<^emph> (own_graphUR q fmempty) \<^emph> (ci
   subgoal apply (entails_substR rule: upred_laterI, unfold graph_inv_def)
     apply (iExistsR "fmupd x(ex.Ex (u2, u3)) G'", iPureR)
     using mark_strict_subgraph[OF _ assms] apply blast by (simp add: op_fset_def, iFrame_single+)
-  \<comment> \<open>Evaluate the result of CAS and remove remaining goals.\<close>
+  \<comment> \<open>Evaluate the result of \<^const>\<open>CAS\<close> and remove remaining goals.\<close>
   apply (iWP rule: wp_pure[OF pure_exec_snd])
   apply (entails_substR rule: wp_value, iris_simp)
   apply (iExistsR "(u2,u3)", iFrame_single)

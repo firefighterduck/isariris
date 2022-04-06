@@ -24,7 +24,7 @@ method log_prog_solver =
 
 method is_entailment = match conclusion in "_\<turnstile>_" \<Rightarrow> succeed
 
-text \<open>A simple attribute to convert upred_holds predicates into entailments.\<close>
+text \<open>A simple attribute to convert \<^const>\<open>upred_holds\<close> predicates into entailments.\<close>
 ML \<open> val to_entailment: attribute context_parser = let 
   fun is_upred_holds (Const(\<^const_name>\<open>Trueprop\<close>,_)$(Const(\<^const_name>\<open>upred_holds\<close>,_)$_)) = true
     | is_upred_holds _ = false
@@ -340,7 +340,7 @@ lemma "\<diamondop>(R\<^emph>\<triangleright>(P\<^emph>S\<^emph>Q)) \<turnstile>
 lemma "\<diamondop>(R\<^emph>\<triangleright>(P\<^emph>S\<^emph>Q)) \<turnstile> R" apply (split_moveO "\<box>P") oops (*Strange*)
 lemma "\<diamondop>(R\<^emph>\<triangleright>(P\<^emph>Q)) \<turnstile> R" apply (split_move_allO "(\<diamondop>\<triangleright>P)\<^emph>\<diamondop>R") oops
 
-text \<open>Uses the rule to do a step and separates arguments based on the pat.\<close>
+text \<open>Uses the \<^term>\<open>rule\<close> to do a step and separates arguments based on the \<^term>\<open>pat\<close>.\<close>
 method iApply_step' for pat :: "'a::ucamera upred_f" uses rule = iris_simp,
   check_move_all True pat, rule split_trans_rule[OF rule[to_entailment]], rule can_be_split_rev,
   ord_split_pat pat; iris_simp
@@ -349,7 +349,7 @@ method iApply_step for pat :: "'a::ucamera upred_f" uses rule = iris_simp,
   rule split_trans_rule[OF rule[to_entailment]], rule can_be_split_rev, (* The rule has the order of things reversed. *)
   split_pat pat; iris_simp
   
-text \<open>Does a transitive step with the given step term and separates arguments based on pat.\<close>
+text \<open>Does a transitive step with the given \<^term>\<open>step\<close> and separates arguments based on \<^term>\<open>pat\<close>.\<close>
 method iApply_step2' for step pat :: "'a::ucamera upred_f" = iris_simp,
   check_move_all True pat, rule split_trans[where ?Q = step], rule can_be_split_rev,
   ord_split_pat pat; iris_simp
@@ -358,8 +358,8 @@ method iApply_step2 for step pat :: "'a::ucamera upred_f" = iris_simp,
   rule split_trans[where ?Q = step], rule can_be_split_rev, (* The rule has the order of things reversed. *)
   split_pat pat; iris_simp
 
-text \<open>Search for a wand with left hand side lhs_pat, obtain the lhs term from other hypotheses
-  matching pat and apply the wand to the newly obtained lhs term.\<close>
+text \<open>Search for a wand with left hand side \<^term>\<open>lhs_pat\<close>, obtain the lhs term from other hypotheses
+  matching \<^term>\<open>pat\<close> and apply the wand to the newly obtained lhs term.\<close>
 method iApply_wand_as_rule for lhs_pat pat :: "'a::ucamera upred_f" = iris_simp, 
   check_moveL "lhs_pat-\<^emph>?a_schematic_variable_name_that_noone_would_use_in_setp_pat";
   match conclusion in "_\<^emph>(step_trm-\<^emph>P)\<turnstile>_" for step_trm P :: "'a upred_f" \<Rightarrow>

@@ -187,7 +187,7 @@ end
 
 subsubsection \<open>Prophecy map camera\<close>
 
-text \<open>Unique name for singleton proph_map camera\<close>
+text \<open>Unique name for singleton \<^typ>\<open>heap_lang_proph_map\<close> camera\<close>
 definition "proph_map_name :: gname \<equiv> 4"
 
 abbreviation proph_own :: "heap_lang_proph_map \<Rightarrow> iprop" ("Own\<^sub>p _") where

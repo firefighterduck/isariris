@@ -259,7 +259,7 @@ abbreviation "upred_emp \<equiv> \<upharpoonleft>True"
 
 declare [[coercion upred_holds, coercion_enabled = true]]
 
-subsubsection \<open>Upred n_equiv rules\<close>
+subsubsection \<open>Upred \<^const>\<open>n_equiv\<close> rules\<close>
 named_theorems upred_ne_rule
 lemma upred_pure_ne [upred_ne_rule]: "(x\<longleftrightarrow>y) \<Longrightarrow> n_equiv n (\<upharpoonleft>x) (\<upharpoonleft>y)" by transfer simp
 lemma upred_eq_ne [upred_ne_rule]: "\<lbrakk>n_equiv n x a; n_equiv n y b\<rbrakk> \<Longrightarrow> n_equiv n (x=\<^sub>ua) (y=\<^sub>ub)"

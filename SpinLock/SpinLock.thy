@@ -43,10 +43,10 @@ lemma newlock_spec:
   "{{ upred_emp }} App newlock #[()] {{ \<lambda>lk. \<forall>\<^sub>u R. (R ={UNIV}=\<^emph> (\<exists>\<^sub>u \<gamma>. is_lock \<gamma> lk R)) }}"
   \<comment> \<open>Unfold newlock definition\<close>
   apply (auto simp: newlock_def subst'_def intro!: wp_pure[OF pure_exec_beta])
-  \<comment> \<open>Remove wp based on wp_alloc.\<close>
+  \<comment> \<open>Remove wp based on @{thm wp_alloc}.\<close>
   apply (iApply rule: wp_alloc)
   apply (iDestruct rule: wp_mono)
-  \<comment> \<open>Allocate lock and lock_inv.\<close>
+  \<comment> \<open>Allocate lock and \<^const>\<open>lock_inv\<close>.\<close>
   apply (rule upred_forallI, rule upred_wandI)
   apply (rule add_holds[OF lock_alloc])
   apply iExistsL subgoal for v l R \<gamma>
@@ -85,7 +85,7 @@ lemma release_spec:
   apply (iDestruct rule: wp_pure[OF pure_exec_beta]) subgoal for l
   \<comment> \<open>Open invaraint\<close>
   apply (iMod rule: inv_acc[to_entailment,OF subset_UNIV])
-  \<comment> \<open>Apply wp_store\<close>
+  \<comment> \<open>Apply @{thm wp_store}\<close>
   apply (move_sepL "\<triangleright> ?P")
   unfolding upred_later_exists
   apply iExistsL

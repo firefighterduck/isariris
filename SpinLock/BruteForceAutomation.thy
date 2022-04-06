@@ -5,7 +5,7 @@ begin
 subsection \<open>Brute auto automation\<close>
 (*
   General idea: iterate over all hypotheses (i.e. all single iprop terms connected by separating
-  conjunctions), move them to the top and try all rules in a brute auto approach.
+  conjunctions), move them to the top and try all rules in a brute force auto approach.
   Only backtrack to the next hypothesis if there is nothing that can be done for the
   current hypothesis (plus goal).
   
