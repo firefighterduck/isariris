@@ -336,9 +336,9 @@ lemma timeless_cinv_own: "timeless (cinv_own \<gamma> p)"
   unfolding timeless_def cinv_own_def constr_cinv_def except_zero_def
   by transfer (simp add: n_incl_incl)
 
-lemma cinv_own_valid: "cinv_own \<gamma> q1 -\<^emph> cinv_own \<gamma> q2 -\<^emph> \<upharpoonleft>(q1\<cdot>q2\<le>1)"
+lemma cinv_upred_own_valid: "cinv_own \<gamma> q1 -\<^emph> cinv_own \<gamma> q2 -\<^emph> \<upharpoonleft>(q1\<cdot>q2\<le>1)"
 unfolding cinv_own_def
-apply (rule upred_entails_wand_holdsR2[OF _ own_valid2])
+apply (rule upred_entails_wand_holdsR2[OF _ upred_own_valid2])
 apply (simp add: constr_cinv_def op_prod_def \<epsilon>_left_id op_option_def)
 apply (simp add: upred_entails.rep_eq upred_valid.rep_eq upred_pure.rep_eq prod_n_valid_def \<epsilon>_n_valid)
 apply (simp add: valid_raw_option_def valid_frac[symmetric] split: option.splits)
@@ -347,7 +347,7 @@ by (metis dcamera_valid_iff less_eq_frac.rep_eq one_frac.rep_eq valid_raw_frac.r
 lemma cinv_own_1_l: "cinv_own \<gamma> 1 -\<^emph> cinv_own \<gamma> q -\<^emph> \<upharpoonleft>False"
 proof (rule upred_wand_holds2I)
   from one_op have "(1\<cdot>q \<le> 1) \<longleftrightarrow> False" by (simp add: less_le_not_le)
-  with upred_wand_holds2E[OF cinv_own_valid, of \<gamma> 1 q] show "cinv_own \<gamma> 1 \<^emph> cinv_own \<gamma> q \<turnstile> \<upharpoonleft>False" 
+  with upred_wand_holds2E[OF cinv_upred_own_valid, of \<gamma> 1 q] show "cinv_own \<gamma> 1 \<^emph> cinv_own \<gamma> q \<turnstile> \<upharpoonleft>False" 
     by simp
 qed
 

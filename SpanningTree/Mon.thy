@@ -30,7 +30,7 @@ lemma is_marked_split: "Own\<^sub>m(fragm {|l|}) = Own\<^sub>m(fragm {|l|} \<cdo
 
 lemma dup_marked: "is_marked l \<stileturn>\<turnstile> is_marked l \<^emph> is_marked l"
 proof -
-from own_op have "Own (constr_markings marking_name (fragm {|l|}) \<cdot> 
+from upred_own_op have "Own (constr_markings marking_name (fragm {|l|}) \<cdot> 
   constr_markings marking_name (fragm {|l|})) \<stileturn>\<turnstile> (Own\<^sub>m(fragm {|l|})) \<^emph> Own\<^sub>m(fragm {|l|})" 
   by auto
 then have "Own(constr_markings marking_name (fragm {|l|}\<cdot>fragm {|l|})) \<stileturn>\<turnstile> Own\<^sub>m(fragm {|l|}) \<^emph> Own\<^sub>m(fragm {|l|})" 
@@ -178,15 +178,15 @@ qed
 
 lemma auth_own_graph_valid: "Own\<^sub>g (full (Some (G,q))) \<turnstile> \<V> G"
 apply (auto simp: constr_graph_def)
-apply (entails_substL rule: own_valid)
+apply (entails_substL rule: upred_own_valid)
 apply transfer'
 by (auto simp: \<epsilon>_n_valid prod_n_valid_def valid_raw_option_def)
 
 lemma new_marked: "(Own\<^sub>m (full m)) ={E}=\<^emph> (Own\<^sub>m (full (m\<cdot>{|l|})) \<^emph> is_marked l)"
 apply iIntro
 unfolding is_marked_def constr_markings_def
-apply (entails_substR rule: fupd_mono[OF upred_entail_eqL[OF own_op]])
-apply (rule upred_entails_trans[OF upred_wand_holdsE[OF own_update] upred_wand_holdsE[OF upd_fupd]])
+apply (entails_substR rule: fupd_mono[OF upred_entail_eqL[OF upred_own_op]])
+apply (rule upred_entails_trans[OF upred_wand_holdsE[OF upred_own_update] upred_wand_holdsE[OF upd_fupd]])
 apply (auto simp: camera_upd_def prod_n_valid_def op_prod_def \<epsilon>_left_id)
 sorry
 

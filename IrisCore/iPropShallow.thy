@@ -16,9 +16,6 @@ begin
 
 type_synonym 'a pre_inv = "(name, 'a later) map_view \<times> name dset \<times> name dfset"
 
-(* Index into resource maps to allow more than one instance of a camera *)
-type_synonym gname = nat
-
 ML \<open>
   local
   type camera_data = {
@@ -188,4 +185,42 @@ lemma iprop_fp: "iProp (pre P) = P" sorry
 declare [[coercion iProp]]
 
 lemma n_equiv_pre [simp]: "n_equiv n (pre P) (pre Q) \<longleftrightarrow> n_equiv n P Q" sorry
+
+text \<open>inG instance examples\<close>
+context begin
+interpretation idInG: inG "\<lambda>\<gamma> (m::gname \<rightharpoonup> 'a::camera). m \<gamma>" "\<lambda>\<gamma> x. [\<gamma>\<mapsto>x]"
+apply (auto simp: d_equiv inG_def prod_n_valid_def \<epsilon>_n_valid op_prod_def
+  \<epsilon>_left_id intro: non_expansiveI)
+by (auto simp: pcore_prod_def pcore_fun_def \<epsilon>_fun_def \<epsilon>_option_def pcore_option_def comp_def split: option.splits)
+  
+global_interpretation lockInG: inG get_lock constr_lock
+apply (auto simp: get_lock_def constr_lock_def d_equiv inG_def prod_n_valid_def \<epsilon>_n_valid op_prod_def
+  \<epsilon>_left_id intro: non_expansiveI)
+by (auto simp: pcore_prod_def pcore_fun_def \<epsilon>_fun_def \<epsilon>_option_def pcore_option_def comp_def constr_lock_def split: option.splits)
+
+interpretation graphInG: inG get_graph constr_graph
+apply (auto simp: get_graph_def constr_graph_def d_equiv inG_def prod_n_valid_def \<epsilon>_n_valid op_prod_def
+  \<epsilon>_left_id intro: non_expansiveI)
+by (auto simp: pcore_prod_def pcore_fun_def \<epsilon>_fun_def \<epsilon>_option_def pcore_option_def comp_def constr_graph_def split: option.splits)
+
+private lemma testlemma: "inG (getter::gname\<Rightarrow>'a::ucamera\<Rightarrow>lockG option) put
+  \<Longrightarrow> 1=2" sorry
+  
+thm testlemma[OF lockInG.inG_axioms]
+
+context
+fixes getl :: "gname \<Rightarrow> 'a::ucamera \<Rightarrow> lockG option"
+  and putl
+  and getg :: "gname \<Rightarrow> 'a \<Rightarrow> graphUR auth option"
+  and putg
+assumes lock_in: "inG getl putl" 
+  and graph_in: "inG getg putg"
+begin
+  lemma testlemma2: False sorry
+  definition some_prop :: "'a upred_f" where "some_prop \<equiv> Own putl 0 (Ex ())"
+end
+
+thm testlemma2[OF lockInG.inG_axioms graphInG.inG_axioms]
+term "some_prop constr_lock"
+end
 end

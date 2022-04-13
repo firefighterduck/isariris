@@ -216,7 +216,7 @@ proof -
 qed
 
 lift_definition upred_own :: "'a \<Rightarrow> 'a upred_f" ("Own(_)") is "\<lambda>(a::'a) b n. n_incl n a b" 
-unfolding n_incl_def using camera_assoc op_equiv_subst by metis
+  unfolding n_incl_def using camera_assoc op_equiv_subst by metis
 
 lift_definition upred_valid :: "'b::camera \<Rightarrow> 'a upred_f" ("\<V>(_)") is "\<lambda>(a::'b) (_::'a). n_valid a" 
   using Rep_sprop n_incl_def by blast
@@ -277,7 +277,7 @@ lemma upred_exists_ne [upred_ne_rule]: "(\<And>x. n_equiv n (P x) (Q x)) \<Longr
 lemma upred_sep_ne [upred_ne_rule]: "\<lbrakk>n_equiv n P Q; n_equiv n R S\<rbrakk> \<Longrightarrow> n_equiv n (P\<^emph>R) (Q\<^emph>S)"
   by transfer (metis camera_comm camera_valid_op n_valid_ne)  
 lemma upred_wand_ne [upred_ne_rule]: "\<lbrakk>n_equiv n P Q; n_equiv n R S\<rbrakk> \<Longrightarrow> n_equiv n (P-\<^emph>R) (Q-\<^emph>S)"
-  by transfer (metis camera_comm camera_valid_op le_trans)  
+  by transfer (metis camera_comm camera_valid_op le_trans)
 lemma upred_own_ne [upred_ne_rule]: "n_equiv n x y \<Longrightarrow> n_equiv n (Own x) (Own y)"
   by transfer (meson n_incl_def ofe_sym op_equiv_subst)
 lemma upred_valid_ne [upred_ne_rule]: "n_equiv n x y \<Longrightarrow> n_equiv n (\<V> x) (\<V> y)"

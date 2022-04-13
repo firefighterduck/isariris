@@ -1,5 +1,5 @@
 theory ProofSearchPredicates
-imports ProofRules
+imports Own
 begin
 
 subsection \<open>Predicates that guide the proof search\<close>
@@ -180,10 +180,20 @@ lemma persistent_valid [pers_rule,log_prog_rule]: "persistent (\<V>(a))"
 lemma persistent_core_own [pers_rule,log_prog_rule]: "persistent (Own(a::'a::{core_id,ucamera}))"
   by (auto simp: persistent_def upred_persis.rep_eq upred_entails.rep_eq upred_own.rep_eq core_id)
 
-lemma persistent_core_own2 [pers_rule,log_prog_rule]: "pcore_id_pred (a::'a::ucamera) \<Longrightarrow> persistent (Own a)"
+lemma persistent_core_upred_own2 [pers_rule,log_prog_rule]: "pcore_id_pred (a::'a::ucamera) \<Longrightarrow> persistent (Own a)"
   unfolding persistent_def upred_persis.rep_eq upred_entails.rep_eq upred_own.rep_eq core_id_pred
   using camera_core_mono_n by fastforce
 
+context fixes get_cmra :: "gname \<Rightarrow> 'a::ucamera \<Rightarrow> 'b::total_camera option"
+  and put_cmra :: "gname \<Rightarrow> 'b \<Rightarrow> 'a"
+  assumes inG: "inG get_cmra put_cmra"
+begin
+lemma persistent_core_own2 [pers_rule,log_prog_rule]: 
+  "pcore_id_pred a \<Longrightarrow> persistent (own put_cmra \<gamma> a)"
+  unfolding inG.own_def[OF inG]
+  using pcore_id_put[OF inG] persistent_core_upred_own2 by auto
+end
+  
 lemma persistent_eq [pers_rule,log_prog_rule]: "persistent (a=\<^sub>ub)"
   unfolding persistent_def by transfer simp
 

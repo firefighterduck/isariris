@@ -86,7 +86,7 @@ lemma points_to_valid:
   "(l \<mapsto>{dq} v) -\<^emph> \<upharpoonleft>(valid dq)"
 proof -
   have "(l \<mapsto>{dq} v) \<turnstile> \<V>(constr_heap heap_name (\<circle>V [l\<mapsto>(dq,to_ag (Some v))]))" 
-    by (auto simp: points_to_def own_valid map_view_frag_def)
+    by (auto simp: points_to_def upred_own_valid map_view_frag_def)
   moreover have "\<V>(constr_heap heap_name (\<circle>V [l\<mapsto>(dq,to_ag (Some v))])) \<turnstile> 
     \<V>((\<circle>V [l\<mapsto>(dq,to_ag (Some v))])::heap_lang_heap)"
     using iprop_heap_valid by blast
@@ -100,7 +100,7 @@ proof -
   have "upred_holds ((l \<mapsto>{dq1} v1) -\<^emph> ((l \<mapsto>{dq2} v2)) -\<^emph> 
     \<V>(constr_heap heap_name (\<circle>V [l\<mapsto>(dq1, to_ag (Some v1))]) \<cdot> 
     constr_heap heap_name (\<circle>V [l\<mapsto>(dq2, to_ag (Some v2))])))"
-    apply (simp add: points_to_def) using own_valid2 by (metis map_view_frag_def)
+    apply (simp add: points_to_def) using upred_own_valid2 by (metis map_view_frag_def)
   then have "upred_holds ((l \<mapsto>{dq1} v1) -\<^emph> ((l \<mapsto>{dq2} v2)) -\<^emph> 
     \<V>(constr_heap heap_name (\<circle>V ([l\<mapsto>(dq1, to_ag (Some v1))\<cdot>(dq2, to_ag (Some v2))]))))"
     apply (simp add: \<epsilon>_left_id op_prod_def constr_heap_def op_map_view_def map_view_auth_proj_def
@@ -127,7 +127,7 @@ lemma points_to_combine_same:"((l \<mapsto>{dq1} v)) \<^emph> (l \<mapsto>{dq2} 
   apply (unfold heap_op_val_eq[symmetric])
   apply (unfold constr_heap_def)
   apply simp
-  apply (rule upred_entails_trans[OF upred_entail_eqR[OF own_op]])
+  apply (rule upred_entails_trans[OF upred_entail_eqR[OF upred_own_op]])
   by (auto simp: op_map_view_def op_prod_def \<epsilon>_left_id map_view_auth_proj_def map_view_frag_proj_def
     \<epsilon>_map_view_def op_option_def \<epsilon>_option_def)
 
@@ -159,7 +159,7 @@ proof -
   then have base: "upred_holds ((l1 \<mapsto>{dq1} v1) -\<^emph> ((l2 \<mapsto>{dq2} v2)) -\<^emph> 
     \<upharpoonleft>(valid (constr_heap heap_name (\<circle>V [l1\<mapsto>(dq1,to_ag (Some v1))]) \<cdot> 
     constr_heap heap_name (\<circle>V [l2\<mapsto>(dq2,to_ag (Some v2))]))))"
-    using upred_wand_holds2I[OF upred_entails_trans[OF upred_wand_holds2E[OF own_valid2]]] points_to_def
+    using upred_wand_holds2I[OF upred_entails_trans[OF upred_wand_holds2E[OF upred_own_valid2]]] points_to_def
     by (smt (verit) map_view_frag_def)
   from assms have "valid ((\<circle>V [l1\<mapsto>(dq1,to_ag (Some v1))]) \<cdot> (\<circle>V [l2\<mapsto>(dq2,to_ag (Some v2))])) 
     \<Longrightarrow> l1\<noteq>l2"

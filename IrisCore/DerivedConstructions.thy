@@ -65,6 +65,9 @@ lemma n_incl_prod[simp]: "n_incl n (a,b) (x,y) = (n_incl n a x \<and> n_incl n b
 lemma prod_valid_def: "valid (x,y) \<longleftrightarrow> valid x \<and> valid y"
   by (auto simp: valid_raw_prod_def valid_def sprop_conj.rep_eq)
 
+lemma prod_validI: "\<lbrakk>valid x; valid y\<rbrakk> \<Longrightarrow> valid (x,y)"
+  by (auto simp: valid_raw_prod_def valid_def sprop_conj.rep_eq)
+
 lemma prod_n_valid_def: "n_valid (x,y) n \<longleftrightarrow> n_valid x n \<and> n_valid y n"
   by (auto simp: valid_raw_prod_def valid_def sprop_conj.rep_eq)
 
@@ -733,6 +736,9 @@ lemma singleton_map_valid [simp]: "valid [k\<mapsto>v] \<longleftrightarrow> val
 
 lemma singleton_map_op [simp]: "[k\<mapsto>v] \<cdot> [k\<mapsto>v'] = [k\<mapsto>(v\<cdot>v')]"
   by (auto simp: op_fun_def op_option_def)
+
+lemma singleton_map_n_equiv [intro]: "n_equiv n x y \<Longrightarrow> n_equiv n [k\<mapsto>x] [k\<mapsto>y]"
+  by (auto simp: n_equiv_fun_def n_equiv_option_def)
 
 lemma singleton_map_n_incl: "n_incl n [k\<mapsto>v] m \<longleftrightarrow> (\<exists> v' c. m k = Some v' \<and> n_equiv n (Some v') (Some v\<cdot>c))"
 proof 

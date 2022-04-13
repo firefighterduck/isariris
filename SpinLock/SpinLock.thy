@@ -15,26 +15,26 @@ definition "lock_name :: gname \<equiv> 7"
 definition lockN :: namespace where "lockN \<equiv> add_name nroot (string_to_name ''spin_lock'')"
 
 definition lock_inv :: "gname \<Rightarrow> loc \<Rightarrow> iprop \<Rightarrow> iprop" where
-  "lock_inv \<gamma> l R \<equiv> \<exists>\<^sub>u b. l\<mapsto>\<^sub>u#[b] \<^emph> (\<upharpoonleft>b \<or>\<^sub>u (\<upharpoonleft>(\<not>b) \<^emph> Own (constr_lock \<gamma> (Ex ())) \<^emph> R))"
+  "lock_inv \<gamma> l R \<equiv> \<exists>\<^sub>u b. l\<mapsto>\<^sub>u#[b] \<^emph> (\<upharpoonleft>b \<or>\<^sub>u (\<upharpoonleft>(\<not>b) \<^emph> (own constr_lock \<gamma> (Ex ())) \<^emph> R))"
 
 definition is_lock :: "gname \<Rightarrow> val \<Rightarrow> iprop \<Rightarrow> iprop" where
   "is_lock \<gamma> lk R \<equiv> \<exists>\<^sub>u l. \<upharpoonleft>(lk=#[l]) \<and>\<^sub>u inv lockN (lock_inv \<gamma> l R)"
 
-definition "locked \<gamma> \<equiv> Own (constr_lock \<gamma> (Ex ()))"
+definition "locked \<gamma> \<equiv> own constr_lock \<gamma> (Ex ())"
 
 lemma is_lock_pers: "persistent (is_lock \<gamma> lk R)" 
   unfolding is_lock_def by (log_prog_solver)
 declare is_lock_pers[unfolded is_lock_def, pers_rule, log_prog_rule]
   
 lemma locked_timeless: "timeless (locked \<gamma>)"
-  by (auto simp: constr_lock_def locked_def intro!: own_timeless' log_prog_rule)
+  by (auto simp: lockInG.own_def constr_lock_def locked_def intro!: own_timeless' log_prog_rule)
 declare locked_timeless[unfolded locked_def, timeless_rule, log_prog_rule]
   
 lemma lock_alloc: "\<exists>\<^sub>u \<gamma>.\<Rrightarrow>\<^sub>b (locked \<gamma>)"
   apply iIntro
   apply (iExistsR "0::nat")
   unfolding locked_def
-  apply (entails_substR rule: rule: own_alloc)
+  apply (entails_substR rule: rule: lockInG.own_alloc)
   by (auto simp: valid_def constr_lock_def prod_n_valid_def \<epsilon>_n_valid valid_raw_ex_def)
 
 lemmas [iris_simp] = lock_inv_def locked_def is_lock_def newlock_def acquire_def release_def
@@ -84,7 +84,7 @@ lemma release_spec:
   apply (simp add: release_def is_lock_def upred_pure_sep_conj' pull_exists_eq pull_exists_eq')
   apply (iDestruct rule: wp_pure[OF pure_exec_beta]) subgoal for l
   \<comment> \<open>Open invaraint\<close>
-  apply (iMod rule: inv_acc[to_entailment,OF subset_UNIV])
+  apply (iMod rule: inv_acc[OF subset_UNIV])
   \<comment> \<open>Apply @{thm wp_store}\<close>
   apply (move_sepL "\<triangleright> ?P")
   unfolding upred_later_exists
@@ -96,7 +96,7 @@ lemma release_spec:
   \<comment> \<open>Cleanup\<close>
   apply (entails_substR rule: upred_laterI)
   apply (entails_substR rule: wp_value)
-  apply (iApply_wand_as_rule "\<exists>\<^sub>u (x::bool). ?P x" "(?l\<mapsto>\<^sub>u?v)\<^emph>Own ?x\<^emph>R")
+  apply (iApply_wand_as_rule "\<exists>\<^sub>u (x::bool). ?P x" "(?l\<mapsto>\<^sub>u?v)\<^emph>(lockInG.own ?n ?x)\<^emph>R")
   apply (iExistsR False)
   apply (iApply rule: upred_laterI)
   apply (rule upred_later_mono_extR)

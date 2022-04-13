@@ -66,7 +66,7 @@ lemma upred_entail_eq_refl [simp]: "P \<stileturn>\<turnstile> P" by (auto simp:
 lemma upred_entails_eq: "P=Q \<Longrightarrow> P\<turnstile>Q" by simp
 lemma upred_entails_eq_eq: "P=Q \<Longrightarrow> P\<stileturn>\<turnstile>Q" using upred_entails_eq upred_entail_eq_def by blast
 
-lemma own_valid: "Own(a) \<turnstile> \<V>(a)"
+lemma upred_own_valid: "Own(a) \<turnstile> \<V>(a)"
   unfolding upred_entails.rep_eq upred_own.rep_eq upred_valid.rep_eq n_incl_def
   using camera_valid_op n_valid_ne by blast
 
@@ -245,7 +245,7 @@ lemma discrete_valid: "\<V>(a::'a::dcamera) \<stileturn>\<turnstile> \<upharpoon
   apply (rule upred_entail_eqI; auto simp: upred_valid.rep_eq upred_pure.rep_eq)
   using dcamera_valid_iff by blast+
 
-lemma own_op: "Own(a\<cdot>b) \<stileturn>\<turnstile> Own(a) \<^emph> Own(b)"
+lemma upred_own_op: "Own(a\<cdot>b) \<stileturn>\<turnstile> Own(a) \<^emph> Own(b)"
   apply (rule upred_entail_eqI)
   unfolding upred_own.rep_eq upred_sep.rep_eq
   apply (rule iffI)
@@ -253,10 +253,10 @@ lemma own_op: "Own(a\<cdot>b) \<stileturn>\<turnstile> Own(a) \<^emph> Own(b)"
   apply (erule exE)+
   by (smt (z3) camera_assoc camera_comm n_incl_def ofe_trans op_equiv)
 
-lemma own_valid2: "upred_holds (Own(a1) -\<^emph> Own (a2) -\<^emph> \<V>(a1\<cdot>a2))"
+  lemma upred_own_valid2: "upred_holds (Own(a1) -\<^emph> Own (a2) -\<^emph> \<V>(a1\<cdot>a2))"
   apply (rule upred_wand_holdsI)
   apply (rule upred_wandI)
-  using own_op own_valid upred_entails_trans upred_entail_eq_def by blast
+  using upred_own_op upred_own_valid upred_entails_trans upred_entail_eq_def by blast
 
 lemma entails_pure_extend: "\<lbrakk>P\<turnstile>\<upharpoonleft>b;b \<Longrightarrow> P\<turnstile>Q\<rbrakk> \<Longrightarrow> P\<turnstile>Q"
   by transfer blast
@@ -514,7 +514,7 @@ lemma false_wand [simp]: "((\<upharpoonleft>False) -\<^emph> P) = upred_emp"
 lemma pure_dupl: "(\<upharpoonleft>b) = (\<upharpoonleft>b) \<^emph> (\<upharpoonleft>b)"
   by transfer (meson n_incl_def n_incl_refl)
 
-lemma own_unit: "\<Rrightarrow>\<^sub>b (Own \<epsilon>)"
+lemma upred_own_unit: "\<Rrightarrow>\<^sub>b (Own \<epsilon>)"
   by transfer auto
 
 lemma bupd_emp: "P=upred_emp \<Longrightarrow> \<Rrightarrow>\<^sub>b P = P"
@@ -523,7 +523,7 @@ lemma bupd_emp: "P=upred_emp \<Longrightarrow> \<Rrightarrow>\<^sub>b P = P"
 lemma add_holds: "\<lbrakk>upred_holds P; Q\<^emph>P\<turnstile>R\<rbrakk> \<Longrightarrow> Q\<turnstile>R" 
   by transfer (metis \<epsilon>_left_id camera_comm camera_valid_op ofe_refl)
 
-lemma own_updateP: "a \<leadsto>: P \<Longrightarrow> Own a ==\<^emph> (\<exists>\<^sub>u a'. \<upharpoonleft>(P a') \<^emph> Own a')"
+lemma upred_own_updateP: "a \<leadsto>: P \<Longrightarrow> Own a ==\<^emph> (\<exists>\<^sub>u a'. \<upharpoonleft>(P a') \<^emph> Own a')"
   unfolding camera_updP_def
   by transfer (metis \<epsilon>_left_id camera_assoc n_incl_op_extend n_valid_incl_subst ofe_refl)
 
@@ -557,17 +557,17 @@ qed
 lemma upd_mono_ext: "R\<^emph>Q\<turnstile>P \<Longrightarrow> R\<^emph>\<Rrightarrow>\<^sub>bQ\<turnstile>\<Rrightarrow>\<^sub>bP"
   using upd_frameR upd_mono upred_entails_trans by blast
 
-lemma own_alloc: "valid a \<Longrightarrow> \<Rrightarrow>\<^sub>b Own a"
+lemma upred_own_alloc: "valid a \<Longrightarrow> \<Rrightarrow>\<^sub>b Own a"
   sorry (* Axiomatized as proof in Coq is not easily reproducible. *)
 
-lemma own_update: "a\<leadsto>{b} \<Longrightarrow> Own a ==\<^emph> Own b"
+lemma upred_own_update: "a\<leadsto>{b} \<Longrightarrow> Own a ==\<^emph> Own b"
   unfolding camera_upd_def
   by transfer (metis camera_assoc camera_comm camera_valid_op empty_iff insert_iff n_incl_refl n_valid_incl_subst)
 
-lemma add_own: "\<lbrakk>valid a; Q\<^emph>(Own a)\<turnstile>\<Rrightarrow>\<^sub>bR\<rbrakk> \<Longrightarrow> Q\<turnstile>\<Rrightarrow>\<^sub>bR"
+lemma add_upred_own: "\<lbrakk>valid a; Q\<^emph>(Own a)\<turnstile>\<Rrightarrow>\<^sub>bR\<rbrakk> \<Longrightarrow> Q\<turnstile>\<Rrightarrow>\<^sub>bR"
 proof -
   assume assms: "valid a" "Q\<^emph>(Own a)\<turnstile>\<Rrightarrow>\<^sub>bR"
-  from own_alloc[OF this(1)] have "\<Rrightarrow>\<^sub>b Own a" .
+  from upred_own_alloc[OF this(1)] have "\<Rrightarrow>\<^sub>b Own a" .
   from assms(2) have "Q\<^emph>\<Rrightarrow>\<^sub>b Own a\<turnstile>\<Rrightarrow>\<^sub>b R"
     by (meson upd_frameR upd_mono upd_idem upred_entails_trans)
     from add_holds[OF \<open>\<Rrightarrow>\<^sub>b Own a\<close> this] show ?thesis .
@@ -732,4 +732,6 @@ lemma except_zero_bupd: "\<diamondop>\<Rrightarrow>\<^sub>bP\<turnstile>\<Rright
 
 lemma except_zero_ne [upred_ne_rule]: "n_equiv n P Q \<Longrightarrow> n_equiv n (\<diamondop>P) (\<diamondop>Q)"
   by (auto simp: except_zero_def intro!: upred_ne_rule contractiveE[OF upred_later_contr])
+
+no_notation upred_own ("Own _")
 end

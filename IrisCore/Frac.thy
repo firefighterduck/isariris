@@ -24,7 +24,7 @@ instance by standard (auto simp: n_equiv_frac_def ofe_eq_frac_def)
 end
 instance frac :: discrete by standard (auto simp: n_equiv_frac_def ofe_eq_frac_def)
 
-iris_camera_instance frac :: camera begin
+instantiation frac :: camera begin
 lift_definition valid_raw_frac :: "frac \<Rightarrow> sprop" is "\<lambda>p _. (p\<le>1)" .
 lift_definition pcore_frac :: "frac \<Rightarrow> frac option" is "\<lambda>_. None" by (rule option.pred_inject(1))
 lift_definition op_frac :: "frac \<Rightarrow> frac \<Rightarrow> frac" is "(+)" by simp
@@ -109,7 +109,7 @@ fun dfrac_add :: "dfrac \<Rightarrow> dfrac \<Rightarrow> dfrac" where
 | "dfrac_add (DfracBoth q) DfracDiscarded = DfracBoth q"
 | "dfrac_add (DfracBoth q) (DfracBoth q') = DfracBoth (q \<cdot> q')"
 
-iris_camera_instance dfrac :: camera begin
+instantiation dfrac :: camera begin
 lift_definition valid_raw_dfrac :: "dfrac \<Rightarrow> sprop" is 
   "\<lambda>dq. case dq of DfracOwn q \<Rightarrow> valid_raw q | DfracDiscarded \<Rightarrow> sTrue | DfracBoth q \<Rightarrow> sPure (q<1)" .
 definition pcore_dfrac :: "dfrac \<Rightarrow> dfrac option" where "pcore_dfrac dq \<equiv>

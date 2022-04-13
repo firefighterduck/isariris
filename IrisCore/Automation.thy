@@ -45,8 +45,8 @@ ML \<open> val to_entailment: attribute context_parser = let
   fun remove_emp thm = if contains_emp (Thm.concl_of thm
       |> dest_comb |> snd (* Strip Trueprop*)
       |> strip_comb |> snd |> hd (* Strip entails*))
-    then Conv.fconv_rule (Conv.rewr_conv @{thm  eq_reflection[OF upred_sep_comm]}
-      then_conv (Conv.rewr_conv @{thm  eq_reflection[OF upred_true_sep]})
+    then Conv.fconv_rule (Conv.rewr_conv @{thm eq_reflection[OF upred_sep_comm]}
+      then_conv (Conv.rewr_conv @{thm eq_reflection[OF upred_true_sep]})
       |> Conv.arg_conv (* Only transform the antecedent *)
       |> Conv.fun_conv (* Go below the "\<turnstile>" *) 
       |> HOLogic.Trueprop_conv
