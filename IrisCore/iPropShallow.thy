@@ -8,7 +8,7 @@ begin
 
   gmapF := ((loc\<rightharpoonup>((loc option\<times>loc option) ex))\<times>frac) option auth
   markingF := loc set auth
-  b invF := (name\<rightharpoonup>b later ag)  auth
+  b invF := (name\<rightharpoonup>b later ag) auth
   heapF := (loc\<rightharpoonup>(dfrac\<times>val ag)) auth
   (b,_) resF := gmapF \<times> markingF \<times> b invF \<times> heapF
   iprop := (iprop,iprop) resF upred
@@ -185,6 +185,83 @@ lemma iprop_fp: "iProp (pre P) = P" sorry
 declare [[coercion iProp]]
 
 lemma n_equiv_pre [simp]: "n_equiv n (pre P) (pre Q) \<longleftrightarrow> n_equiv n P Q" sorry
+
+term "\<epsilon>::res"
+
+text \<open>Again some experiments wrt the iprop fixed-point\<close>
+definition inv_map :: "('a::cofe \<Rightarrow> 'b::cofe) \<Rightarrow> ('a pre_inv \<Rightarrow> 'b pre_inv)" where 
+  "inv_map (f::'a\<Rightarrow>'b) = map_prod (map_map_view (map_later f)) id"
+
+lift_definition marking_map :: "('a::cofe -n> 'b::cofe) \<Rightarrow> (markingUR auth -n> markingUR auth)" is
+  "\<lambda>_. id" by (rule discrete_ne)
+
+lemma "contractive marking_map"
+  unfolding contr_contr_alt contractive_alt_def
+  apply transfer by (simp add: ofe_refl)
+
+lift_definition later_map :: "('a::cofe -n> 'b::cofe) \<Rightarrow> ('a later -n> 'b later)" is
+  "\<lambda>(f::'a\<Rightarrow>'b) (l::'a later). map_later f l"
+  unfolding non_expansive_def
+  by (auto simp: n_equiv_later_def later.map_sel)
+
+lemma contr_later: "contractive later_map"
+  unfolding contr_contr_alt contractive_alt_def
+  apply transfer by (auto simp: later.map_sel n_equiv_later_def split: nat.split)
+
+lemma "contr_ne f \<Longrightarrow> contr_ne (later_map f)"
+apply transfer
+unfolding contr_contr_alt contractive_alt_def non_expansive_def
+apply (auto simp: later.map_sel n_equiv_later_def split: nat.splits)
+by (metis Suc_pred)
+
+lift_definition ag_map :: "('a::cofe -n> 'b::cofe) \<Rightarrow> ('a ag -n> 'b ag)" is
+  "\<lambda>(f::'a\<Rightarrow>'b) (a::'a ag). map_ag f a"
+  unfolding non_expansive_def
+  apply (auto simp: n_equiv_ag_def)
+  apply (smt (verit, best) image_iff map_ag.rep_eq)
+  by (smt (verit, best) ag.set_map image_iff)
+
+lemma "contr_ne f \<Longrightarrow> contr_ne (ag_map f)"
+apply transfer
+unfolding contr_contr_alt contractive_alt_def non_expansive_def
+apply (auto simp: non_expansive_def n_equiv_ag_def image_iff map_ag.rep_eq ag.set_map split: nat.splits)
+using Rep_ag apply fastforce
+using Rep_ag apply fastforce
+by metis+
+
+lift_definition ag_map_contr :: "('a::cofe -n> 'b::cofe) -c> ('a later -n> 'b later)" is
+  "later_map" by (rule contr_later)
+  
+locale T_iso = 
+fixes to_iso :: "'a::ofe \<Rightarrow> 'b::ofe" and from_iso :: "'b \<Rightarrow> 'a"
+assumes isomorph1: "ofe_eq (to_iso (from_iso x)) x" and isomorph2: "ofe_eq (from_iso (to_iso y)) y"
+  and to_ne: "non_expansive to_iso" and from_ne: "non_expansive from_iso"
+
+lemma 
+assumes iso: "T_iso to from"
+shows "n_equiv n x y \<longleftrightarrow> n_equiv n (to x) (to y)"
+proof 
+assume "n_equiv n x y"
+from non_expansiveE[OF T_iso.to_ne[OF iso], OF this] show "n_equiv n (to x) (to y)" by simp
+next
+assume "n_equiv n (to x) (to y)"
+from non_expansiveE[OF T_iso.from_ne[OF iso], OF this] have "n_equiv n (from (to x)) (from (to y))" 
+  by simp
+with T_iso.isomorph2[OF iso] show "n_equiv n x y"
+by (meson ofe_eq_equiv ofe_trans_eqL)
+qed
+  
+lemma "\<exists>(to_iso::markingUR auth\<Rightarrow>markingUR auth) from_iso. T_iso to_iso from_iso"
+proof -
+have "T_iso (id::markingUR auth \<Rightarrow> markingUR auth) id"
+  by (auto simp: T_iso_def ofe_refl non_expansive_def ofe_limit)
+then show ?thesis by auto
+qed
+
+consts isos :: "('a::ofe pre_inv \<Rightarrow> 'a) \<times>('a \<Rightarrow> 'a pre_inv)"
+specification (isos)
+  is_iso: "T_iso (fst isos) (snd isos)"
+  sorry
 
 text \<open>inG instance examples\<close>
 context begin

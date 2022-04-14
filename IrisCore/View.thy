@@ -77,7 +77,7 @@ lemma map_view_rel_discrete: "map_view_rel 0 (a::('a,'b::discrete) fmap) b \<Lon
   
 datatype ('k,'v) map_view = 
   MapView (map_view_auth_proj: "((dfrac\<times>('k,'v) fmap ag)) option") (map_view_frag_proj: "('k\<rightharpoonup>(dfrac\<times>'v ag))")
-
+  
 definition view_auth :: "dfrac \<Rightarrow> ('k,'v) fmap \<Rightarrow> ('k,'v::ofe) map_view" ("\<Zspot>V{_} _") where
   "view_auth dq a = MapView (Some (dq, to_ag a)) \<epsilon>"
 definition view_frag :: "('k\<rightharpoonup>(dfrac\<times>'v ag)) \<Rightarrow> ('k,'v::ofe) map_view" ("\<circle>V _") where 
