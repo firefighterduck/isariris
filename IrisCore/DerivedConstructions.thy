@@ -986,6 +986,8 @@ instance
     split:dfset.splits)
 end
 
+instance dfset :: (type) ducamera ..
+subsubsection \<open> Finite map camera \<close>
 context includes fmap.lifting begin
 lift_definition fmpcore :: "('a,'b::camera) fmap \<Rightarrow> ('a,'b) fmap option" is
   "\<lambda>m. Some (\<lambda>i. Option.bind (m i) pcore)"
@@ -1010,8 +1012,6 @@ lemma drop_fin: "finite (dom (\<lambda>i. if i \<noteq> x then fmlookup m2 i els
 lemma map_upd_fin: "m \<in> {m. finite (dom m)} \<Longrightarrow> (map_upd a b m) \<in> {m. finite (dom m)}"
   by (simp add: map_upd_def)
 
-instance dfset :: (type) ducamera ..
-subsubsection \<open> Finite map camera \<close>
 instantiation fmap :: (type,camera) camera begin
 context includes fmap.lifting begin
 lift_definition valid_raw_fmap :: "('a, 'b) fmap \<Rightarrow> sprop" is valid_raw .

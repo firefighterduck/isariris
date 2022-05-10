@@ -180,6 +180,16 @@ shows "\<forall>\<^sub>uE1 E2 e P Q. (\<upharpoonleft>(E1 \<subseteq> E2)) \<lon
   done
 done
 
+lemma wp_strong_monoI: "\<lbrakk>s1 \<le> s2; E1 \<subseteq> E2\<rbrakk> \<Longrightarrow> wp s1 E1 e P \<turnstile> ((\<forall>\<^sub>u v. ((P v) ={E2}=\<^emph> Q v)) -\<^emph> wp s2 E2 e Q)"
+proof - 
+assume assms: "s1 \<le> s2" "E1 \<subseteq> E2"
+from wp_strong_mono[OF assms(1), to_entailment] have
+  "upred_emp \<turnstile> ((\<upharpoonleft>(E1 \<subseteq> E2)) \<longrightarrow>\<^sub>u (wp s1 E1 e P -\<^emph> (\<forall>\<^sub>uv. ((P v)={E2,E2}=\<^emph>Q v)) -\<^emph> wp s2 E2 e Q))"
+  by (auto dest!: upred_entails_trans[OF _ upred_forall_inst])
+with assms(2) show ?thesis 
+by (smt (verit, best) add_holds entails_impl_true upred_holds_entails upred_wand_apply)
+qed
+
 lemma fupd_wp: "\<Turnstile>{E}=> (wp s E e P) \<turnstile> wp s E e P"
   apply (rule upred_entails_trans[OF _ upred_entail_eqR[OF wp_unfold]])
   apply(rule upred_entails_trans[OF fupd_mono[OF upred_entail_eqL[OF wp_unfold]]])
@@ -231,13 +241,70 @@ shows "R \<^emph> wp s E e P \<turnstile> wp s E e Q"
   using wp_mono[OF assms] assms upred_entails_trans upred_weakeningR wp_mono 
   by blast
 
-lemma wp_atomic: "atomic (stuckness_to_atomicity s) e \<Longrightarrow>
-  \<Turnstile>{E1,E2}=> wp s E2 e (\<lambda>v. \<Turnstile>{E2,E1}=> P v) \<turnstile> wp s E1 e P" sorry
+lemma wp_atomic: 
+assumes "atomic (stuckness_to_atomicity s) e"
+shows "\<Turnstile>{E1,E2}=> wp s E2 e (\<lambda>v. \<Turnstile>{E2,E1}=> P v) \<turnstile> wp s E1 e P"
+  apply (rule upred_entails_trans[OF _ upred_entail_eqR[OF wp_unfold]])
+  apply (rule upred_entails_trans[OF fupd_mono[OF upred_entail_eqL[OF wp_unfold]]])
+  unfolding wp_pre.rep_eq
+  apply (cases "HeapLang.to_val e")
+  apply simp_all
+  prefer 2 apply (rule upred_entails_trans[OF fupd_mask_trans])+ apply simp
+  apply iForallR+
+  apply (rule upred_wandI)
+  apply (check_moveL "\<Turnstile>{?E1,?E2}=>?P", rule elim_modal_entails'[OF elim_modal_fupd])
+  subgoal for \<sigma>1 \<kappa> \<kappa>s apply (iForallL \<sigma>1, iForallL \<kappa>,iForallL \<kappa>s)
+  apply iApply_wand
+  apply (rule fupd_mono)
+  apply iPureL
+  apply iForallR+ subgoal for e2 \<sigma>2 efs apply (iForallL e2, iForallL \<sigma>2, iForallL efs)
+  apply (rule upred_wandI, iPureL)
+  apply (iApply_step "?P" rule: step_fupdN_wand[of 1 "{}" "{}"])
+  apply (rule upred_entails_trans[OF upred_true_wand])
+  apply (rule framing_emp, frame_solver, iris_simp, rule upred_wandI, iris_simp, rule upred_entails_refl)
+  apply (rule fupd_mono, rule upred_later_mono, rule fupd_mono)
+  apply (rule elim_modal_entails[OF elim_modal_fupd])
+  apply (cases s, auto)
+    subgoal
+    apply (iApply rule: upred_entail_eqL[OF wp_unfold])
+    apply (entails_substR rule: fupd_mono[OF upred_sep_mono[OF upred_entails_refl upred_sep_mono[OF upred_entail_eqR[OF wp_unfold] upred_entails_refl]], unfolded upred_sep_assoc_eq])
+    unfolding wp_pre.rep_eq
+    apply (cases "HeapLang.to_val e2", auto)
+    prefer 2 
+    apply (check_moveL "\<Turnstile>{?E1,?E2}=>?P")
+    apply (rule elim_modal_entails'[OF elim_modal_fupd])+
+    apply (rule upred_entails_trans[OF _ fupd_intro[to_entailment]])
+    apply (rule framing, log_prog_solver)+
+    apply (rule framing_emp, log_prog_solver)
+    apply iris_simp
+    apply (rule upred_entails_trans[OF _ fupd_intro[to_entailment]])
+    apply iris_simp
+    apply (iForallL \<sigma>2, iForallL "[]::observation list",iForallL \<kappa>s)
+    apply iApply_wand
+    apply (check_moveL "\<Turnstile>{?E1,?E2}=>?P", rule elim_modal_entails'[OF elim_modal_fupd], iris_simp)
+    apply (rule upred_entails_trans[OF upred_weakeningL])
+    apply (subst reducible_def)
+    apply iPureL using atomicE[OF assms, of \<sigma>1 \<kappa> e2 \<sigma>2 efs] 
+    by (auto simp: stuckness_to_atomicity_def irreducible_def)
+  using atomicE[OF assms, of \<sigma>1 \<kappa> e2 \<sigma>2 efs]
+  apply (auto simp: stuckness_to_atomicity_def dest!: to_val_cases)
+  apply (iApply rule: upred_entail_eqL[OF wp_value_fupd])
+  apply (rule elim_modal_entails'[OF elim_modal_fupd], rule fupd_frame_mono)
+  apply (move_sepR "wp ?m ?E ?e ?p", entails_substR rule: wp_value)
+  by iris_simp
+  done done
 
 lemma wp_bind: "wp s E e (\<lambda>v. wp s E (lang_ctxt K (of_val v)) P) \<turnstile> wp s E (lang_ctxt K e) P" sorry
 lemma wp_bind': "wp s E e (\<lambda>v. wp s E (C (of_val v)) P) \<turnstile> wp s E (C e) P" sorry
 lemma wp_bind_inv: "wp s E (lang_ctxt K e) P \<turnstile> wp s E e (\<lambda>v. wp s E (lang_ctxt K (of_val v)) P)" sorry
-lemma wp_stuck_mono: "s1 \<le> s2 \<Longrightarrow> wp s1 E e P \<turnstile> wp s2 E e P" sorry
+lemma wp_stuck_mono: 
+  assumes "s1 \<le> s2"
+  shows "wp s1 E e P \<turnstile> wp s2 E e P"
+  apply (entails_substL rule: wp_strong_monoI[OF assms subset_refl, where ?Q = P])
+  apply (entails_substL rule: upred_entails_trans[OF upred_wandL[OF upred_forall_mono[OF fupd_intro[simplified upred_holds_entails]]]])
+  apply iris_simp
+  by (rule upred_true_wand)
+
 lemma wp_stuck_weaken: "wp s E e P \<turnstile> wp MaybeStuck E e P" using wp_stuck_mono[of s MaybeStuck] by simp
 lemma wp_frame_simp: "wp s E e (\<lambda>v. Q v) \<^emph> P \<turnstile> wp s E e (\<lambda>v. Q v \<^emph> P)" sorry
 
@@ -315,9 +382,81 @@ sorry
 
 lemma wp_store: "\<triangleright>(l\<mapsto>\<^sub>uv') \<turnstile> wp s E (Store #[l] v) (\<lambda>_. l\<mapsto>\<^sub>uv)"
   by (rule upred_wandE[OF upred_entails_trans[OF wp_store_texan[to_entailment] texan_to_wp], unfolded emp_rule])
-
-lemma wp_store': "P\<^emph>(l\<mapsto>\<^sub>uv) \<turnstile> \<triangleright>wp s E (#[()]) \<Phi> \<Longrightarrow> P\<^emph>(l\<mapsto>\<^sub>uv') \<turnstile> wp s E (Store #[l] v) \<Phi>"
-sorry
+ 
+lemma wp_store': 
+  assumes "P\<^emph>(l\<mapsto>\<^sub>uv) \<turnstile> \<triangleright>wp s E (#[()]) \<Phi>" 
+  shows "P\<^emph>(l\<mapsto>\<^sub>uv') \<turnstile> wp s E (Store #[l] v) \<Phi>"
+proof -
+  have aux: "((\<upharpoonleft>(\<kappa>=[]))-\<^emph> Q UnitE (state_upd_heap (fmupd l (Some v)) \<sigma>1) []) \<turnstile>
+    (\<forall>\<^sub>ue2 \<sigma>2 efs. ((\<upharpoonleft>(\<kappa> = [] \<and> e2 = UnitE \<and> \<sigma>2 = state_upd_heap (fmupd l (Some v)) \<sigma>1 \<and> efs = [])) -\<^emph> (Q e2 \<sigma>2 efs)))"
+    for \<kappa> Q \<sigma>1 apply iForallR+ apply (rule upred_wandI) apply iPureL by (simp add: upred_true_wand)  
+  have aux2: "Q \<turnstile> R \<^emph> S \<Longrightarrow> Q \<turnstile> R \<^emph> \<Turnstile>{E,{}}=>\<Turnstile>{{},E}=>S" for Q R S :: iprop
+    by (meson empty_subsetI fupd_mask_intro_subseteq upred_entails_substI)
+  have aux3: "\<Rrightarrow>\<^sub>b (heap_interp (heap (state_upd_heap (fmupd l (Some v)) \<sigma>1)) \<^emph> (l\<mapsto>\<^sub>uv))" for \<sigma>1
+    unfolding upred_holds_entails heap_interp_def points_to_def own_heap_auth_def
+    apply (rule upred_entails_trans[OF _ upd_mono[OF upred_entail_eqL[OF upred_own_op]]])
+    apply (rule upred_own_alloc[to_entailment])
+    by (auto simp: valid_def constr_heap_def prod_n_valid_def \<epsilon>_n_valid map_view_auth_def map_view_frag_def 
+      view_both_valid map_view_rel_def valid_dfrac_own[unfolded valid_def] d_equiv state_upd_heap_def
+      op_prod_def \<epsilon>_left_id)
+  show ?thesis
+  apply (entails_substR rule: upred_entail_eqR[OF wp_unfold])
+  apply (auto simp: wp_pre.rep_eq)
+  apply iForallR+
+  apply (rule upred_wandI)
+  unfolding state_interp_def
+  apply (iApply rule: points_to_lookup)
+  apply iPureL
+  apply (frule store_red[where ?v=v])
+  apply (cases s, auto, iris_simp)
+  subgoal for \<sigma>1 \<kappa> \<kappa>s
+    unfolding prim_step_store apply simp
+    apply (entails_substR rule: fupd_mono[OF aux])
+    apply (cases "\<kappa>=[]", iris_simp iris_simp: state_upd_proph)
+    prefer 2
+    apply (metis (no_types, opaque_lifting) add_holds empty_subsetI fupd_mask_subseteq fupd_mono upred_emp_entailed upred_entails_trans upred_true_sep')
+    apply (entails_substR rule: fupd_mono[OF upred_true_wand'])
+    apply (rule add_holds[OF aux3])
+    apply (check_moveL "\<Rrightarrow>\<^sub>b ?P", rule elim_modal_entails'[OF elim_modal_upd])
+    apply (rule upred_entails_trans[OF _ fupd_mono[OF fupd_intro[to_entailment]]])
+    apply (rule upred_entails_trans[OF _ frameE[where ?Q = "\<triangleright>wp NotStuck E UnitE \<Phi>"]])
+    prefer 2
+    apply (rule fupd_frameR)+ apply (rule frame_later) apply (rule fupd_frameR)+
+    apply (rule frame_rev, rule frame_refl)
+    apply (rule upred_entails_substI[OF fupd_mono[OF fupd_intro[to_entailment]]])
+    apply (rule aux2)
+    apply (move_sepR "\<triangleright>?p")
+    apply (move_sepR "proph_map_interp \<kappa>s ?p")
+    apply iFrame_single
+    apply (iDrop "heap_interp (heap \<sigma>1)")
+    apply (iDrop "l\<mapsto>\<^sub>uv'")
+    apply (iApply rule: assms)
+    by iFrame_single+
+  subgoal for \<sigma>1 \<kappa> \<kappa>s
+  unfolding prim_step_store apply simp
+  apply (entails_substR rule: fupd_mono[OF aux])
+  apply (cases "\<kappa>=[]", iris_simp iris_simp: state_upd_proph)
+  prefer 2
+  apply (metis (no_types, opaque_lifting) add_holds empty_subsetI fupd_mask_subseteq fupd_mono upred_emp_entailed upred_entails_trans upred_true_sep')
+  apply (entails_substR rule: fupd_mono[OF upred_true_wand'])
+  apply (rule add_holds[OF aux3])
+  apply (check_moveL "\<Rrightarrow>\<^sub>b ?P", rule elim_modal_entails'[OF elim_modal_upd])
+  apply (rule upred_entails_trans[OF _ fupd_mono[OF fupd_intro[to_entailment]]])
+  apply (rule upred_entails_trans[OF _ frameE[where ?Q = "\<triangleright>wp MaybeStuck E UnitE \<Phi>"]])
+  prefer 2
+  apply (rule fupd_frameR)+ apply (rule frame_later) apply (rule fupd_frameR)+
+  apply (rule frame_rev, rule frame_refl)
+  apply (rule upred_entails_substI[OF fupd_mono[OF fupd_intro[to_entailment]]])
+  apply (rule aux2)
+  apply (move_sepR "\<triangleright>?p")
+  apply (move_sepR "proph_map_interp \<kappa>s ?p")
+  apply iFrame_single
+  apply (iDrop "heap_interp (heap \<sigma>1)")
+  apply (iDrop "l\<mapsto>\<^sub>uv'")
+  apply (iApply rule: assms)
+  by iFrame_single+
+  done
+qed
 
 lemma wp_frame': "(\<And>x. can_be_split (Q x) (Q' x) P) \<Longrightarrow> (wp s E e Q') \<^emph> P \<turnstile> wp s E e Q"
 sorry  

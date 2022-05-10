@@ -264,4 +264,20 @@ abbreviation fancy_linear_steps :: "mask \<Rightarrow> nat \<Rightarrow> iprop \
   "fancy_linear_steps E n Q \<equiv> \<Turnstile>{E}[E]\<triangleright>^n=>Q"
 abbreviation fancy_linear_wand_steps :: "iprop \<Rightarrow> mask \<Rightarrow> nat \<Rightarrow> iprop \<Rightarrow> iprop" ("_={_}\<triangleright>^_=\<^emph>_") where
   "fancy_linear_wand_steps P E n Q \<equiv> P={E}[E]\<triangleright>^n=\<^emph>Q"
+
+lemma step_fupdN_wand: "(\<Turnstile>{Eo}[Ei]\<triangleright>^n=> P) -\<^emph> (P -\<^emph> Q) -\<^emph> (\<Turnstile>{Eo}[Ei]\<triangleright>^n=> Q)"
+proof (iIntro, induction n)
+  case 0
+  then show ?case by (auto intro: upred_wand_apply)
+next
+  case (Suc n)
+  show ?case apply simp
+  apply (rule upred_entails_trans[OF _ fupd_mono[OF upred_later_mono[OF fupd_mono[OF Suc]]]])
+  apply (check_moveL "\<Turnstile>{?E1,?E2}=>?P", rule elim_modal_entails'[OF elim_modal_fupd])
+  apply (rule upred_entails_trans[OF _ fupd_intro[to_entailment]])
+  apply (rule upred_later_mono_extR)
+  apply (rule framing, log_prog_solver)
+  apply (rule upred_entails_trans[OF _ fupd_intro[to_entailment]])
+  by iris_simp
+qed
 end

@@ -23,7 +23,7 @@ interpretation invInG: inG get_inv constr_inv
     constr_inv_def split: option.splits)
   
 definition own_inv :: "gname \<Rightarrow> inv \<Rightarrow> iprop" ("Own\<^sub>i _ _") where
-  "own_inv \<gamma> i = own constr_inv \<gamma> i"
+  "own_inv \<gamma> i = invInG.own \<gamma> i"
 
 text \<open>Allocate new invariant map\<close>
 definition ownI :: "name \<Rightarrow> iprop \<Rightarrow> iprop" where

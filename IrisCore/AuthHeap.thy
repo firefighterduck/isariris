@@ -183,6 +183,24 @@ by (rule points_to_frac_ne[OF dfrac_not_valid_own])
 lemma timeless_points_to [timeless_rule,log_prog_rule]: "timeless (l\<mapsto>{p}v)"
   unfolding points_to_def constr_heap_def timeless_def except_zero_def
   by transfer' (auto simp: singleton_map_n_incl d_equiv)
+ 
+lemma points_to_lookup: "heap_interp h \<^emph> (l\<mapsto>\<^sub>uv) \<turnstile> \<upharpoonleft>(fmlookup h l = Some (Some v))"
+proof -
+  have "heap_interp h \<^emph> (l\<mapsto>\<^sub>uv) \<turnstile> Own\<^sub>h (map_view_auth (DfracOwn 1) h \<cdot> map_view_frag l (DfracOwn 1) (Some v))"
+    unfolding heap_interp_def points_to_def own_heap_auth_def
+    apply (rule upred_entails_trans[OF upred_entail_eqR[OF upred_own_op]])
+    by (auto simp: constr_heap_def op_prod_def \<epsilon>_left_id)
+  then have "heap_interp h \<^emph> (l\<mapsto>\<^sub>uv) \<turnstile> \<V> (map_view_auth (DfracOwn 1) h \<cdot> map_view_frag l (DfracOwn 1) (Some v))"
+    using upred_own_valid iprop_heap_valid upred_entails_trans by blast
+  then have 1: "heap_interp h \<^emph> (l\<mapsto>\<^sub>uv) \<turnstile> \<upharpoonleft>(valid (map_view_auth (DfracOwn 1) h \<cdot> map_view_frag l (DfracOwn 1) (Some v)))"
+    using discrete_valid upred_entail_eqL upred_entails_trans by blast
+  have "valid (map_view_auth (DfracOwn 1) h \<cdot> map_view_frag l (DfracOwn 1) (Some v)) \<Longrightarrow> fmlookup h l = Some (Some v)"
+    unfolding valid_def view_both_valid map_view_auth_def map_view_frag_def map_view_rel_def 
+    apply auto by (metis d_equiv to_ag_n_equiv)
+  then have "\<upharpoonleft>(valid (map_view_auth (DfracOwn 1) h \<cdot> map_view_frag l (DfracOwn 1) (Some v))) \<turnstile> \<upharpoonleft>(fmlookup h l = Some (Some v))"
+    by fastforce
+  with 1 show ?thesis by (rule upred_entails_trans)
+qed
 end
 
 subsubsection \<open>Prophecy map camera\<close>

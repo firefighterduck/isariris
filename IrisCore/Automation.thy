@@ -127,8 +127,8 @@ method entails_substR uses rule =
   match rule[uncurry] in "_ = _" \<Rightarrow> \<open>rule upred_entails_trans[OF _ upred_entails_eq[OF rule]]\<close>
   \<bar> "_ \<Longrightarrow> (_=_)" \<Rightarrow> \<open>rule upred_entails_trans[OF _ upred_entails_eq[OF rule]]\<close>
   \<bar> "_\<turnstile>_" \<Rightarrow> \<open>rule rule
-    | rule upred_entails_substI[OF rule, unfolded upred_sep_assoc_eq]
-    | (rule upred_entails_trans[OF _ rule])\<close>
+    | (rule upred_entails_trans[OF _ rule])
+    | rule upred_entails_substI[OF rule, unfolded upred_sep_assoc_eq]\<close>
   \<bar> "_ \<Longrightarrow> (_ \<turnstile> _)" \<Rightarrow> \<open>rule rule
     | rule upred_entails_substI[OF rule, unfolded upred_sep_assoc_eq]
     | rule upred_entails_trans[OF _ rule]\<close>

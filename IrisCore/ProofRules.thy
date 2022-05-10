@@ -108,6 +108,9 @@ lemma upred_true_conj' [emp_rule]: "(upred_emp \<and>\<^sub>u P) = P"
 lemma upred_true_wand: "(upred_emp -\<^emph> P) \<turnstile> P"
   by transfer (metis \<epsilon>_right_id order_refl)
 
+lemma upred_true_wand':"P \<turnstile> (upred_emp -\<^emph> P)"
+  by (simp add: upred_wandI upred_weakeningL)
+  
 lemma upred_conj_comm: "P \<and>\<^sub>u Q = Q \<and>\<^sub>u P"
   by transfer fast  
 
@@ -696,8 +699,14 @@ lemma upred_extend: "P \<turnstile> R \<Longrightarrow> Q \<^emph> P \<turnstile
 lemma upred_universal_wand: "P \<turnstile> Q y \<Longrightarrow> P \<^emph> (\<forall>\<^sub>u x. Q x -\<^emph> R x) \<turnstile> R y"
   by (meson upred_entails_substE upred_forall_inst upred_wand_apply')
 
+lemma upred_wandL: "Q\<turnstile>P \<Longrightarrow> (P-\<^emph>R) \<turnstile> (Q-\<^emph>R)"
+  by (simp add: upred_wand_mono)
+
 lemma upred_eq_entails: "ofe_eq P Q \<Longrightarrow> P \<stileturn>\<turnstile> Q"
   unfolding upred_entail_eq_def by transfer blast
+
+lemma upred_pure_wand: "\<lbrakk>b; upred_holds P\<rbrakk> \<Longrightarrow> (\<upharpoonleft>b)-\<^emph>P"
+  by transfer auto
 
 definition except_zero :: "'a::ucamera upred_f \<Rightarrow> 'a upred_f" ("\<diamondop>_") where 
   "except_zero P \<equiv> P \<or>\<^sub>u \<triangleright>\<upharpoonleft>False"

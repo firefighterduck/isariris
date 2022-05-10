@@ -22,6 +22,18 @@ definition is_lock :: "gname \<Rightarrow> val \<Rightarrow> iprop \<Rightarrow>
 
 definition "locked \<gamma> \<equiv> own constr_lock \<gamma> (Ex ())"
 
+context 
+fixes get_lock :: "gname \<Rightarrow> 'a::ucamera \<Rightarrow> lockG option"
+  and put_lock
+assumes lock_inG: "inG get_lock put_lock"
+begin
+definition locked' :: "gname \<Rightarrow> 'a upred_f" where
+  "locked' \<gamma> = own put_lock \<gamma> (Ex ())"
+end
+
+lemma "locked' constr_lock = locked"
+unfolding locked_def locked'_def[OF iPropShallow.lockInG.inG_axioms] by simp
+
 lemma is_lock_pers: "persistent (is_lock \<gamma> lk R)" 
   unfolding is_lock_def by (log_prog_solver)
 declare is_lock_pers[unfolded is_lock_def, pers_rule, log_prog_rule]
@@ -102,6 +114,55 @@ lemma release_spec:
   apply (rule upred_later_mono_extR)
   by frame_single+
   oops 
+
+context begin 
+
+private lemma "lockInG.own \<gamma> (Ex ()) \<^emph> R \<^emph> (l \<mapsto>\<^sub>u FalseV) \<turnstile> l \<mapsto>\<^sub>u FalseV \<^emph> lockInG.own \<gamma> (Ex ()) \<^emph> R"
+apply (tactic \<open>resolve0_tac @{thms upred_entails_trans[OF upred_sep_comm2R]} 1\<close>)
+apply (tactic \<open>resolve0_tac @{thms upred_frame} 1\<close>)
+apply (tactic \<open>EqSubst.eqsubst_tac \<^context> [1] @{thms upred_sep_comm} 1\<close>)
+apply (tactic \<open>resolve0_tac @{thms upred_frame} 1\<close>)
+apply (tactic \<open>resolve0_tac @{thms upred_entails_refl} 1\<close>)
+oops
+
+ML \<open>
+  fun t ctxt = resolve_tac ctxt @{thms upred_entails_trans[OF upred_sep_comm2R]}
+    THEN' resolve_tac ctxt @{thms upred_frame}
+    THEN' EqSubst.eqsubst_tac ctxt [1] @{thms upred_sep_comm}
+    THEN' resolve_tac ctxt @{thms upred_frame}
+    THEN' resolve_tac ctxt @{thms upred_entails_refl}
+  fun m ctxt = SIMPLE_METHOD' (t ctxt)
+  val m' = Scan.succeed m
+  val _ = Theory.local_setup (Method.local_setup \<^binding>\<open>m\<close> m' "")
+\<close>
+
+private lemma "lockInG.own \<gamma> (Ex ()) \<^emph> R \<^emph> (l \<mapsto>\<^sub>u FalseV) \<turnstile> l \<mapsto>\<^sub>u FalseV \<^emph> lockInG.own \<gamma> (Ex ()) \<^emph> R"
+apply (tactic \<open>t \<^context> 1\<close>)
+oops
+
+private lemma "lockInG.own \<gamma> (Ex ()) \<^emph> R \<^emph> (l \<mapsto>\<^sub>u FalseV) \<turnstile> l \<mapsto>\<^sub>u FalseV \<^emph> lockInG.own \<gamma> (Ex ()) \<^emph> R"
+apply m
+oops
+
+method m' = 
+  match conclusion in "_ \<^emph> P \<turnstile> _" for P \<Rightarrow> 
+    \<open>check_moveR P; rule upred_frame; m'\<close>
+  \<bar> _ \<Rightarrow> \<open>rule upred_entails_refl\<close>
+
+private lemma "lockInG.own \<gamma> (Ex ()) \<^emph> R \<^emph> (l \<mapsto>\<^sub>u FalseV) \<turnstile> l \<mapsto>\<^sub>u FalseV \<^emph> lockInG.own \<gamma> (Ex ()) \<^emph> R"
+apply m'
+oops
+
+private lemma "lockInG.own \<gamma> (Ex ()) \<^emph> R \<^emph> (l \<mapsto>\<^sub>u FalseV) \<turnstile> l \<mapsto>\<^sub>u FalseV \<^emph> lockInG.own \<gamma> (Ex ()) \<^emph> R"
+apply (rule framing, frame_solver)+
+apply (rule framing_emp, frame_solver)
+apply simp
+oops
+
+private lemma "lockInG.own \<gamma> (Ex ()) \<^emph> R \<^emph> (l \<mapsto>\<^sub>u FalseV) \<turnstile> l \<mapsto>\<^sub>u FalseV \<^emph> lockInG.own \<gamma> (Ex ()) \<^emph> R"
+apply brute_force_solver
+oops
+end
   
 lemmas spinlock_intros[intro] = wp_store'[simplified] 
   upred_entails_substE[OF upred_entail_eqL[OF upred_later_sep]]

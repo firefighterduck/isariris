@@ -34,7 +34,7 @@ class camera = ofe +
     and camera_valid_op: "Rep_sprop (valid_raw (a \<cdot> b)) n 
       \<Longrightarrow> Rep_sprop (valid_raw a) n"
     and camera_extend: "\<lbrakk>Rep_sprop (valid_raw a) n; n_equiv n a (b1 \<cdot> b2)\<rbrakk> \<Longrightarrow>
-      \<exists>c1 c2. (a = c1 \<cdot>  c2 \<and> n_equiv n c1 b1 \<and> n_equiv n c2 b2)"
+      \<exists>c1 c2. (a = c1 \<cdot> c2 \<and> n_equiv n c1 b1 \<and> n_equiv n c2 b2)"
 begin
 abbreviation n_valid :: "'a \<Rightarrow> nat \<Rightarrow> bool" where "n_valid x \<equiv> Rep_sprop (valid_raw x)"
 
