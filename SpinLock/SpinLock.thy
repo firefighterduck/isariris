@@ -103,15 +103,14 @@ lemma release_spec:
   apply iExistsL
   apply (iApply rule: upred_entail_eqL[OF upred_later_sep])
   apply (move_sepL "\<triangleright>(?l\<mapsto>\<^sub>u?v)")
-  apply (rule elim_modal_entails'[OF elim_modal_timeless']) apply log_prog_solver+
-  apply (iWP rule: wp_store'[simplified])
+  apply later_elim
+  apply (iWP rule: wp_store')
   \<comment> \<open>Cleanup\<close>
   apply (entails_substR rule: upred_laterI)
   apply (entails_substR rule: wp_value)
   apply (iApply_wand_as_rule "\<exists>\<^sub>u (x::bool). ?P x" "(?l\<mapsto>\<^sub>u?v)\<^emph>(lockInG.own ?n ?x)\<^emph>R")
   apply (iExistsR False)
-  apply (iApply rule: upred_laterI)
-  apply (rule upred_later_mono_extR)
+  apply (entails_substR rule: upred_laterI)
   by frame_single+
   oops 
 
