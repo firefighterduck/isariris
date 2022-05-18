@@ -140,7 +140,7 @@ lemma camera_core_mono_n: "n_incl n a b \<Longrightarrow> n_incl n (core a) (cor
   by (metis core_ne local.incl_def local.n_incl_def non_expansiveE camera_core_mono)
 
 lemma camera_core_n_valid: "n_valid a n \<Longrightarrow> n_valid (core a) n"
-  by (metis camera_core_id local.camera_valid_op)
+  by (metis camera_core_id local.camera_valid_op) 
 end 
 
 text \<open>Unital Camera - A camera with a unit element\<close>
