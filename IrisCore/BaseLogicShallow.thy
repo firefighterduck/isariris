@@ -35,6 +35,35 @@ instance apply (standard; auto simp: lim_upred_f.rep_eq n_equiv_upred_f_def; tra
     ne_sprop_weaken ofe_refl rel_funD2 total_n_inclI upred_f.pcr_cr_eq valid_raw_non_expansive)
 end
 
+text \<open>Axiomatized fixed-point\<close>
+typedecl pre_iprop
+instance pre_iprop :: ofe sorry
+axiomatization pre :: "'a upred_f \<Rightarrow> pre_iprop" and iProp :: "pre_iprop \<Rightarrow> 'a upred_f"
+
+locale T_iso = 
+fixes to_iso :: "'a::ofe \<Rightarrow> 'b::ofe" and from_iso :: "'b \<Rightarrow> 'a"
+assumes isomorph1: "ofe_eq (to_iso (from_iso x)) x" and isomorph2: "ofe_eq (from_iso (to_iso y)) y"
+  and to_ne: "non_expansive to_iso" and from_ne: "non_expansive from_iso"
+begin
+  lemma to_equiv: "n_equiv n (to_iso x) (to_iso y) \<longleftrightarrow> n_equiv n x y"
+  proof 
+    assume assm: "n_equiv n (to_iso x) (to_iso y)"
+    have iso_step: "n_equiv n x y \<longleftrightarrow> n_equiv n (from_iso (to_iso x)) (from_iso (to_iso y))"
+      by (metis ofe_limit ofe_trans_eqL isomorph2)
+    from non_expansiveE[OF from_ne, OF assm] have "n_equiv n (from_iso (to_iso x)) (from_iso (to_iso y))"
+      by simp  
+    with iso_step show "n_equiv n x y" by simp
+  next
+    assume "n_equiv n x y"
+    with non_expansiveE[OF to_ne] show "n_equiv n (to_iso x) (to_iso y)" by simp
+  qed
+  lemma from_equiv: "n_equiv n (from_iso x) (from_iso y) \<longleftrightarrow> n_equiv n x y"
+    by (metis T_iso.intro T_iso.to_equiv from_ne isomorph1 isomorph2 to_ne)
+end
+
+  
+interpretation ipropIso: T_iso pre iProp sorry
+
 definition map_upred_ne :: "(('b::ucamera) -n> ('a::ucamera)) \<Rightarrow> (('a upred_f) -n> ('b upred_f))" where
   "map_upred_ne (f::'b-n>'a) = Abs_ne (\<lambda>(x::'a upred_f). Abs_upred_f (\<lambda>(c::'b) n. Rep_upred_f x (Rep_ne f c) n))"
 

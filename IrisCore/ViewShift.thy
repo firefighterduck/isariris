@@ -10,22 +10,32 @@ text \<open>
 
 type_synonym mask = "name set"
 
-definition fancy_upd :: "mask \<Rightarrow> mask \<Rightarrow> iprop \<Rightarrow> iprop" ("\<Turnstile>{_,_}=>_") where
+context 
+fixes get_inv :: "gname \<Rightarrow> 'res::ucamera \<Rightarrow> inv option"
+  and put_inv
+assumes inv_inG: "inG get_inv put_inv"
+begin
+
+abbreviation wsat :: "'res upred_f" where "wsat \<equiv> WorldSatisfaction.wsat put_inv"
+abbreviation ownE :: "mask \<Rightarrow> 'res upred_f" where "ownE \<equiv> WorldSatisfaction.ownE put_inv"
+
+definition fancy_upd :: "mask \<Rightarrow> mask \<Rightarrow> 'res upred_f \<Rightarrow> 'res upred_f" ("\<Turnstile>{_,_}=>_") where
   "\<Turnstile>{\<E>\<^sub>1, \<E>\<^sub>2}=>P \<equiv> (wsat \<^emph> ownE \<E>\<^sub>1) -\<^emph> (\<Rrightarrow>\<^sub>b (\<diamondop> (wsat \<^emph> ownE \<E>\<^sub>2 \<^emph> P)))"
 abbreviation wand_fupd ("_={_,_}=\<^emph>_") where "wand_fupd P \<E>\<^sub>1 \<E>\<^sub>2 Q \<equiv> P -\<^emph> \<Turnstile>{\<E>\<^sub>1, \<E>\<^sub>2}=>Q"
   
-abbreviation linear_fupd :: "mask \<Rightarrow> iprop \<Rightarrow> iprop" ("\<Turnstile>{_}=>_") where 
+abbreviation linear_fupd :: "mask \<Rightarrow> 'res upred_f \<Rightarrow> 'res upred_f" ("\<Turnstile>{_}=>_") where 
   "linear_fupd \<E> P \<equiv> \<Turnstile>{\<E>,\<E>}=>P"
 abbreviation wand_linear_fupd ("_={_}=\<^emph>_") where "wand_linear_fupd P \<E> Q \<equiv> P -\<^emph> \<Turnstile>{\<E>}=>Q"
 
-definition view_shift :: "iprop \<Rightarrow> mask \<Rightarrow> mask \<Rightarrow> iprop \<Rightarrow> iprop" ("_ ={_,_}=>_")  where
+definition view_shift :: "'res upred_f \<Rightarrow> mask \<Rightarrow> mask \<Rightarrow> 'res upred_f \<Rightarrow> 'res upred_f" ("_ ={_,_}=>_")  where
   "view_shift P \<E>\<^sub>1 \<E>\<^sub>2 Q = \<box>(P -\<^emph> \<Turnstile>{\<E>\<^sub>1, \<E>\<^sub>2}=>Q)"
-abbreviation linear_vs :: "iprop \<Rightarrow> mask \<Rightarrow> iprop \<Rightarrow> iprop" ("_ ={_}=>_") where
+abbreviation linear_vs :: "'res upred_f \<Rightarrow> mask \<Rightarrow> 'res upred_f \<Rightarrow> 'res upred_f" ("_ ={_}=>_") where
   "linear_vs P \<E> Q \<equiv> P ={\<E>,\<E>}=> Q"
 
 lemma fupd_ne [upred_ne_rule]: "\<lbrakk>n_equiv n E1 E2; n_equiv n E3 E4; n_equiv n P Q\<rbrakk> \<Longrightarrow>
   n_equiv n (\<Turnstile>{E1, E3}=>P) (\<Turnstile>{E2, E4}=>Q)"
-  by (auto simp: fancy_upd_def ofe_refl intro!: upred_ne_rule)
+  apply (auto simp: fancy_upd_def ofe_refl intro!: upred_ne_rule)
+  by (rule inv_inG)+
 
 lemma vs_ne [upred_ne_rule]: "\<lbrakk>n_equiv n E1 E2; n_equiv n E3 E4; n_equiv n P Q; n_equiv n R S\<rbrakk> \<Longrightarrow>
   n_equiv n (P={E1, E3}=>R) (Q={E2, E4}=>S)"
@@ -84,8 +94,8 @@ lemma fupd_mask_subseteq: "E2 \<subseteq> E1 \<Longrightarrow> \<Turnstile>{E1,E
 proof -
   assume assm: "E2 \<subseteq> E1"
   then have e1: "E1 = (E1-E2)\<union>E2" by auto
-  with assm have own_e1: "ownE E1 \<stileturn>\<turnstile> ownE (E1-E2) \<^emph> ownE E2" using ownE_op_minus
-    by (metis inf_sup_aci(5) upred_sep_comm)  
+  with assm have own_e1: "ownE E1 \<stileturn>\<turnstile> ownE (E1-E2) \<^emph> ownE E2" using ownE_op_minus[OF inv_inG]
+    by (metis sup_commute upred_sep_comm)
   show ?thesis unfolding fancy_upd_def
   apply (rule upred_wand_holdsI)
   apply (auto simp: upred_sep_assoc_eq intro!: upred_entails_substE[OF upred_entail_eqL[OF own_e1]]
@@ -97,7 +107,7 @@ proof -
   apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm2L]])
   apply (rule upred_entails_trans[OF upred_sep_comm2R])
   by (auto simp: upred_true_sep Un_absorb1 assm intro!: upred_entails_substE[OF 
-      upred_entail_eqR[OF ownE_op_minus[OF assm]], unfolded upred_sep_assoc_eq])
+      upred_entail_eqR[OF ownE_op_minus[OF inv_inG assm]], unfolded upred_sep_assoc_eq])
 qed
 
 lemma fupd_mask_trans: "\<Turnstile>{E1,E2}=>\<Turnstile>{E2,E3}=>P \<turnstile> \<Turnstile>{E1,E3}=>P"
@@ -161,7 +171,7 @@ lemma fupd_ext: "(\<Turnstile>{E1,E2}=>P) \<turnstile> (P={E2,E3}=\<^emph>Q)={E1
 lemma fupd_mask_frameR': "E1 \<inter> Ef = {} \<Longrightarrow> (\<Turnstile>{E1,E2}=> ((\<upharpoonleft>(E2 \<inter> Ef = {})) \<longrightarrow>\<^sub>u P)) ={E1\<union>Ef,E2\<union>Ef}=\<^emph>P"
 apply (rule upred_wand_holdsI)
 unfolding fancy_upd_def
-apply (auto simp: upred_sep_assoc_eq intro!: upred_wandI upred_entails_substE[OF upred_entail_eqL[OF ownE_op]])
+apply (auto simp: upred_sep_assoc_eq intro!: upred_wandI upred_entails_substE[OF upred_entail_eqL[OF ownE_op[OF inv_inG]]])
 apply (subst upred_sep_assoc_eq[symmetric, of _ wsat "ownE E1"])
 apply (rule upred_entails_trans[OF upred_sep_comm2R])
 apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm2L]])
@@ -175,7 +185,7 @@ apply (rule upred_entails_trans[OF upred_sep_comm2R])
 apply (rule upred_frame)
 apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm2L]])
 apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm]])
-apply (rule upred_entails_substE[OF upred_entail_eqR[OF ownE_op']])
+apply (rule upred_entails_substE[OF upred_entail_eqR[OF ownE_op'[OF inv_inG]]])
 apply (rule upred_entails_substE[OF upred_entail_eqR[OF upred_pure_sep_conj]])
 apply (subst upred_sep_assoc_eq)
 apply (rule upred_entails_trans[OF upred_sep_comm2R])
@@ -248,21 +258,21 @@ lemma elim_modal_upd: "elim_modal (\<Rrightarrow>\<^sub>b P) P (\<Turnstile>{E1,
   unfolding elim_modal_def using upd_fupd elim_modal_fupd[unfolded elim_modal_def]
   using fupd_ext upred_entails_wand_holdsR upred_wand_holds2E by blast
   
-abbreviation fancy_step :: "mask \<Rightarrow> mask \<Rightarrow> iprop \<Rightarrow> iprop" ("\<Turnstile>{_}[_]\<triangleright>=>_") where
+abbreviation fancy_step :: "mask \<Rightarrow> mask \<Rightarrow> 'res upred_f \<Rightarrow> 'res upred_f" ("\<Turnstile>{_}[_]\<triangleright>=>_") where
   "fancy_step Eo Ei Q \<equiv> \<Turnstile>{Eo,Ei}=> \<triangleright> \<Turnstile>{Ei,Eo}=> Q"
-abbreviation fancy_wand_step :: "iprop \<Rightarrow> mask \<Rightarrow> mask \<Rightarrow> iprop \<Rightarrow> iprop" ("_={_}[_]\<triangleright>=\<^emph>_") where
+abbreviation fancy_wand_step :: "'res upred_f \<Rightarrow> mask \<Rightarrow> mask \<Rightarrow> 'res upred_f \<Rightarrow> 'res upred_f" ("_={_}[_]\<triangleright>=\<^emph>_") where
   "fancy_wand_step P Eo Ei Q \<equiv> P -\<^emph> \<Turnstile>{Eo}[Ei]\<triangleright>=> Q"
-abbreviation fancy_linear_step :: "mask \<Rightarrow> iprop \<Rightarrow> iprop" ("\<Turnstile>{_}\<triangleright>=>_") where
+abbreviation fancy_linear_step :: "mask \<Rightarrow> 'res upred_f \<Rightarrow> 'res upred_f" ("\<Turnstile>{_}\<triangleright>=>_") where
   "fancy_linear_step E Q \<equiv> \<Turnstile>{E}[E]\<triangleright>=> Q"
-abbreviation fancy_linear_wand_step :: "iprop \<Rightarrow> mask \<Rightarrow> iprop \<Rightarrow> iprop" ("_={_}\<triangleright>=\<^emph>_") where
+abbreviation fancy_linear_wand_step :: "'res upred_f \<Rightarrow> mask \<Rightarrow> 'res upred_f \<Rightarrow> 'res upred_f" ("_={_}\<triangleright>=\<^emph>_") where
   "fancy_linear_wand_step P E Q \<equiv> P -\<^emph> \<Turnstile>{E}\<triangleright>=> Q"
-abbreviation fancy_steps :: "mask \<Rightarrow> mask \<Rightarrow> nat \<Rightarrow> iprop \<Rightarrow> iprop" ("\<Turnstile>{_}[_]\<triangleright>^_=>_") where
+abbreviation fancy_steps :: "mask \<Rightarrow> mask \<Rightarrow> nat \<Rightarrow> 'res upred_f \<Rightarrow> 'res upred_f" ("\<Turnstile>{_}[_]\<triangleright>^_=>_") where
   "fancy_steps Eo Ei n Q \<equiv> ((\<lambda>P. \<Turnstile>{Eo}[Ei]\<triangleright>=>P)^^n) Q"
-abbreviation fancy_wand_steps :: "iprop \<Rightarrow> mask \<Rightarrow> mask \<Rightarrow> nat \<Rightarrow> iprop \<Rightarrow> iprop" ("_={_}[_]\<triangleright>^_=\<^emph>_") 
+abbreviation fancy_wand_steps :: "'res upred_f \<Rightarrow> mask \<Rightarrow> mask \<Rightarrow> nat \<Rightarrow> 'res upred_f \<Rightarrow> 'res upred_f" ("_={_}[_]\<triangleright>^_=\<^emph>_") 
   where "fancy_wand_steps P Eo Ei n Q \<equiv> P -\<^emph> (\<Turnstile>{Eo}[Ei]\<triangleright>^n=>Q)"
-abbreviation fancy_linear_steps :: "mask \<Rightarrow> nat \<Rightarrow> iprop \<Rightarrow> iprop" ("\<Turnstile>{_}\<triangleright>^_=>_") where
+abbreviation fancy_linear_steps :: "mask \<Rightarrow> nat \<Rightarrow> 'res upred_f \<Rightarrow> 'res upred_f" ("\<Turnstile>{_}\<triangleright>^_=>_") where
   "fancy_linear_steps E n Q \<equiv> \<Turnstile>{E}[E]\<triangleright>^n=>Q"
-abbreviation fancy_linear_wand_steps :: "iprop \<Rightarrow> mask \<Rightarrow> nat \<Rightarrow> iprop \<Rightarrow> iprop" ("_={_}\<triangleright>^_=\<^emph>_") where
+abbreviation fancy_linear_wand_steps :: "'res upred_f \<Rightarrow> mask \<Rightarrow> nat \<Rightarrow> 'res upred_f \<Rightarrow> 'res upred_f" ("_={_}\<triangleright>^_=\<^emph>_") where
   "fancy_linear_wand_steps P E n Q \<equiv> P={E}[E]\<triangleright>^n=\<^emph>Q"
 
 lemma step_fupdN_wand: "(\<Turnstile>{Eo}[Ei]\<triangleright>^n=> P) -\<^emph> (P -\<^emph> Q) -\<^emph> (\<Turnstile>{Eo}[Ei]\<triangleright>^n=> Q)"
@@ -280,4 +290,5 @@ next
   apply (rule upred_entails_trans[OF _ fupd_intro[to_entailment]])
   by iris_simp
 qed
+end
 end

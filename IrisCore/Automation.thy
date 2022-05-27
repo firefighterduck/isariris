@@ -8,6 +8,7 @@ method iIntro =
 method remove_emp = (simp_all only: upred_sep_assoc_eq emp_rule)?
 
 named_theorems iris_simp
+named_theorems inG_axioms
 
 declare upred_sep_assoc_eq[iris_simp]
 declare emp_rule[iris_simp]
@@ -15,8 +16,8 @@ declare emp_rule[iris_simp]
 method iris_simp declares iris_simp = 
   (simp_all add: iris_simp)?
 
-method log_prog_solver =
-  fast intro: log_prog_rule
+method log_prog_solver declares log_prog_rule =
+  fast intro: log_prog_rule inG_axioms
 (* | slow intro: log_prog_rule *)
 (* | best intro: log_prog_rule *)
 (*| force intro: log_prog_rule
@@ -419,10 +420,12 @@ method later_elim = iris_simp,
   check_moveL "\<triangleright> ?P", 
   (rule elim_modal_entails'[OF elim_modal_timeless']
   | rule elim_modal_entails[OF elim_modal_timeless']),
-  log_prog_solver, log_prog_solver (* Once for the timeless goal, once for the is_except_zero goal. *)
+  (* Once for the timeless goal, once for the is_except_zero goal. *)  
+  log_prog_solver, log_prog_solver
 
-method iMod_raw methods later fupd uses rule =
-  iris_simp, iApply rule: rule, (prefer_last, (later | fupd)+, defer_tac)?, iris_simp
+method iMod_raw methods fupd uses rule =
+  iris_simp, iApply rule: rule, 
+  (prefer_last, (later_elim| fupd)+, defer_tac)?, iris_simp
 
 method iMod_raw_wand for lhs_pat pat :: "'a::ucamera upred_f" methods later fupd =
   iris_simp, iApply_wand_as_rule lhs_pat pat, (prefer_last, (later | fupd)+, defer_tac)?, iris_simp

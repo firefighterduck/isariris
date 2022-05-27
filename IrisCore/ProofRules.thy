@@ -708,6 +708,14 @@ lemma upred_eq_entails: "ofe_eq P Q \<Longrightarrow> P \<stileturn>\<turnstile>
 lemma upred_pure_wand: "\<lbrakk>b; upred_holds P\<rbrakk> \<Longrightarrow> (\<upharpoonleft>b)-\<^emph>P"
   by transfer auto
 
+lemma option_equivI: "x=\<^sub>uy \<stileturn>\<turnstile> (case (x,y) of (Some a, Some b) \<Rightarrow> a=\<^sub>ub | (None,None) \<Rightarrow> upred_emp | _ \<Rightarrow> \<upharpoonleft>False)"
+  apply (auto simp: upred_entail_eq_def split: option.splits; transfer)
+  by (auto simp: ofe_refl n_equiv_option_def)
+
+lemma later_equivI: "Next x =\<^sub>u Next y \<stileturn>\<turnstile> \<triangleright>(x=\<^sub>uy)"
+  apply (auto simp: upred_entail_eq_def; transfer)
+  by (auto simp: n_equiv_later_def)
+  
 definition except_zero :: "'a::ucamera upred_f \<Rightarrow> 'a upred_f" ("\<diamondop>_") where 
   "except_zero P \<equiv> P \<or>\<^sub>u \<triangleright>\<upharpoonleft>False"
 

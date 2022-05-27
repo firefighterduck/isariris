@@ -1,10 +1,10 @@
 theory Mon
 imports SpanningTreeCameras
-  "../IrisCore/Invariant"
   "../HeapLang/Notation"
+  "../HeapLang/WeakestPrecondition"
   "../IrisCore/Misc"
   "../IrisCore/AuthHeap"
-   "HOL-Library.Rewrite"
+  "HOL-Library.Rewrite"
 begin
 
 subsection \<open> The underlying structures of the spanning tree \<close>
@@ -13,11 +13,50 @@ text \<open> Based on \<^url>\<open>https://gitlab.mpi-sws.org/iris/examples/-/b
 definition "graph_name :: gname \<equiv> 5"
 definition "marking_name :: gname \<equiv> 6"
 
+lemmas wp_inG = invInG.inG_axioms heapInG.inG_axioms prophInG.inG_axioms
+
+abbreviation fancy_upd ("\<Turnstile>{_,_}=>_") where "fancy_upd \<equiv> ViewShift.fancy_upd constr_inv"
+abbreviation wand_fupd ("_={_,_}=\<^emph>_") where "wand_fupd \<equiv> ViewShift.wand_fupd constr_inv"
+abbreviation linear_fupd ("\<Turnstile>{_}=>_") where "linear_fupd \<equiv> ViewShift.linear_fupd constr_inv"
+abbreviation wand_linear_fupd ("_={_}=\<^emph>_") where "wand_linear_fupd \<equiv> ViewShift.wand_linear_fupd constr_inv"
+abbreviation fancy_step ("\<Turnstile>{_}[_]\<triangleright>=>_") where "fancy_step \<equiv> ViewShift.fancy_step constr_inv"  
+abbreviation fancy_wand_step ("_={_}[_]\<triangleright>=\<^emph>_") where "fancy_wand_step \<equiv> ViewShift.fancy_wand_step constr_inv"  
+abbreviation fancy_linear_wand_step ("_={_}\<triangleright>=\<^emph>_") where
+  "fancy_linear_wand_step \<equiv> ViewShift.fancy_linear_wand_step constr_inv"
+abbreviation wp where "wp \<equiv> WeakestPrecondition.wp constr_inv constr_heap constr_proph"
+abbreviation WP ("WP _ {{ _ }}") where "WP e {{ Q }} \<equiv> WeakestPrecondition.WP constr_inv constr_heap constr_proph e Q"
+abbreviation hoare ("{{ _ }} _ {{ _ }}") where "hoare \<equiv> WeakestPrecondition.hoare constr_inv constr_heap constr_proph"
+abbreviation texan ("{{{ _ }}} _ {{{ _ }}}") where "texan \<equiv> WeakestPrecondition.texan constr_inv constr_heap constr_proph"
+abbreviation texan2 ("{{{ _ }}} _ @ _ ; _ {{{ _ }}}") where "texan2 \<equiv> WeakestPrecondition.texan2 constr_inv constr_heap constr_proph"
+
+interpretation graphInG: inG get_graph constr_graph
+apply (auto simp: get_graph_def constr_graph_def d_equiv inG_def prod_n_valid_def \<epsilon>_n_valid op_prod_def
+  \<epsilon>_left_id intro: map_upd_eqD1)
+by (auto simp: pcore_prod_def pcore_fun_def \<epsilon>_fun_def \<epsilon>_option_def pcore_option_def comp_def 
+  constr_graph_def split: option.splits)
+
+interpretation markingInG: inG get_markings constr_markings
+apply (auto simp: get_markings_def constr_markings_def d_equiv inG_def prod_n_valid_def \<epsilon>_n_valid op_prod_def
+  \<epsilon>_left_id intro: map_upd_eqD1)
+by (auto simp: pcore_prod_def pcore_fun_def \<epsilon>_fun_def \<epsilon>_option_def pcore_option_def comp_def 
+  constr_markings_def split: option.splits)
+
+interpretation cinvInG: inG get_cinv constr_cinv
+apply (auto simp: get_cinv_def constr_cinv_def d_equiv inG_def prod_n_valid_def \<epsilon>_n_valid op_prod_def
+  \<epsilon>_left_id intro: map_upd_eqD1)
+by (auto simp: pcore_prod_def pcore_fun_def \<epsilon>_fun_def \<epsilon>_option_def pcore_option_def comp_def 
+  constr_cinv_def split: option.splits)
+
+lemmas [inG_axioms] = graphInG.inG_axioms markingInG.inG_axioms cinvInG.inG_axioms
+declare invInG.inG_axioms[inv_inG_axiom,inG_axioms]
+declare heapInG.inG_axioms[heap_inG_axiom,inG_axioms]
+declare prophInG.inG_axioms[proph_inG_axiom,inG_axioms]
+
 definition graphN :: namespace where "graphN = add_name nroot (string_to_name ''SPT_graph'')"
 abbreviation own_graph :: "graphUR auth \<Rightarrow> iprop" ("Own\<^sub>g _" 85) where
-  "own_graph g \<equiv> Own(constr_graph graph_name g)"
+  "own_graph g \<equiv> graphInG.own graph_name g"
 abbreviation own_marking :: "markingUR auth \<Rightarrow> iprop" ("Own\<^sub>m _" 85) where
-  "own_marking m \<equiv> Own(constr_markings marking_name m)"
+  "own_marking m \<equiv> markingInG.own marking_name m"
 
 lemma n_incl_fragm_l: "n_incl n (fragm {l}) a = (case a of Auth (b,c) \<Rightarrow> l\<in>c)"
   by (auto split: auth.splits)
@@ -30,11 +69,9 @@ lemma is_marked_split: "Own\<^sub>m(fragm {|l|}) = Own\<^sub>m(fragm {|l|} \<cdo
 
 lemma dup_marked: "is_marked l \<stileturn>\<turnstile> is_marked l \<^emph> is_marked l"
 proof -
-from upred_own_op have "Own (constr_markings marking_name (fragm {|l|}) \<cdot> 
-  constr_markings marking_name (fragm {|l|})) \<stileturn>\<turnstile> (Own\<^sub>m(fragm {|l|})) \<^emph> Own\<^sub>m(fragm {|l|})" 
+from markingInG.own_op have "markingInG.own marking_name (fragm {|l|} \<cdot> fragm {|l|}) 
+  \<stileturn>\<turnstile> (Own\<^sub>m(fragm {|l|})) \<^emph> Own\<^sub>m(fragm {|l|})" 
   by auto
-then have "Own(constr_markings marking_name (fragm {|l|}\<cdot>fragm {|l|})) \<stileturn>\<turnstile> Own\<^sub>m(fragm {|l|}) \<^emph> Own\<^sub>m(fragm {|l|})" 
-  by (auto simp add: op_prod_def \<epsilon>_left_id constr_markings_def)
 then show ?thesis unfolding is_marked_split[symmetric] by (simp add: is_marked_def)
 qed
 
@@ -92,25 +129,29 @@ lemma of_graph_dom: "fmdom' (of_graph g G) = fmdom' g"
 definition own_graphUR :: "frac \<Rightarrow> gmon \<Rightarrow> iprop" where
   "own_graphUR q G = Own\<^sub>g(fragm (Some (G,q)))"
 
-definition heap_owns :: "marked_graph \<Rightarrow> (loc\<rightharpoonup>loc) \<Rightarrow> iprop" where
+context includes heap_syntax begin
+definition heap_owns :: "marked_graph \<Rightarrow> (loc\<rightharpoonup>loc) \<Rightarrow> iprop"  where
   "heap_owns M markings = 
   sep_map_fset (\<lambda>(l,(b,cl)). (\<exists>\<^sub>u m. ((\<upharpoonleft>(markings l = Some m))
     \<^emph> (l\<mapsto>\<^sub>u#[(m, children_to_val cl)])
     \<^emph> (m\<mapsto>\<^sub>u#[b]))))
   (fset_of_fmap M)"
-
+end
+  
 definition graph_inv :: "loc graph \<Rightarrow> (loc\<rightharpoonup>loc) \<Rightarrow> iprop" where
   "graph_inv g markings \<equiv> \<exists>\<^sub>u (G::gmon). ((Own\<^sub>g(full (Some (G, 1))))
     \<^emph> (Own\<^sub>m(full (fmdom G))) \<^emph> (heap_owns (of_graph g G) markings) 
     \<^emph> (\<upharpoonleft>(strict_subgraph' g (gmon_graph G))))"
 
 lemma own_graph_timeless [timeless_rule,log_prog_rule]:"timeless (Own\<^sub>g g)"
-  unfolding timeless_def except_zero_def constr_graph_def
-  by transfer (auto simp: singleton_map_n_incl d_equiv)
+  unfolding constr_graph_def graphInG.own_def
+  by (auto intro: own_timeless')
 
 lemma own_markings_timeless [timeless_rule,log_prog_rule]:"timeless (Own\<^sub>m m)"
-  unfolding timeless_def except_zero_def constr_markings_def
-  by transfer (auto simp: singleton_map_n_incl d_equiv)
+  unfolding timeless_def except_zero_def constr_markings_def markingInG.own_def
+  apply transfer 
+  apply (auto simp: singleton_map_n_incl d_equiv)
+  by (simp add: d_equiv n_incl_def)
 
 lemma graph_inv_timeless [timeless_rule,log_prog_rule]: "timeless (graph_inv g m)"
   unfolding graph_inv_def heap_owns_def
@@ -118,14 +159,15 @@ lemma graph_inv_timeless [timeless_rule,log_prog_rule]: "timeless (graph_inv g m
   apply auto by timeless_solver
 
 definition graph_ctxt :: "gname \<Rightarrow> loc graph \<Rightarrow> (loc\<rightharpoonup>loc) \<Rightarrow> iprop" where 
-  "graph_ctxt \<kappa> g Mrk \<equiv> cinv graphN \<kappa> (graph_inv g Mrk)"
+  "graph_ctxt \<kappa> g Mrk \<equiv> cinv constr_cinv constr_inv graphN \<kappa> (graph_inv g Mrk)"
 
 lemma graph_ctxt_persistent [pers_rule,log_prog_rule]: "persistent (graph_ctxt \<kappa> g Mrk)"
-  unfolding graph_ctxt_def by (rule cinv_persistent)
+  unfolding graph_ctxt_def by (rule cinv_persistent[OF cinvInG.inG_axioms invInG.inG_axioms])
 
 abbreviation gmon_map :: "loc \<Rightarrow> chl \<Rightarrow> gmon" where "gmon_map l v \<equiv> fmupd l (Ex v) fmempty"
 notation gmon_map (infix "[\<mapsto>\<^sub>g]" 60)
 
+context includes heap_syntax begin
 lemma graph_open: "x \<in> fmdom' g \<Longrightarrow>
   (Own\<^sub>g (full (Some (G,1)))) \<^emph> heap_owns (of_graph g G) markings \<turnstile>
   (Own\<^sub>g (full (Some (G,1)))) \<^emph> heap_owns (fmdrop x (of_graph g G)) markings 
@@ -175,18 +217,19 @@ proof -
   by (iExistsR m)
   done
 qed
+end
 
 lemma auth_own_graph_valid: "Own\<^sub>g (full (Some (G,q))) \<turnstile> \<V> G"
-apply (auto simp: constr_graph_def)
+apply (auto simp: constr_graph_def graphInG.own_def)
 apply (entails_substL rule: upred_own_valid)
 apply transfer'
 by (auto simp: \<epsilon>_n_valid prod_n_valid_def valid_raw_option_def)
 
 lemma new_marked: "(Own\<^sub>m (full m)) ={E}=\<^emph> (Own\<^sub>m (full (m\<cdot>{|l|})) \<^emph> is_marked l)"
 apply iIntro
-unfolding is_marked_def constr_markings_def
-apply (entails_substR rule: fupd_mono[OF upred_entail_eqL[OF upred_own_op]])
-apply (rule upred_entails_trans[OF upred_wand_holdsE[OF upred_own_update] upred_wand_holdsE[OF upd_fupd]])
+unfolding is_marked_def
+apply (entails_substR rule: fupd_mono[OF invInG.inG_axioms upred_entail_eqL[OF markingInG.own_op]])
+apply (rule upred_entails_trans[OF upred_wand_holdsE[OF markingInG.own_update] upred_wand_holdsE[OF upd_fupd[OF invInG.inG_axioms]]])
 apply (auto simp: camera_upd_def prod_n_valid_def op_prod_def \<epsilon>_left_id)
 sorry
 
@@ -194,7 +237,7 @@ lemma already_marked: "l |\<in>| m \<Longrightarrow>
   (Own\<^sub>m (full m)) ={E}=\<^emph> (Own\<^sub>m (full m) \<^emph> is_marked l)"
   apply iIntro
   apply (entails_substL rule: new_marked)
-  apply (rule fupd_mono)
+  apply (rule fupd_mono[OF invInG.inG_axioms])
   apply (rule upred_frame)
   sorry
 

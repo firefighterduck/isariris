@@ -41,7 +41,7 @@ lemma ofe_trans': "\<lbrakk>ofe_eq x y; ofe_eq y z\<rbrakk> \<Longrightarrow> of
   by (auto simp: ofe_limit intro: ofe_trans)
 
 lemma ofe_eq_equiv: "ofe_eq x y \<Longrightarrow> n_equiv n x y" by (simp add: ofe_limit)
-  
+
 subsection \<open> Basic OFE instances \<close>
 subsubsection \<open>unit OFE\<close>
 instantiation unit :: ofe begin

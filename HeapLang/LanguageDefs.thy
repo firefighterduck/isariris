@@ -1,12 +1,42 @@
 theory LanguageDefs
-imports PrimitiveLaws State "../IrisCore/AuthHeap" "../IrisCore/Invariant"
+imports PrimitiveLaws State "../IrisCore/AuthHeap" "../IrisCore/Invariant" "../IrisCore/iPropShallow"
 begin
+
+text \<open>Heap camera setup\<close>
+interpretation heapInG: inG get_heap constr_heap
+apply (auto simp: get_heap_def constr_heap_def d_equiv inG_def prod_n_valid_def \<epsilon>_n_valid op_prod_def
+  \<epsilon>_left_id intro: map_upd_eqD1)
+by (auto simp: pcore_prod_def pcore_fun_def \<epsilon>_fun_def \<epsilon>_option_def pcore_option_def comp_def 
+  constr_heap_def split: option.splits)
+
+abbreviation "points_to_heap \<equiv> points_to constr_heap"
+abbreviation "points_to_disc_heap \<equiv> points_to_disc constr_heap"
+abbreviation "points_to_own_heap \<equiv> points_to_own constr_heap"
+abbreviation "points_to_full_heap \<equiv> points_to_full constr_heap"
+
+bundle heap_syntax begin
+notation points_to_heap ("_ \<mapsto>{_} _" 60)
+notation points_to_disc_heap (infix "\<mapsto>\<box>" 60)
+notation points_to_own_heap ("_\<mapsto>{#_}_" 60)
+notation points_to_full_heap (infix "\<mapsto>\<^sub>u" 60)
+end
+
+declare timeless_points_to[OF heapInG.inG_axioms, timeless_rule,log_prog_rule]
 
 text \<open>Auxiliary language specific definitions\<close>
 
-definition state_interp :: "state \<Rightarrow> observation list \<Rightarrow> iprop" where
-  "state_interp \<sigma> \<kappa>s = heap_interp (heap \<sigma>) \<^emph> proph_map_interp \<kappa>s (used_proph_id \<sigma>)"
-                                                                         
+context
+fixes  get_prophm :: "gname \<Rightarrow> 'res::ucamera \<Rightarrow> heap_lang_proph_map option"
+  and put_prophm
+  and get_heap :: "gname \<Rightarrow> 'res \<Rightarrow> heap_lang_heap option"
+  and put_heap
+assumes proph_inG: "inG get_prophm put_prophm"
+  and heap_inG: "inG get_heap put_heap"
+begin
+definition state_interp :: "state \<Rightarrow> observation list \<Rightarrow> 'res upred_f" where
+  "state_interp \<sigma> \<kappa>s = heap_interp put_heap (heap \<sigma>) \<^emph> proph_map_interp put_prophm \<kappa>s (used_proph_id \<sigma>)"
+end
+  
 definition fill :: "ectx_item list \<Rightarrow> expr \<Rightarrow> expr"  where "fill K e = foldl (\<lambda>exp ctx. fill_item ctx exp) e K"
 
 lemma fill_item_Rec: "fill_item K' e2 \<noteq> Rec f x e" by (induction K') auto

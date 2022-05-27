@@ -9,12 +9,18 @@ definition own :: "gname \<Rightarrow> 'b \<Rightarrow> 'a upred_f" where
 lemma own_ne [upred_ne_rule]: "n_equiv n x y \<Longrightarrow> n_equiv n (own \<gamma> x) (own \<gamma> y)" 
   unfolding own_def
   apply (rule upred_own_ne)
-  using non_expansiveE[OF put_ne] by simp
+  using put_ne by simp
 
 lemma own_valid: "own \<gamma> a \<turnstile> \<V>(a)"
   unfolding own_def
   apply (rule upred_entails_trans[OF upred_own_valid])
   by (auto simp: upred_entails.rep_eq upred_valid.rep_eq put_n_valid)
+
+lemma own_valid': "own \<gamma> a \<turnstile> \<V>(put_cmra \<gamma> a)"
+  by (simp add: own_def upred_own_valid)
+
+lemma valid_get: "\<V>(put_cmra \<gamma> a) \<stileturn>\<turnstile> \<V>(a)"
+  by (auto simp: upred_valid.rep_eq upred_entail_eq_def upred_entails.rep_eq put_n_valid)
 
 lemma own_op: "own \<gamma> (a\<cdot>b) \<stileturn>\<turnstile> own \<gamma> a \<^emph> own \<gamma> b"
   unfolding own_def put_op
@@ -44,6 +50,17 @@ proof -
     by (meson upd_frameR upd_mono upd_idem upred_entails_trans)
   from add_holds[OF \<open>\<Rrightarrow>\<^sub>b own \<gamma> a\<close> this] show ?thesis .
 qed  
+
+lemma inG_dcamera_val: "dcamera_val (put_cmra \<gamma> a) \<Longrightarrow> dcamera_val a"
+  unfolding dcamera_val_def discrete_val_def
+  using put_ne
+  apply (auto simp: ofe_refl ofe_eq_eq valid_def)
+  apply (metis get_put option.inject)
+  apply (metis get_put ofe_eq_equiv option.sel)
+  using put_n_valid apply blast
+  apply (metis get_put option.sel)
+  apply (metis get_put ofe_limit option.sel)
+  using put_n_valid by blast
 end
 
 notation inG.own ("own _ _ _")
