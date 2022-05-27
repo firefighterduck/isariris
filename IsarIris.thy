@@ -1,5 +1,5 @@
 theory IsarIris
-imports "SpinLock/Demo"
+imports "SpinLock/Demo" "SpanningTree/Spanning"
 begin
 
 type_synonym 'a iquant = "'a \<Rightarrow> iprop"

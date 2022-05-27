@@ -29,12 +29,12 @@ assumes lock_inG[lock_inG_axiom]: "inG get_lock put_lock"
   and prophm_inG[proph_inG_axiom]: "inG get_proph put_proph"
 begin
 
-lemmas inG_wp = inv_inG heap_inG prophm_inG
-
 text \<open>Boilerplate setup\<close>
 lemmas wp_inG[inG_axioms] = inv_inG heap_inG prophm_inG
+abbreviation fancy_upd ("\<Turnstile>{_,_}=>_") where "fancy_upd \<equiv> ViewShift.fancy_upd put_inv"
 abbreviation wand_fupd ("_={_,_}=\<^emph>_") where "wand_fupd \<equiv> ViewShift.wand_fupd put_inv"
 abbreviation wand_linear_fupd ("_={_}=\<^emph>_") where "wand_linear_fupd \<equiv> ViewShift.wand_linear_fupd put_inv"
+abbreviation linear_fupd ("\<Turnstile>{_}=>_") where "linear_fupd \<equiv> ViewShift.linear_fupd put_inv"
 abbreviation points_to_own ("_\<mapsto>{#_}_" 60) where "points_to_own \<equiv> AuthHeap.points_to_own put_heap"
 abbreviation points_to_full (infix "\<mapsto>\<^sub>u" 60) where "points_to_full \<equiv> AuthHeap.points_to_full put_heap"
 abbreviation texan2 ("{{{ _ }}} _ @ _ ; _ {{{ _ }}}") where "texan2 \<equiv> WeakestPrecondition.texan2 put_inv put_heap put_proph"
@@ -60,7 +60,8 @@ lemma lock_alloc: "\<exists>\<^sub>u \<gamma>.\<Rrightarrow>\<^sub>b (locked \<g
   apply (entails_substR rule: inG.own_alloc[OF lock_inG])
   by (auto simp: valid_def constr_lock_def prod_n_valid_def \<epsilon>_n_valid valid_raw_ex_def)
   
-declare frame_rule_apply[OF upred_entails_trans[OF upred_entails_trans[OF lock_alloc[to_entailment] upred_exist_mono[OF upd_fupd[to_entailment]]] fupd_exists_lift[OF inv_inG]], alloc_rule]
+declare frame_rule_apply[OF upred_entails_trans[OF upred_entails_trans[OF lock_alloc[to_entailment] 
+  upred_exist_mono[OF upd_fupd[to_entailment]]] fupd_exists_lift[OF inv_inG]], alloc_rule]
 lemmas [iris_simp] = lock_inv_def is_lock_def newlock_def acquire_def release_def
 
 text \<open>Specification\<close>
@@ -73,7 +74,7 @@ lemma newlock_spec:
   apply (rule upred_wandI)+
   apply iris_simp
   \<comment> \<open>Symbolically execute the call of \<^term>\<open>newlock\<close>.\<close>
-  apply (entails_substR rule: wp_pure_step_later[OF inv_inG heap_inG prophm_inG pure_exec_beta, simplified])
+  apply (entails_substR rule: wp_pure_step_later[OF wp_inG pure_exec_beta, simplified])
   apply iris_simp
   apply (rule upred_later_mono)
   \<comment> \<open>Symbolically execute the allocation of the heap cell for the lock.\<close>
@@ -96,5 +97,9 @@ lemma newlock_spec:
 lemma newlock_spec:
   "{{{ upred_emp }}} App newlock #[()] {{{ \<lambda>lk. \<forall>\<^sub>u R. (R ={UNIV}=\<^emph> (\<exists>\<^sub>u \<gamma>. is_lock \<gamma> lk R)) }}}"
   by brute_force_solver
+  
+lemma release_spec: 
+  "{{{ is_lock \<gamma> lk R \<^emph> locked \<gamma> \<^emph> R }}} App release lk {{{ \<lambda>_. upred_emp }}}"
+  by brute_force_solver 
 end
 end
