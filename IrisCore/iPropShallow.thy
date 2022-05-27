@@ -8,16 +8,13 @@ begin
 
   gmapF := ((loc\<rightharpoonup>((loc option\<times>loc option) ex))\<times>frac) option auth
   markingF := loc set auth
-  b invF := (name\<rightharpoonup>b later ag)  auth
+  b invF := (name\<rightharpoonup>b later ag) auth
   heapF := (loc\<rightharpoonup>(dfrac\<times>val ag)) auth
   (b,_) resF := gmapF \<times> markingF \<times> b invF \<times> heapF
   iprop := (iprop,iprop) resF upred
 *)
 
 type_synonym 'a pre_inv = "(name, 'a later) map_view \<times> name dset \<times> name dfset"
-
-(* Index into resource maps to allow more than one instance of a camera *)
-type_synonym gname = nat
 
 ML \<open>
   local
@@ -35,9 +32,6 @@ ML \<open>
   }
 
   (* Names *)
-  val iPropN = Binding.name "iProp"
-  val preN = Binding.name "pre"
-  val pre_ipropN = Binding.name "pre_iprop"
   val resFN = Binding.name "resF"
   val invN = Binding.name "inv"
   val resN = Binding.name "res"
@@ -48,6 +42,7 @@ ML \<open>
   val mapN = "map_res"
 
   (* Types *)
+  val pre_ipropT = \<^typ>\<open>pre_iprop\<close>
   val gnameT = \<^typ>\<open>gname\<close>
   fun mk_opt T = Type (\<^type_name>\<open>option\<close>, [T])
   fun mk_res_mapT res = gnameT --> mk_opt res (* This might need to be (gname,res) fmap *)
@@ -139,12 +134,6 @@ ML \<open>
     end
 
   (* Setup functions *)
-  val mk_pre_iprop = Typedecl.typedecl_global {final=false} (pre_ipropN,[],NoSyn)
-
-  fun mk_axioms preT propT = 
-    [(iPropN,SOME (preT --> propT),NoSyn),(preN,SOME (propT --> preT) ,NoSyn)]
-  fun def_axioms ax_defs = (#2 o Specification.axiomatization ax_defs [] [] [])
-
   fun def_resF cmraT = (#2 o Typedecl.abbrev_global (resFN,["'a", "'b"],NoSyn) cmraT)
   fun def_inv preT = (#2 o Typedecl.abbrev_global (invN,[],NoSyn) (subst_aT preT invT))
   fun def_res cmraT = (#2 o Typedecl.abbrev_global (resN,[],NoSyn) cmraT)
@@ -155,25 +144,20 @@ ML \<open>
       thy |> Config.put_global quick_and_dirty true |> f |> Config.put_global quick_and_dirty qad 
     end
 
-  (* Axiomatize that pre_iprop is of class ofe. This will mark the command with a red background. *)
-  fun pre_inst thy = Class.instance_arity_cmd ([Binding.name_of pre_ipropN], [], "ofe") thy
-    |> Proof.global_skip_proof false |> Proof_Context.theory_of
   in
 
   fun mk_iprop cmras thy = 
-    let val (preT,thy') = mk_pre_iprop thy 
+    let 
       val cmras_raw = map (fn (cmra,name)=>{camera=cmra, name=name, getter=NONE, constructor=NONE}) cmras
-      val cmra_data = {number = length cmras+3, cameras = cmras_raw@fixed_cmras preT, cmraPT = NONE}
+      val cmra_data = {number = length cmras+3, cameras = cmras_raw@fixed_cmras pre_ipropT, cmraPT = NONE}
       val cmra_data = mk_getters cmra_data
       val cmra_data = mk_owns cmra_data
-      val cmraT = subst_aT preT base_cameraT |> mk_cmraT (mk_maps (map fst cmras))
-      val propT = mk_pred cmraT 
-      val axs = mk_axioms preT propT
+      val cmraT = subst_aT pre_ipropT base_cameraT |> mk_cmraT (mk_maps (map fst cmras))
       val cmra_data = {number = #number cmra_data, cameras = #cameras cmra_data, cmraPT = SOME cmraT}
-    in thy' |> 
+    in thy |> 
       wrap_quick_and_dirtys_mode (fn thy => thy
-        |> def_axioms axs |> def_resF cmraT |> def_inv preT |> def_res cmraT |> def_iprop cmraT
-        |> pre_inst |> Named_Target.theory_map (mk_defs cmra_data)
+        |> def_resF cmraT |> def_inv pre_ipropT |> def_res cmraT |> def_iprop cmraT
+        |> Named_Target.theory_map (mk_defs cmra_data)
       )
     end
 end;
@@ -184,8 +168,110 @@ type_synonym lockG = "unit ex"
 setup \<open>mk_iprop [(\<^typ>\<open>graphUR auth\<close>, "graph"), (\<^typ>\<open>markingUR auth\<close>, "markings"), 
   (\<^typ>\<open>heap_lang_proph_map\<close>, "proph"), (\<^typ>\<open>lockG\<close>, "lock")]\<close>
   
-lemma iprop_fp: "iProp (pre P) = P" sorry
-declare [[coercion iProp]]
+text \<open>Again some experiments wrt the iprop fixed-point\<close>
+definition inv_map :: "('a::cofe \<Rightarrow> 'b::cofe) \<Rightarrow> ('a pre_inv \<Rightarrow> 'b pre_inv)" where 
+  "inv_map (f::'a\<Rightarrow>'b) = map_prod (map_map_view (map_later f)) id"
 
-lemma n_equiv_pre [simp]: "n_equiv n (pre P) (pre Q) \<longleftrightarrow> n_equiv n P Q" sorry
+lift_definition marking_map :: "('a::cofe -n> 'b::cofe) \<Rightarrow> (markingUR auth -n> markingUR auth)" is
+  "\<lambda>_. id" by (rule discrete_ne)
+
+lemma "contractive marking_map"
+  unfolding contr_contr_alt contractive_alt_def
+  apply transfer by (simp add: ofe_refl)
+
+lift_definition later_map :: "('a::cofe -n> 'b::cofe) \<Rightarrow> ('a later -n> 'b later)" is
+  "\<lambda>(f::'a\<Rightarrow>'b) (l::'a later). map_later f l"
+  unfolding non_expansive_def
+  by (auto simp: n_equiv_later_def later.map_sel)
+
+lemma contr_later: "contractive later_map"
+  unfolding contr_contr_alt contractive_alt_def
+  apply transfer by (auto simp: later.map_sel n_equiv_later_def split: nat.split)
+
+lemma "contr_ne f \<Longrightarrow> contr_ne (later_map f)"
+apply transfer
+unfolding contr_contr_alt contractive_alt_def non_expansive_def
+apply (auto simp: later.map_sel n_equiv_later_def split: nat.splits)
+by (metis Suc_pred)
+
+lift_definition ag_map :: "('a::cofe -n> 'b::cofe) \<Rightarrow> ('a ag -n> 'b ag)" is
+  "\<lambda>(f::'a\<Rightarrow>'b) (a::'a ag). map_ag f a"
+  unfolding non_expansive_def
+  apply (auto simp: n_equiv_ag_def)
+  apply (smt (verit, best) image_iff map_ag.rep_eq)
+  by (smt (verit, best) ag.set_map image_iff)
+
+lemma "contr_ne f \<Longrightarrow> contr_ne (ag_map f)"
+apply transfer
+unfolding contr_contr_alt contractive_alt_def non_expansive_def
+apply (auto simp: non_expansive_def n_equiv_ag_def image_iff map_ag.rep_eq ag.set_map split: nat.splits)
+using Rep_ag apply fastforce
+using Rep_ag apply fastforce
+by metis+
+
+lift_definition ag_map_contr :: "('a::cofe -n> 'b::cofe) -c> ('a later -n> 'b later)" is
+  "later_map" by (rule contr_later)
+  
+locale T_iso = 
+fixes to_iso :: "'a::ofe \<Rightarrow> 'b::ofe" and from_iso :: "'b \<Rightarrow> 'a"
+assumes isomorph1: "ofe_eq (to_iso (from_iso x)) x" and isomorph2: "ofe_eq (from_iso (to_iso y)) y"
+  and to_ne: "non_expansive to_iso" and from_ne: "non_expansive from_iso"
+
+lemma 
+assumes iso: "T_iso to from"
+shows "n_equiv n x y \<longleftrightarrow> n_equiv n (to x) (to y)"
+proof 
+assume "n_equiv n x y"
+from non_expansiveE[OF T_iso.to_ne[OF iso], OF this] show "n_equiv n (to x) (to y)" by simp
+next
+assume "n_equiv n (to x) (to y)"
+from non_expansiveE[OF T_iso.from_ne[OF iso], OF this] have "n_equiv n (from (to x)) (from (to y))" 
+  by simp
+with T_iso.isomorph2[OF iso] show "n_equiv n x y"
+by (meson ofe_eq_equiv ofe_trans_eqL)
+qed
+  
+lemma "\<exists>(to_iso::markingUR auth\<Rightarrow>markingUR auth) from_iso. T_iso to_iso from_iso"
+proof -
+have "T_iso (id::markingUR auth \<Rightarrow> markingUR auth) id"
+  by (auto simp: T_iso_def ofe_refl non_expansive_def ofe_limit)
+then show ?thesis by auto
+qed
+
+consts isos :: "('a::ofe pre_inv \<Rightarrow> 'a) \<times>('a \<Rightarrow> 'a pre_inv)"
+specification (isos)
+  is_iso: "T_iso (fst isos) (snd isos)"
+  sorry
+
+text \<open>inG instance examples\<close>
+interpretation idInG: inG "\<lambda>\<gamma> (m::gname \<rightharpoonup> 'a::ucamera). m \<gamma>" "\<lambda>\<gamma> x. [\<gamma>\<mapsto>x]"
+apply (auto simp: inG_def prod_n_valid_def \<epsilon>_n_valid op_prod_def \<epsilon>_left_id)
+apply (auto simp: pcore_prod_def pcore_fun_def \<epsilon>_fun_def \<epsilon>_option_def pcore_option_def comp_def 
+  split: option.splits)
+using singleton_map_only_n_equiv by metis
+
+interpretation invInG: inG get_inv constr_inv
+  apply (auto simp: inG_def get_inv_def constr_inv_def dest!: singleton_map_only_n_equiv)
+  apply (auto simp: d_equiv n_equiv_fun_def n_equiv_option_def prod_n_valid_def \<epsilon>_n_valid op_prod_def \<epsilon>_left_id)
+  by (auto simp: pcore_prod_def pcore_fun_def \<epsilon>_fun_def \<epsilon>_option_def pcore_option_def comp_def 
+    constr_inv_def split: option.splits)
+
+global_interpretation lockInG: inG get_lock constr_lock
+apply (auto simp: get_lock_def constr_lock_def d_equiv inG_def prod_n_valid_def \<epsilon>_n_valid op_prod_def
+  \<epsilon>_left_id intro: map_upd_eqD1)
+by (auto simp: pcore_prod_def pcore_fun_def \<epsilon>_fun_def \<epsilon>_option_def pcore_option_def comp_def
+  constr_lock_def singleton_map_n_incl split: option.splits)
+
+global_interpretation prophInG: inG get_proph constr_proph
+apply (auto simp: get_proph_def constr_proph_def d_equiv inG_def prod_n_valid_def \<epsilon>_n_valid op_prod_def
+  \<epsilon>_left_id intro: map_upd_eqD1)
+by (auto simp: pcore_prod_def pcore_fun_def \<epsilon>_fun_def \<epsilon>_option_def pcore_option_def comp_def
+  constr_proph_def singleton_map_n_incl split: option.splits)
+
+context begin
+private lemma testlemma: "inG (getter::gname\<Rightarrow>'a::ucamera\<Rightarrow>lockG option) put
+  \<Longrightarrow> 1=2" sorry
+  
+thm testlemma[OF lockInG.inG_axioms]
+end
 end

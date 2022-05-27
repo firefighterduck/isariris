@@ -1,6 +1,5 @@
 theory CoreStructures
 imports COFEs
-keywords "iris_camera" "iris_camera_instance" :: thy_decl
 begin
 
 section \<open> Core Structures \<close>
@@ -35,7 +34,7 @@ class camera = ofe +
     and camera_valid_op: "Rep_sprop (valid_raw (a \<cdot> b)) n 
       \<Longrightarrow> Rep_sprop (valid_raw a) n"
     and camera_extend: "\<lbrakk>Rep_sprop (valid_raw a) n; n_equiv n a (b1 \<cdot> b2)\<rbrakk> \<Longrightarrow>
-      \<exists>c1 c2. (a = c1 \<cdot>  c2 \<and> n_equiv n c1 b1 \<and> n_equiv n c2 b2)"
+      \<exists>c1 c2. (a = c1 \<cdot> c2 \<and> n_equiv n c1 b1 \<and> n_equiv n c2 b2)"
 begin
 abbreviation n_valid :: "'a \<Rightarrow> nat \<Rightarrow> bool" where "n_valid x \<equiv> Rep_sprop (valid_raw x)"
 
@@ -141,7 +140,7 @@ lemma camera_core_mono_n: "n_incl n a b \<Longrightarrow> n_incl n (core a) (cor
   by (metis core_ne local.incl_def local.n_incl_def non_expansiveE camera_core_mono)
 
 lemma camera_core_n_valid: "n_valid a n \<Longrightarrow> n_valid (core a) n"
-  by (metis camera_core_id local.camera_valid_op)
+  by (metis camera_core_id local.camera_valid_op) 
 end 
 
 text \<open>Unital Camera - A camera with a unit element\<close>
@@ -274,32 +273,21 @@ end
 
 instance cmra_morph :: (ducamera,ducamera) discrete by (standard; transfer) (auto simp: d_equiv d_eq)
 
-ML \<open>
-  local
+(* Index into resource maps to allow more than one instance of a camera *)
+type_synonym gname = nat
 
-  val aT = \<^typ>\<open>'a\<close>;
-  fun getterT classT = aT --> classT;                                                
-  fun getter classT classN = let val getN = Binding.name ("get_"^classN) in
-    Element.Fixes [(getN, SOME (getterT classT), NoSyn)] end;
-
-  fun gen_class typ thy = 
-    let val ctxt = Proof_Context.init_global thy
-      val classT = Syntax.parse_typ ctxt typ 
-      val classN = Term.dest_Type classT |> #1 |> Long_Name.base_name
-    in #2 (Class_Declaration.class (Binding.name ("has_"^classN)) [] [] [getter classT classN] thy)
-    end
-
-  val _ = Outer_Syntax.command \<^command_keyword>\<open>iris_camera\<close>
-    "Generate an in_type class for a given type."
-    (Parse.type_const >> (fn typ => Toplevel.begin_main_target false (gen_class typ)));
-
-  val _ = Outer_Syntax.command \<^command_keyword>\<open>iris_camera_instance\<close> 
-    "Generate the has_type class and instantiate the camera class."
-    (Parse.multi_arity --| Parse.begin
-     >> (fn arities => let val typ = arities |> #1 |> hd
-      fun gen_and_inst thy = let val thy' = gen_class typ thy |> Local_Theory.exit_global
-        in Class.instantiation_cmd arities thy' end
-     in Toplevel.begin_main_target true gen_and_inst end));
-  in end;
-\<close>
+text \<open>Locale to denote that a resource type contains a certain camera type. Allows modular proofs.\<close>
+locale inG = 
+fixes get_cmra :: "gname \<Rightarrow> 'a::ucamera \<Rightarrow> 'b::camera option"
+  and put_cmra :: "gname \<Rightarrow> 'b \<Rightarrow> 'a"
+assumes get_put: "get_cmra \<gamma> (put_cmra \<gamma> x) = Some x"
+  and put_ne: "n_equiv n (put_cmra \<gamma> x) (put_cmra \<gamma> y) \<longleftrightarrow> n_equiv n x y"
+  and put_ne2: "n_equiv n (put_cmra \<gamma> x) z \<Longrightarrow> \<exists>y'. z=put_cmra \<gamma> y'"
+  and put_n_valid: "n_valid (put_cmra \<gamma> x) n \<longleftrightarrow> n_valid x n"
+  and put_pcore: "pcore (put_cmra \<gamma> x) = Some (case (pcore x) of Some y \<Rightarrow> (put_cmra \<gamma> y) | None \<Rightarrow> \<epsilon>)"
+  and put_op: "put_cmra \<gamma> (x \<cdot> y) = (put_cmra \<gamma> x) \<cdot> (put_cmra \<gamma> y)"
+begin
+  lemma put_valid: "valid (put_cmra \<gamma> x) \<longleftrightarrow> valid x"
+    by (auto simp: valid_def put_n_valid)
+end
 end

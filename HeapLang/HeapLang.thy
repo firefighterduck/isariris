@@ -80,6 +80,9 @@ fun to_val :: "expr \<Rightarrow> val option" where
   "to_val (Val v) = Some v"
 | "to_val _ = None"
 
+lemma to_val_cases: "to_val x = Some v \<Longrightarrow> x = Val v"
+by (induction x, auto)
+
 fun lit_is_unboxed :: "base_lit \<Rightarrow> bool" where
   "lit_is_unboxed (LitProphecy _) = False"
 | "lit_is_unboxed LitPoison = False"

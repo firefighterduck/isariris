@@ -8,6 +8,7 @@ method iIntro =
 method remove_emp = (simp_all only: upred_sep_assoc_eq emp_rule)?
 
 named_theorems iris_simp
+named_theorems inG_axioms
 
 declare upred_sep_assoc_eq[iris_simp]
 declare emp_rule[iris_simp]
@@ -15,8 +16,8 @@ declare emp_rule[iris_simp]
 method iris_simp declares iris_simp = 
   (simp_all add: iris_simp)?
 
-method log_prog_solver =
-  fast intro: log_prog_rule
+method log_prog_solver declares log_prog_rule =
+  fast intro: log_prog_rule inG_axioms
 (* | slow intro: log_prog_rule *)
 (* | best intro: log_prog_rule *)
 (*| force intro: log_prog_rule
@@ -45,8 +46,8 @@ ML \<open> val to_entailment: attribute context_parser = let
   fun remove_emp thm = if contains_emp (Thm.concl_of thm
       |> dest_comb |> snd (* Strip Trueprop*)
       |> strip_comb |> snd |> hd (* Strip entails*))
-    then Conv.fconv_rule (Conv.rewr_conv @{thm  eq_reflection[OF upred_sep_comm]}
-      then_conv (Conv.rewr_conv @{thm  eq_reflection[OF upred_true_sep]})
+    then Conv.fconv_rule (Conv.rewr_conv @{thm eq_reflection[OF upred_sep_comm]}
+      then_conv (Conv.rewr_conv @{thm eq_reflection[OF upred_true_sep]})
       |> Conv.arg_conv (* Only transform the antecedent *)
       |> Conv.fun_conv (* Go below the "\<turnstile>" *) 
       |> HOLogic.Trueprop_conv
@@ -127,8 +128,8 @@ method entails_substR uses rule =
   match rule[uncurry] in "_ = _" \<Rightarrow> \<open>rule upred_entails_trans[OF _ upred_entails_eq[OF rule]]\<close>
   \<bar> "_ \<Longrightarrow> (_=_)" \<Rightarrow> \<open>rule upred_entails_trans[OF _ upred_entails_eq[OF rule]]\<close>
   \<bar> "_\<turnstile>_" \<Rightarrow> \<open>rule rule
-    | rule upred_entails_substI[OF rule, unfolded upred_sep_assoc_eq]
-    | (rule upred_entails_trans[OF _ rule])\<close>
+    | (rule upred_entails_trans[OF _ rule])
+    | rule upred_entails_substI[OF rule, unfolded upred_sep_assoc_eq]\<close>
   \<bar> "_ \<Longrightarrow> (_ \<turnstile> _)" \<Rightarrow> \<open>rule rule
     | rule upred_entails_substI[OF rule, unfolded upred_sep_assoc_eq]
     | rule upred_entails_trans[OF _ rule]\<close>
@@ -419,10 +420,12 @@ method later_elim = iris_simp,
   check_moveL "\<triangleright> ?P", 
   (rule elim_modal_entails'[OF elim_modal_timeless']
   | rule elim_modal_entails[OF elim_modal_timeless']),
-  log_prog_solver, log_prog_solver (* Once for the timeless goal, once for the is_except_zero goal. *)
+  (* Once for the timeless goal, once for the is_except_zero goal. *)  
+  log_prog_solver, log_prog_solver
 
-method iMod_raw methods later fupd uses rule =
-  iris_simp, iApply rule: rule, (prefer_last, (later | fupd)+, defer_tac)?, iris_simp
+method iMod_raw methods fupd uses rule =
+  iris_simp, iApply rule: rule, 
+  (prefer_last, (later_elim| fupd)+, defer_tac)?, iris_simp
 
 method iMod_raw_wand for lhs_pat pat :: "'a::ucamera upred_f" methods later fupd =
   iris_simp, iApply_wand_as_rule lhs_pat pat, (prefer_last, (later | fupd)+, defer_tac)?, iris_simp

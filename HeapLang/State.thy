@@ -15,6 +15,9 @@ definition state_upd_heap :: "((loc,val option) fmap \<Rightarrow> (loc,val opti
 definition state_upd_used_proph_id :: "(proph_id fset \<Rightarrow> proph_id fset) \<Rightarrow> state \<Rightarrow> state" where
   "state_upd_used_proph_id f \<sigma> = State (heap \<sigma>) (f (used_proph_id \<sigma>))"
 
+lemma state_upd_proph: "used_proph_id (state_upd_heap f \<sigma>) = used_proph_id \<sigma>"
+  unfolding state_upd_heap_def by simp
+
 fun heap_array :: "loc \<Rightarrow> val list \<Rightarrow> (loc, val option) fmap" where
   "heap_array l [] = fmempty"
 | "heap_array l (v#vs) = fmupd l (Some v) (heap_array (l+\<^sub>\<iota>1) vs)"

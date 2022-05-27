@@ -82,6 +82,9 @@ definition contractive :: "('a::ofe \<Rightarrow> 'b::ofe) \<Rightarrow> bool" w
 definition contractive_alt :: "('a::ofe \<Rightarrow> 'b::ofe) \<Rightarrow> bool" where
   "contractive_alt f \<equiv> \<forall>n x y. (case n of 0 \<Rightarrow> True | Suc n' \<Rightarrow> n_equiv n' x y) \<longrightarrow> n_equiv n (f x) (f y)"
 
+lift_definition contr_ne :: "('a::ofe -n> 'b::ofe) \<Rightarrow> bool" is
+  "\<lambda>f. contractive f" .
+
 lemma contr_contr_alt: "contractive f \<longleftrightarrow> contractive_alt f"
   apply (simp add: contractive_def contractive_alt_def split: nat.splits)
   by (smt (verit, ccfv_SIG) bot_nat_0.extremum_strict ex_least_nat_less less_Suc_eq_le nat_less_le ofe_down_contr order.refl)

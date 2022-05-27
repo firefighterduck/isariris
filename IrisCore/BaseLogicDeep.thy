@@ -108,7 +108,9 @@ fun logic_semantic
 | "logic_semantic (Upd p) \<Gamma> = (case logic_semantic p \<Gamma> of Some (PropS p') \<Rightarrow>
   Some (PropS (\<lambda>a n. \<forall>m b. m\<le>n \<longrightarrow> n_valid (a \<cdot> b) m \<longrightarrow> (\<exists>c. n_valid (c \<cdot> b) m \<and> p' c m))))"
 
-lemma "type_of_term t \<Gamma>T = None \<Longrightarrow> logic_semantic t \<Gamma>S = None"
+lemma "\<lbrakk>dom \<Gamma>S \<subseteq> dom \<Gamma>T; type_of_term t \<Gamma>T = None\<rbrakk> \<Longrightarrow> logic_semantic t \<Gamma>S = None"
+apply (induction t)
+apply (auto split: option.splits)
 sorry
 
 definition entails :: "'a::ucamera semantic_type \<Rightarrow> 'a semantic_type \<Rightarrow> bool" where
@@ -119,7 +121,7 @@ lemma "\<lbrakk>\<Gamma>T|P\<turnstile>Q; logic_semantic P \<Gamma>S = Some P'; 
 sorry
     
 lemma "logic_semantic wp [''head_step''\<mapsto>head_step_sem] = Some wp_sem"
-apply (simp add: wp_def head_step_sem_def funS_def appS_def the_elem_def Abs_fset_inverse)
+apply (auto simp add: wp_def head_step_sem_def funS_def appS_def the_elem_def Abs_fset_inverse)
 sorry
 
 
@@ -145,5 +147,7 @@ text \<open>
     is used within a "pure" context
     => The biggest problem is the semantics of functions and application, no deep embedding can have 
     well-typed function semantics (i.e. a datatype which wraps functions on itself)
+  - Make quantifiers only inside a Pure wrapper doesn't work as it cuts the connection of outer camera
+    objects necessary for the semantics from the inner ones.
 \<close>
 end

@@ -1,22 +1,89 @@
 theory LanguageDefs
-imports PrimitiveLaws State "../IrisCore/AuthHeap" "../IrisCore/Invariant"
+imports PrimitiveLaws State "../IrisCore/AuthHeap" "../IrisCore/Invariant" "../IrisCore/iPropShallow"
 begin
+
+text \<open>Heap camera setup\<close>
+interpretation heapInG: inG get_heap constr_heap
+apply (auto simp: get_heap_def constr_heap_def d_equiv inG_def prod_n_valid_def \<epsilon>_n_valid op_prod_def
+  \<epsilon>_left_id intro: map_upd_eqD1)
+by (auto simp: pcore_prod_def pcore_fun_def \<epsilon>_fun_def \<epsilon>_option_def pcore_option_def comp_def 
+  constr_heap_def split: option.splits)
+
+abbreviation "points_to_heap \<equiv> points_to constr_heap"
+abbreviation "points_to_disc_heap \<equiv> points_to_disc constr_heap"
+abbreviation "points_to_own_heap \<equiv> points_to_own constr_heap"
+abbreviation "points_to_full_heap \<equiv> points_to_full constr_heap"
+
+bundle heap_syntax begin
+notation points_to_heap ("_ \<mapsto>{_} _" 60)
+notation points_to_disc_heap (infix "\<mapsto>\<box>" 60)
+notation points_to_own_heap ("_\<mapsto>{#_}_" 60)
+notation points_to_full_heap (infix "\<mapsto>\<^sub>u" 60)
+end
+
+declare timeless_points_to[OF heapInG.inG_axioms, timeless_rule,log_prog_rule]
 
 text \<open>Auxiliary language specific definitions\<close>
 
-definition state_interp :: "state \<Rightarrow> observation list \<Rightarrow> iprop" where
-  "state_interp \<sigma> \<kappa>s = heap_interp (heap \<sigma>) \<^emph> proph_map_interp \<kappa>s (used_proph_id \<sigma>)"
-
-definition fill :: "ectx_item list \<Rightarrow> expr \<Rightarrow> expr"  where "fill K e =  fold fill_item K e"
+context
+fixes  get_prophm :: "gname \<Rightarrow> 'res::ucamera \<Rightarrow> heap_lang_proph_map option"
+  and put_prophm
+  and get_heap :: "gname \<Rightarrow> 'res \<Rightarrow> heap_lang_heap option"
+  and put_heap
+assumes proph_inG: "inG get_prophm put_prophm"
+  and heap_inG: "inG get_heap put_heap"
+begin
+definition state_interp :: "state \<Rightarrow> observation list \<Rightarrow> 'res upred_f" where
+  "state_interp \<sigma> \<kappa>s = heap_interp put_heap (heap \<sigma>) \<^emph> proph_map_interp put_prophm \<kappa>s (used_proph_id \<sigma>)"
+end
+  
+definition fill :: "ectx_item list \<Rightarrow> expr \<Rightarrow> expr"  where "fill K e = foldl (\<lambda>exp ctx. fill_item ctx exp) e K"
 
 lemma fill_item_Rec: "fill_item K' e2 \<noteq> Rec f x e" by (induction K') auto
 lemma fill_Rec: "fill K e' = Rec f x e \<Longrightarrow> K =[] \<and> e' = Rec f x e"
   apply (induction K arbitrary: e') apply (auto simp: fill_def) using fill_item_Rec by blast
 
+lemma fill_store: "fill K e = Store (Val v1) (Val v2) \<Longrightarrow> 
+  (K = [] \<and> e = Store (Val v1) (Val v2)) \<or> (\<exists>K'. K = K'@[StoreLCtx v2] \<or> K = K'@[StoreRCtx (Val v1)])"
+proof (induction K arbitrary: e)
+  case Nil
+  have "fill [] e = e" unfolding fill_def by simp
+  with Nil show ?case by simp
+next
+  case (Cons a K)
+  then have "fill K (fill_item a e) = Store (of_val v1) (of_val v2)" unfolding fill_def by simp
+  then have "K = [] \<and> (fill_item a e) = Store (of_val v1) (of_val v2) \<or> (\<exists>K'. K = K' @ [StoreLCtx v2] \<or> K = K' @ [StoreRCtx (of_val v1)])"
+    using Cons(1) by auto
+  then have "(K = [] \<and> (a = StoreLCtx v2 \<or> a= StoreRCtx (of_val v1))) 
+    \<or> (\<exists>K'. K = K' @ [StoreLCtx v2] \<or> K = K' @ [StoreRCtx (of_val v1)])"
+    by (induction a) auto
+  then show ?case by auto
+qed
+
 lemma fill_item_Val: "fill_item K e \<noteq> Val v" by (induction K) auto
 lemma fill_Val: "fill K e = Val v \<Longrightarrow> K = [] \<and> e = Val v"
   apply (induction K arbitrary: e) apply (auto simp: fill_def) using fill_item_Val by blast
 
+lemma fill_store_val: "\<lbrakk>Store (of_val v1) (of_val v2) = fill K e; e \<sigma> \<kappa> \<Rightarrow>\<^sub>h e2 \<sigma>2 efs\<rbrakk> \<Longrightarrow>
+  K = [] \<and> e = Store (of_val v1) (of_val v2)"
+proof -
+  assume assms: "Store (of_val v1) (of_val v2) = fill K e" "e \<sigma> \<kappa> \<Rightarrow>\<^sub>h e2 \<sigma>2 efs"
+  have "K = K' @ [StoreLCtx v2] \<Longrightarrow> fill K e = fill_item (StoreLCtx v2) (fill K' e)" for K'
+    unfolding fill_def by simp
+  with assms(1) have "K = K' @ [StoreLCtx v2] \<Longrightarrow> fill K' e = Val v1" for K' by simp
+  then have "K = K' @ [StoreLCtx v2] \<Longrightarrow> fill K' e = Val v1" for K' by simp
+  then have v1: "K = K' @ [StoreLCtx v2] \<Longrightarrow> e = v1" for K' using fill_Val by blast
+  have "K = K' @ [StoreRCtx (Val v1)] \<Longrightarrow> fill K e = fill_item (StoreRCtx (Val v1)) (fill K' e)" for K'
+    unfolding fill_def by simp
+  with assms(1) have "K = K' @ [StoreRCtx (Val v1)] \<Longrightarrow> fill K' e = Val v2" for K' by simp
+  then have v2: "K = K' @ [StoreRCtx (Val v1)] \<Longrightarrow> e = Val v2" for K' using fill_Val by blast
+  with fill_store[OF assms(1)[symmetric]] v1 have "e = Store (of_val v1) (of_val v2) \<or> e = Val v1 \<or> e = Val v2" by blast
+  with assms(2) have e: "e = Store (of_val v1) (of_val v2)"
+    by (metis option.simps(3) to_val.simps(1) val_head_stuck)
+  with v1 v2 fill_store[OF assms(1)[symmetric]] have K: "K = []" by auto
+  with e show ?thesis by simp
+qed
+  
 datatype langCtxt = FI ectx_item | F "ectx_item list"
 fun lang_ctxt :: "langCtxt \<Rightarrow> expr \<Rightarrow> expr" where
   "lang_ctxt (FI K) e = fill_item K e"
@@ -26,7 +93,7 @@ definition prim_step :: "expr \<Rightarrow> state \<Rightarrow> observation list
   "prim_step e1 \<sigma>1 \<kappa> e2 \<sigma>2 efs \<equiv> \<exists>K e1' e2'. ((e1=fill K e1') \<and> (e2=fill K e2') \<and> head_step e1' \<sigma>1 \<kappa> e2' \<sigma>2 efs)"
 
 lemma prim_step_simp: "head_step e1 \<sigma>1 \<kappa> e2 \<sigma>2 efs \<Longrightarrow> prim_step e1 \<sigma>1 \<kappa> e2 \<sigma>2 efs"
-  unfolding prim_step_def fill_def by (metis fold_simps(1))
+  unfolding prim_step_def fill_def by (metis foldl_Nil)
 
 definition reducible :: "expr \<Rightarrow> state \<Rightarrow> bool" where
   "reducible e \<sigma> \<equiv> \<exists>\<kappa> e' \<sigma>' efs. prim_step e \<sigma> \<kappa> e' \<sigma>' efs"
@@ -65,6 +132,32 @@ lemma irred_val: "irreducible (Val v) \<sigma>"
   unfolding irreducible_def prim_step_def
   by (auto simp: fill_Val) (metis fill_Val option.distinct(1) to_val.simps(1) val_head_stuck)
 
+lemma store_red: "fmlookup (heap \<sigma>) l = Some (Some v') \<Longrightarrow> 
+  reducible (Store (of_val (LitV (LitLoc l))) (of_val v)) \<sigma>"
+  (is "_ \<Longrightarrow> reducible ?e _")
+proof (unfold reducible_def prim_step_def)
+  assume assm: "fmlookup (heap \<sigma>) l = Some (Some v')"
+  have "?e = fill [] ?e" unfolding fill_def by auto
+  with StoreS[OF assm] have 
+    "?e = fill [] ?e \<and> of_val (LitV LitUnit) = fill [] (of_val (LitV LitUnit))
+    \<and> ?e \<sigma> [] \<Rightarrow>\<^sub>h (of_val (LitV LitUnit)) (state_upd_heap (fmupd l (Some v)) \<sigma>) []"
+    by (auto simp: fill_def)
+  then show "\<exists>\<kappa> e' \<sigma>' efs K e1' e2'. Store (of_val (LitV (LitLoc l))) (of_val v) = fill K e1' \<and> e' = fill K e2' \<and> e1' \<sigma> \<kappa> \<Rightarrow>\<^sub>h e2' \<sigma>' efs"
+    by blast  
+qed
+
+lemma prim_step_store: "prim_step (Store (of_val (LitV (LitLoc l))) (of_val v)) \<sigma>1 \<kappa> e2 \<sigma>2 efs \<longleftrightarrow>
+  ((\<exists>v'. fmlookup (heap \<sigma>1) l = Some (Some v')) \<and> \<kappa>=[] \<and> e2 = Val(LitV LitUnit)
+    \<and> \<sigma>2 = (state_upd_heap (\<lambda>h. fmupd l (Some v) h) \<sigma>1) \<and> efs = [])"
+  unfolding prim_step_def using fill_store_val
+  apply (auto simp: fill_def)
+  apply fastforce
+  apply (metis foldl_Nil headE(16))
+  apply fastforce
+  apply fastforce
+  apply (metis headE(16))
+  using StoreS fill_def prim_step_def prim_step_simp by auto
+    
 datatype stuckness = NotStuck | MaybeStuck
 instantiation stuckness :: order begin
 fun less_eq_stuckness :: "stuckness \<Rightarrow> stuckness \<Rightarrow> bool" where
@@ -99,6 +192,10 @@ definition atomic :: "atomicity \<Rightarrow> expr \<Rightarrow> bool" where
   "atomic a e \<equiv> \<forall>\<sigma> e' \<kappa> \<sigma>' efs. prim_step e \<sigma> \<kappa> e' \<sigma>' efs \<longrightarrow> 
     (case a of WeaklyAtomic \<Rightarrow> irreducible e' \<sigma>' | StronglyAtomic \<Rightarrow> (\<exists>v. to_val e' = Some v))"
 
+lemma atomicE: "atomic a e \<Longrightarrow> (\<And>\<sigma> e' \<kappa> \<sigma>' efs. prim_step e \<sigma> \<kappa> e' \<sigma>' efs \<Longrightarrow>
+  (case a of WeaklyAtomic \<Rightarrow> irreducible e' \<sigma>' | StronglyAtomic \<Rightarrow> (\<exists>v. to_val e' = Some v)))"
+  unfolding atomic_def by meson
+  
 named_theorems atomic_rule
 method atomic_solver = (rule atomic_rule)+    
     
@@ -189,7 +286,17 @@ lemma atomic_alloc [atomic_rule,log_prog_rule]: "atomic a (AllocN (Val v1) (Val 
 lemma atomic_free [atomic_rule,log_prog_rule]: "atomic a (Free (Val v))" sorry
 lemma atomic_load [atomic_rule,log_prog_rule]: "atomic a (Load (Val v))" sorry
 lemma atomic_xchg [atomic_rule,log_prog_rule]: "atomic a (Xchg (Val v1) (Val v2))" sorry
-lemma atomic_store [atomic_rule,log_prog_rule]: "atomic a (Store (Val v1) (Val v2))" sorry
+
+lemma atomic_store [atomic_rule,log_prog_rule]: "atomic a (Store (Val v1) (Val v2))"
+proof (auto simp: atomic_def prim_step_def)
+  fix \<sigma> \<kappa> \<sigma>' efs K e1' e2'
+  assume assms: "Store (of_val v1) (of_val v2) = fill K e1'" "e1' \<sigma> \<kappa> \<Rightarrow>\<^sub>h e2' \<sigma>' efs"
+  with fill_store_val have K: "K=[]" "e1' = Store (Val v1) (Val v2)" by auto
+  with assms(2) have " e2' = (Val (LitV LitUnit))" by auto
+  with K show "case a of StronglyAtomic \<Rightarrow> \<exists>v. to_val (fill K e2') = Some v | WeaklyAtomic \<Rightarrow> irreducible (fill K e2') \<sigma>'"
+    by (cases a, auto simp: fill_def irred_val)
+qed
+  
 lemma atomic_cmp_xchg [atomic_rule,log_prog_rule]: "atomic a (CmpXchg (Val v0) (Val v1) (Val v2))" sorry
 lemma atomic_faa [atomic_rule,log_prog_rule]: "atomic a (FAA (Val v1) (Val v2))" sorry
 lemma atomic_new_proph [atomic_rule,log_prog_rule]: "atomic a NewProph" sorry

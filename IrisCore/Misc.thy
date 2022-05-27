@@ -1,43 +1,45 @@
 theory Misc
-imports iPropShallow "HOL-Library.Multiset"
+imports ProofSearchPredicates "HOL-Library.Multiset"
 begin
 
 definition map_heap :: "('l\<rightharpoonup>'v::ofe) \<Rightarrow> ('l\<times>'v\<Rightarrow>'a\<Rightarrow>'a) \<Rightarrow> 'a \<Rightarrow> 'a" where
   "map_heap h f a = folding_on.F f a {(l,v) |l v. h l = Some v}"
 
-definition sep_map_heap :: "('l\<rightharpoonup>'v::ofe) \<Rightarrow> ('l\<times>'v\<Rightarrow>iprop) \<Rightarrow> iprop" where
+context assumes "SORT_CONSTRAINT('a::ucamera)" begin
+definition sep_map_heap :: "('l\<rightharpoonup>'v::ofe) \<Rightarrow> ('l\<times>'v\<Rightarrow>'a upred_f) \<Rightarrow> 'a upred_f" where
   "sep_map_heap h f = map_heap h (\<lambda>lv a. a \<^emph> f lv) upred_emp"
 
-definition sep_map_fmap :: "('l,'v::ofe) fmap \<Rightarrow> (('l\<times>'v)\<Rightarrow>iprop) \<Rightarrow> iprop" where
+definition sep_map_fmap :: "('l,'v::ofe) fmap \<Rightarrow> (('l\<times>'v)\<Rightarrow>'a upred_f) \<Rightarrow> 'a upred_f" where
   "sep_map_fmap m f =   map_heap (fmlookup m) (\<lambda>lv a. a \<^emph> f lv) upred_emp"
   
-definition sep_map_set :: "('b\<Rightarrow>iprop) \<Rightarrow> 'b set \<Rightarrow> iprop" where
+definition sep_map_set :: "('b\<Rightarrow>'a upred_f) \<Rightarrow> 'b set \<Rightarrow> 'a upred_f" where
   "sep_map_set f s = folding_on.F (\<lambda>x a. a \<^emph> f x) upred_emp s"
 
-abbreviation sep_emp_map_list :: "'a list \<Rightarrow> ('a \<Rightarrow> iprop) \<Rightarrow> iprop" ("[\<^emph>\<^sub>l:] _ _") where
+abbreviation sep_emp_map_list :: "'b list \<Rightarrow> ('b \<Rightarrow> 'a upred_f) \<Rightarrow> 'a upred_f" ("[\<^emph>\<^sub>l:] _ _") where
   "sep_emp_map_list l f \<equiv> foldl (\<lambda>P x. P \<^emph> f x) upred_emp l"
   
-abbreviation sep_emp_fold_list :: "iprop list \<Rightarrow> iprop" ("[\<^emph>\<^sub>l] _") where
+abbreviation sep_emp_fold_list :: "'a upred_f list \<Rightarrow> 'a upred_f" ("[\<^emph>\<^sub>l] _") where
   "sep_emp_fold_list l \<equiv> foldl (\<^emph>) upred_emp l"
 
-abbreviation sep_fold_list :: "iprop \<Rightarrow> iprop list \<Rightarrow> iprop" ("[\<^emph>\<^sub>l _] _") where 
+abbreviation sep_fold_list :: "'a upred_f \<Rightarrow> 'a upred_f list \<Rightarrow> 'a upred_f" ("[\<^emph>\<^sub>l _] _") where 
   "sep_fold_list acc l \<equiv> foldl (\<^emph>) acc l"
   
-definition sep_fold_fset :: "('a \<Rightarrow> iprop) \<Rightarrow> 'a fset \<Rightarrow> iprop \<Rightarrow> iprop" ("[\<^emph>\<^sub>f] _ _ _") where
+definition sep_fold_fset :: "('b \<Rightarrow> 'a upred_f) \<Rightarrow> 'b fset \<Rightarrow> 'a upred_f \<Rightarrow> 'a upred_f" ("[\<^emph>\<^sub>f] _ _ _") where
   "sep_fold_fset f s acc = ffold (\<lambda>x a. a \<^emph> f x) acc s"
 
-abbreviation sep_map_fset :: "('b\<Rightarrow>iprop) \<Rightarrow> 'b fset \<Rightarrow> iprop" ("[\<^emph>\<^sub>m] _ _") where
+abbreviation sep_map_fset :: "('b\<Rightarrow>'a upred_f) \<Rightarrow> 'b fset \<Rightarrow> 'a upred_f" ("[\<^emph>\<^sub>m] _ _") where
   "sep_map_fset f s \<equiv> sep_fold_fset f s upred_emp"
 
-abbreviation sep_map_fmdom :: "('b\<Rightarrow>iprop) \<Rightarrow> ('b,'a) fmap \<Rightarrow> iprop" where
+abbreviation sep_map_fmdom :: "('b\<Rightarrow>'a upred_f) \<Rightarrow> ('b,'c) fmap \<Rightarrow> 'a upred_f" where
   "sep_map_fmdom f m \<equiv> sep_map_fset f (fmdom m)"
 
-abbreviation sep_fold_multiset :: "iprop multiset \<Rightarrow> iprop" ("[\<^emph>\<^sub>#] _") where
+abbreviation sep_fold_multiset :: "'a upred_f multiset \<Rightarrow> 'a upred_f" ("[\<^emph>\<^sub>#] _") where
   "sep_fold_multiset m \<equiv> fold_mset (\<^emph>) upred_emp m"
 
-abbreviation sep_map_multiset :: "iprop \<Rightarrow> iprop multiset \<Rightarrow> iprop" ("[\<^emph>\<^sub># _] _") where
+abbreviation sep_map_multiset :: "'a upred_f \<Rightarrow> 'a upred_f multiset \<Rightarrow> 'a upred_f" ("[\<^emph>\<^sub># _] _") where
   "sep_map_multiset acc m \<equiv> fold_mset (\<^emph>) acc m"
-
+end
+  
 lemma sep_fold_ne [upred_ne_rule]: 
   "\<lbrakk>n_equiv n f g; n_equiv n acc1 acc2\<rbrakk> \<Longrightarrow> n_equiv n (foldl (\<lambda>P x. P \<^emph> f x) acc1 l) (foldl (\<lambda>P x. P \<^emph> g x) acc2 l)"
 proof (induction l arbitrary: acc1 acc2)

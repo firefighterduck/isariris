@@ -65,6 +65,9 @@ lemma n_incl_prod[simp]: "n_incl n (a,b) (x,y) = (n_incl n a x \<and> n_incl n b
 lemma prod_valid_def: "valid (x,y) \<longleftrightarrow> valid x \<and> valid y"
   by (auto simp: valid_raw_prod_def valid_def sprop_conj.rep_eq)
 
+lemma prod_validI: "\<lbrakk>valid x; valid y\<rbrakk> \<Longrightarrow> valid (x,y)"
+  by (auto simp: valid_raw_prod_def valid_def sprop_conj.rep_eq)
+
 lemma prod_n_valid_def: "n_valid (x,y) n \<longleftrightarrow> n_valid x n \<and> n_valid y n"
   by (auto simp: valid_raw_prod_def valid_def sprop_conj.rep_eq)
 
@@ -291,6 +294,20 @@ lemma option_n_incl: "n_incl n o1 o2 \<longleftrightarrow>
   apply (metis (no_types, lifting) ofe_sym option.discI option.sel option_op.elims)
   using ofe_sym option_op.simps(1) option_op.simps(2) by blast
 
+lemma unital_option_n_incl: "n_incl n (Some (x::'a::ucamera)) (Some y) \<longleftrightarrow> n_incl n x y"
+proof
+  assume "n_incl n (Some x) (Some y)"
+  then obtain z where z: "n_equiv n (Some y) (Some x \<cdot> z)" by (auto simp: n_incl_def)
+  then have "z=Some c \<Longrightarrow> n_equiv n y (x \<cdot> c)" for c by (auto simp: n_equiv_option_def op_option_def)
+  moreover from z have "z=None \<Longrightarrow> n_equiv n y (x\<cdot>\<epsilon>)" by (auto simp: n_equiv_option_def op_option_def \<epsilon>_right_id)
+  ultimately show "n_incl n x y" unfolding n_incl_def using z apply (cases z) by auto
+next
+  assume "n_incl n x y"
+  then obtain z where "n_equiv n y (x\<cdot>z)" by (auto simp: n_incl_def)
+  then have "n_equiv n (Some y) (Some x \<cdot> Some z)" by (auto simp: n_equiv_option_def op_option_def)
+  then show "n_incl n (Some x) (Some y)" by (auto simp: n_incl_def)
+qed
+  
 instance option :: (dcamera) dcamera
   apply (standard; auto simp: valid_raw_option_def valid_def split: option.splits)
   using d_valid[simplified valid_def] by blast
@@ -734,17 +751,34 @@ lemma singleton_map_valid [simp]: "valid [k\<mapsto>v] \<longleftrightarrow> val
 lemma singleton_map_op [simp]: "[k\<mapsto>v] \<cdot> [k\<mapsto>v'] = [k\<mapsto>(v\<cdot>v')]"
   by (auto simp: op_fun_def op_option_def)
 
-lemma singleton_map_n_incl: "n_incl n [k\<mapsto>v] m \<longleftrightarrow> (\<exists> v' c. m k = Some v' \<and> n_equiv n (Some v') (Some v\<cdot>c))"
+lemma singleton_map_n_equiv [simp]: "n_equiv n [k\<mapsto>x] [k\<mapsto>y] \<longleftrightarrow> n_equiv n x y"
+  by (auto simp: n_equiv_fun_def n_equiv_option_def)
+
+lemma singleton_map_only_n_equiv: "n_equiv n [k\<mapsto>x] y \<Longrightarrow> \<exists>y'. y=[k\<mapsto>y'] \<and> n_equiv n x y'" 
+proof -
+assume assms: "n_equiv n [k\<mapsto>x] y"
+then have i: "n_equiv n ([k\<mapsto>x] i) (y i)" for i by (simp add: n_equiv_fun_def)
+from this[of k] have k: "n_equiv n (Some x) (y k)" by simp
+from i have not_k: "n_equiv n None (y j) \<longleftrightarrow> j\<noteq>k" for j
+  by (metis fun_upd_apply n_equiv_option_def option.distinct(1))
+from k obtain y' where y': "y k = Some y'" "n_equiv n x y'"
+  by (metis n_equiv_option_def option.distinct(1) option.sel)
+moreover from not_k have "y j = None \<longleftrightarrow> j\<noteq>k" for j by (simp add: n_equiv_option_def)
+ultimately have "y = (\<lambda>i. if i=k then Some y' else None)" by metis
+with y' show ?thesis by fastforce
+qed
+  
+lemma singleton_map_n_incl: "n_incl n [k\<mapsto>v] m \<longleftrightarrow> (\<exists> v'. m k = Some v' \<and> n_incl n (Some v) (Some v'))"
 proof 
   assume "n_incl n [k\<mapsto>v] m"
   then obtain m' where "n_equiv n m ([k\<mapsto>v]\<cdot>m')" unfolding n_incl_def by blast
   then have "\<forall>i. n_equiv n (m i) (([k\<mapsto>v]\<cdot>m') i)" unfolding n_equiv_fun_def .
   then have "n_equiv n (m k) (Some v \<cdot> (m' k))" unfolding op_fun_def by (metis fun_upd_same)
   moreover from option_n_equiv_Some_op[OF this] obtain v' where "m k = Some v'" by auto
-  ultimately show "\<exists> v' c. m k = Some v' \<and> n_equiv n (Some v') (Some v\<cdot>c)" by auto
+  ultimately show "\<exists> v'. m k = Some v' \<and> n_incl n (Some v) (Some v')" by (auto simp: n_incl_def)
 next
-  assume "\<exists> v' c. m k = Some v' \<and> n_equiv n (Some v') (Some v\<cdot>c)"
-  then obtain v' c where "m k = Some v'" "n_equiv n (m k) (Some v \<cdot> c)" by auto
+  assume "\<exists> v'. m k = Some v' \<and> n_incl n (Some v) (Some v')"
+  then obtain v' c where "m k = Some v'" "n_equiv n (m k) (Some v \<cdot> c)" by (auto simp: n_incl_def)
   then have "n_equiv n (m k) (([k\<mapsto>v]\<cdot> (m(k:=c))) k)" unfolding op_fun_def by simp
   then have "n_equiv n m ([k\<mapsto>v]\<cdot> (m(k:=c)))" 
     apply (auto simp: n_equiv_fun_def op_fun_def op_option_def)
@@ -980,6 +1014,8 @@ instance
     split:dfset.splits)
 end
 
+instance dfset :: (type) ducamera ..
+subsubsection \<open> Finite map camera \<close>
 context includes fmap.lifting begin
 lift_definition fmpcore :: "('a,'b::camera) fmap \<Rightarrow> ('a,'b) fmap option" is
   "\<lambda>m. Some (\<lambda>i. Option.bind (m i) pcore)"
@@ -1004,8 +1040,6 @@ lemma drop_fin: "finite (dom (\<lambda>i. if i \<noteq> x then fmlookup m2 i els
 lemma map_upd_fin: "m \<in> {m. finite (dom m)} \<Longrightarrow> (map_upd a b m) \<in> {m. finite (dom m)}"
   by (simp add: map_upd_def)
 
-instance dfset :: (type) ducamera ..
-subsubsection \<open> Finite map camera \<close>
 instantiation fmap :: (type,camera) camera begin
 context includes fmap.lifting begin
 lift_definition valid_raw_fmap :: "('a, 'b) fmap \<Rightarrow> sprop" is valid_raw .
