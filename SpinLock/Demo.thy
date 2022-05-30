@@ -66,8 +66,8 @@ lemmas [iris_simp] = lock_inv_def is_lock_def newlock_def acquire_def release_de
 
 text \<open>Specification\<close>
 lemma newlock_spec:
-  "{{{ upred_emp }}} App newlock #[()] {{{ \<lambda>lk. \<forall>\<^sub>u R. (R ={UNIV}=\<^emph> (\<exists>\<^sub>u \<gamma>. is_lock \<gamma> lk R)) }}}"
-  \<comment> \<open>Reduce the texan tripple.\<close>
+  "{{{ emp }}} App newlock #[()] {{{ \<lambda>lk. \<forall>\<^sub>u R. (R ={UNIV}=\<^emph> (\<exists>\<^sub>u \<gamma>. is_lock \<gamma> lk R)) }}}"
+  \<comment> \<open>Reduce the hoare tripple.\<close>
   apply iIntro
   apply (entails_substR rule: upred_persis_mono[where ?P=upred_emp, unfolded emp_rule])
   apply iForallR
@@ -100,6 +100,6 @@ lemma newlock_spec:
   
 lemma release_spec: 
   "{{{ is_lock \<gamma> lk R \<^emph> locked \<gamma> \<^emph> R }}} App release lk {{{ \<lambda>_. upred_emp }}}"
-  by brute_force_solver 
+  by brute_force_solver
 end
 end

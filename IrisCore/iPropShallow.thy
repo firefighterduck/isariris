@@ -216,7 +216,7 @@ locale T_iso =
 fixes to_iso :: "'a::ofe \<Rightarrow> 'b::ofe" and from_iso :: "'b \<Rightarrow> 'a"
 assumes isomorph1: "ofe_eq (to_iso (from_iso x)) x" and isomorph2: "ofe_eq (from_iso (to_iso y)) y"
   and to_ne: "non_expansive to_iso" and from_ne: "non_expansive from_iso"
-
+  
 lemma 
 assumes iso: "T_iso to from"
 shows "n_equiv n x y \<longleftrightarrow> n_equiv n (to x) (to y)"

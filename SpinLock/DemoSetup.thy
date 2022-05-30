@@ -102,4 +102,5 @@ declare upred_entails_trans[OF store_hint[where ?G = upred_emp, unfolded emp_rul
 end
 declare upred_later_exists[iris_simp]
 declare frame_baseL[frame_rule]
+abbreviation "emp \<equiv> upred_emp"
 end

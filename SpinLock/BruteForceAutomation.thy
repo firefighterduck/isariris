@@ -104,7 +104,8 @@ method brute_force_hyp =
     
 text \<open>Apply brute auto search to all hypotheses by destructuring the antecedent.\<close>
 method brute_force_hyps for hyps :: "'res::ucamera upred_f" =
-  match (hyps) in "rest\<^emph>hyp" for rest hyp :: "'res::ucamera upred_f" \<Rightarrow> \<open>(move_sepL hyp, brute_force_hyp) | brute_force_hyps rest\<close>
+  match (hyps) in "rest\<^emph>hyp" for rest hyp :: "'res::ucamera upred_f" \<Rightarrow> 
+    \<open>(move_sepL hyp, brute_force_hyp) | brute_force_hyps rest\<close>
   \<bar> _ \<Rightarrow> \<open>(move_sepL hyps, brute_force_hyp) | last_resort\<close>
 
 text \<open>Get the antecedent from the conclusion entailment term and start the iteration process.\<close>
