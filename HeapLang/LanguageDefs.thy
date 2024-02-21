@@ -3,16 +3,24 @@ imports PrimitiveLaws State "../IrisCore/AuthHeap" "../IrisCore/Invariant" "../I
 begin
 
 text \<open>Heap camera setup\<close>
-interpretation heapInG: inG get_heap constr_heap
-apply (auto simp: get_heap_def constr_heap_def d_equiv inG_def prod_n_valid_def \<epsilon>_n_valid op_prod_def
-  \<epsilon>_left_id intro: map_upd_eqD1)
-by (auto simp: pcore_prod_def pcore_fun_def \<epsilon>_fun_def \<epsilon>_option_def pcore_option_def comp_def 
-  constr_heap_def split: option.splits)
+interpretation heapInG: inG get_heap upd_heap
+apply (auto simp: inG_def get_heap_def upd_heap_def prod_n_valid_def \<epsilon>_n_valid op_prod_def \<epsilon>_left_id)
+apply (prefer_last,metis surj_pair single_map_ne d_equiv)
+apply (auto simp: pcore_prod_def pcore_fun_def \<epsilon>_fun_def \<epsilon>_option_def pcore_option_def comp_def 
+  split: option.splits)
+apply (auto simp: op_fun_def op_option_def)
+apply (auto simp: valid_raw_fun.rep_eq valid_raw_option_def incl_def n_equiv_fun_def 
+  n_equiv_option_def split: option.splits)
+apply metis
+apply metis
+apply presburger
+apply (auto simp: upd_heap_def get_heap_def)
+done
 
-abbreviation "points_to_heap \<equiv> points_to constr_heap"
-abbreviation "points_to_disc_heap \<equiv> points_to_disc constr_heap"
-abbreviation "points_to_own_heap \<equiv> points_to_own constr_heap"
-abbreviation "points_to_full_heap \<equiv> points_to_full constr_heap"
+abbreviation "points_to_heap \<equiv> points_to upd_heap"
+abbreviation "points_to_disc_heap \<equiv> points_to_disc upd_heap"
+abbreviation "points_to_own_heap \<equiv> points_to_own upd_heap"
+abbreviation "points_to_full_heap \<equiv> points_to_full upd_heap"
 
 bundle heap_syntax begin
 notation points_to_heap ("_ \<mapsto>{_} _" 60)
@@ -60,6 +68,23 @@ next
   then show ?case by auto
 qed
 
+lemma fill_faa: "fill K e = FAA (Val v1) (Val v2) \<Longrightarrow> 
+  (K = [] \<and> e = FAA (Val v1) (Val v2)) \<or> (\<exists>K'. K = K'@[FaaLCtx v2] \<or> K = K'@[FaaRCtx (Val v1)])"
+proof (induction K arbitrary: e)
+  case Nil
+  have "fill [] e = e" unfolding fill_def by simp
+  with Nil show ?case by simp
+next
+  case (Cons a K)
+  then have "fill K (fill_item a e) = FAA (of_val v1) (of_val v2)" unfolding fill_def by simp
+  then have "K = [] \<and> (fill_item a e) = FAA (of_val v1) (of_val v2) \<or> (\<exists>K'. K = K' @ [FaaLCtx v2] \<or> K = K' @ [FaaRCtx (of_val v1)])"
+    using Cons(1) by auto
+  then have "(K = [] \<and> (a = FaaLCtx v2 \<or> a= FaaRCtx (of_val v1))) 
+    \<or> (\<exists>K'. K = K' @ [FaaLCtx v2] \<or> K = K' @ [FaaRCtx (of_val v1)])"
+    by (induction a) auto
+  then show ?case by auto
+qed
+
 lemma fill_item_Val: "fill_item K e \<noteq> Val v" by (induction K) auto
 lemma fill_Val: "fill K e = Val v \<Longrightarrow> K = [] \<and> e = Val v"
   apply (induction K arbitrary: e) apply (auto simp: fill_def) using fill_item_Val by blast
@@ -83,7 +108,36 @@ proof -
   with v1 v2 fill_store[OF assms(1)[symmetric]] have K: "K = []" by auto
   with e show ?thesis by simp
 qed
-  
+
+lemma fill_faa_val: "\<lbrakk>FAA (of_val v1) (of_val v2) = fill K e; e \<sigma> \<kappa> \<Rightarrow>\<^sub>h e2 \<sigma>2 efs\<rbrakk> \<Longrightarrow>
+  K = [] \<and> e = FAA (of_val v1) (of_val v2)"
+proof -
+  assume assms: "FAA (of_val v1) (of_val v2) = fill K e" "e \<sigma> \<kappa> \<Rightarrow>\<^sub>h e2 \<sigma>2 efs"
+  have "K = K' @ [FaaLCtx v2] \<Longrightarrow> fill K e = fill_item (FaaLCtx v2) (fill K' e)" for K'
+    unfolding fill_def by simp
+  with assms(1) have "K = K' @ [FaaLCtx v2] \<Longrightarrow> fill K' e = Val v1" for K' by simp
+  then have "K = K' @ [FaaLCtx v2] \<Longrightarrow> fill K' e = Val v1" for K' by simp
+  then have v1: "K = K' @ [FaaLCtx v2] \<Longrightarrow> e = v1" for K' using fill_Val by blast
+  have "K = K' @ [FaaRCtx (Val v1)] \<Longrightarrow> fill K e = fill_item (FaaRCtx (Val v1)) (fill K' e)" for K'
+    unfolding fill_def by simp
+  with assms(1) have "K = K' @ [FaaRCtx (Val v1)] \<Longrightarrow> fill K' e = Val v2" for K' by simp
+  then have v2: "K = K' @ [FaaRCtx (Val v1)] \<Longrightarrow> e = Val v2" for K' using fill_Val by blast
+  with fill_faa[OF assms(1)[symmetric]] v1 have "e = FAA (of_val v1) (of_val v2) \<or> e = Val v1 \<or> e = Val v2" by blast
+  with assms(2) have e: "e = FAA (of_val v1) (of_val v2)"
+    by (metis option.simps(3) to_val.simps(1) val_head_stuck)
+  with v1 v2 fill_faa[OF assms(1)[symmetric]] have K: "K = []" by auto
+  with e show ?thesis by simp
+qed
+
+lemma fork_no_fill: "Fork x \<noteq> fill_item E e"
+  by (cases E) auto
+
+lemma fill_fork: "\<lbrakk>Fork x = fill K e\<rbrakk> \<Longrightarrow> K = [] \<and> e = Fork x"
+  using fork_no_fill 
+  apply (cases K)
+  apply (auto simp: fill_def)
+  by (metis (no_types, lifting) append_butlast_last_id foldl_Cons foldl_Nil foldl_append last_ConsR)
+
 datatype langCtxt = FI ectx_item | F "ectx_item list"
 fun lang_ctxt :: "langCtxt \<Rightarrow> expr \<Rightarrow> expr" where
   "lang_ctxt (FI K) e = fill_item K e"
@@ -146,6 +200,31 @@ proof (unfold reducible_def prim_step_def)
     by blast  
 qed
 
+lemma faa_red: "fmlookup (heap \<sigma>) l = Some (Some (LitV (LitInt i1))) \<Longrightarrow> 
+  reducible (FAA (of_val (LitV (LitLoc l))) (of_val (LitV (LitInt i2)))) \<sigma>"
+  (is "_ \<Longrightarrow> reducible ?e _")
+proof (unfold reducible_def prim_step_def)
+  assume assm: "fmlookup (heap \<sigma>) l = Some (Some (LitV (LitInt i1)))"
+  have "?e = fill [] ?e" unfolding fill_def by auto
+  with FaaS[OF assm] have 
+    "?e = fill [] ?e \<and> of_val (LitV (LitInt i1)) = fill [] (of_val (LitV (LitInt i1)))
+    \<and> ?e \<sigma> [] \<Rightarrow>\<^sub>h (of_val (LitV (LitInt i1))) (state_upd_heap (fmupd l (Some (LitV (LitInt (i1 + i2))))) \<sigma>) []"
+    by (auto simp: fill_def) 
+  then show "\<exists>\<kappa> e' \<sigma>' efs K e1' e2'. FAA (of_val (LitV (LitLoc l))) (of_val (LitV (LitInt i2))) = fill K e1' \<and> e' = fill K e2' \<and> e1' \<sigma> \<kappa> \<Rightarrow>\<^sub>h e2' \<sigma>' efs"
+    by blast  
+qed
+
+lemma fork_red: "reducible (Fork e) \<sigma>" (is "reducible ?e _")
+proof (unfold reducible_def prim_step_def)
+  have "?e = fill [] ?e" unfolding fill_def by auto
+  with ForkS have 
+    "?e = fill [] ?e \<and> of_val (LitV LitUnit) = fill [] (of_val (LitV LitUnit))
+    \<and> ?e \<sigma> [] \<Rightarrow>\<^sub>h (of_val (LitV LitUnit)) \<sigma> [e]"
+    by (auto simp: fill_def) 
+  then show "\<exists>\<kappa> e' \<sigma>' efs K e1' e2'. Fork e = fill K e1' \<and> e' = fill K e2' \<and> e1' \<sigma> \<kappa> \<Rightarrow>\<^sub>h e2' \<sigma>' efs"
+    by blast  
+qed
+
 lemma prim_step_store: "prim_step (Store (of_val (LitV (LitLoc l))) (of_val v)) \<sigma>1 \<kappa> e2 \<sigma>2 efs \<longleftrightarrow>
   ((\<exists>v'. fmlookup (heap \<sigma>1) l = Some (Some v')) \<and> \<kappa>=[] \<and> e2 = Val(LitV LitUnit)
     \<and> \<sigma>2 = (state_upd_heap (\<lambda>h. fmupd l (Some v) h) \<sigma>1) \<and> efs = [])"
@@ -157,7 +236,25 @@ lemma prim_step_store: "prim_step (Store (of_val (LitV (LitLoc l))) (of_val v)) 
   apply fastforce
   apply (metis headE(16))
   using StoreS fill_def prim_step_def prim_step_simp by auto
-    
+
+lemma prim_step_faa: "prim_step (FAA (of_val (LitV (LitLoc l))) (of_val (LitV (LitInt i2)))) \<sigma>1 \<kappa> e2 \<sigma>2 efs \<longleftrightarrow>
+  (\<exists>i1. fmlookup (heap \<sigma>1) l = Some (Some (LitV (LitInt i1))) \<and> \<kappa>=[] \<and> e2 = Val(LitV (LitInt i1))
+    \<and> \<sigma>2 = (state_upd_heap (\<lambda>h. fmupd l (Some (LitV (LitInt (i1 + i2)))) h) \<sigma>1) \<and> efs = [])"
+  unfolding prim_step_def using fill_faa_val fill_Val
+  apply (auto simp: fill_def)
+  apply fastforce
+  by (metis FaaS foldl_Nil)
+
+lemma prim_step_fork: "prim_step (Fork e) \<sigma>1 \<kappa> e2 \<sigma>2 efs \<longleftrightarrow>
+  (\<kappa>=[] \<and> e2 = Val(LitV LitUnit) \<and> \<sigma>2 = \<sigma>1 \<and> efs = [e])"
+  unfolding prim_step_def using fill_Val fill_fork
+  apply (auto simp:)
+  apply fast
+  apply (metis fill_def foldl_Nil headE(12))
+  apply fast
+  apply fast
+  using ForkS prim_step_def prim_step_simp by presburger
+  
 datatype stuckness = NotStuck | MaybeStuck
 instantiation stuckness :: order begin
 fun less_eq_stuckness :: "stuckness \<Rightarrow> stuckness \<Rightarrow> bool" where
@@ -257,7 +354,35 @@ lemma pure_exec_snd:
   "pure_exec True 1 (Snd (Val (PairV v1 v2))) (Val v2)"
   apply (auto simp: pure_head_step_def head_red_no_obs_def intro!: rel_one_step pure_head_step_pure_step)
   by auto
-  
+
+lemma pure_exec_if_false: "pure_exec True 1 (If (Val (LitV (LitBool False))) e1 e2) (e2)"
+  apply (auto simp: pure_head_step_def head_red_no_obs_def intro!: pure_head_step_pure_step rel_one_step)
+  using IfFalseS by fastforce+
+
+lemma pure_exec_if_true: "pure_exec True 1 (If (Val (LitV (LitBool True))) e1 e2) (e1)"
+  apply (auto simp: pure_head_step_def head_red_no_obs_def intro!: pure_head_step_pure_step rel_one_step)
+  using IfFalseS by fastforce+
+
+lemma pure_exec_injl: "pure_exec True 1 (InjL (Val e)) (InjLV e)"
+apply (auto simp: pure_head_step_def head_red_no_obs_def intro!: pure_head_step_pure_step rel_one_step)
+  using InjLS by fastforce+
+
+lemma pure_exec_injr: "pure_exec True 1 (InjR (Val e)) (InjRV e)"
+apply (auto simp: pure_head_step_def head_red_no_obs_def intro!: pure_head_step_pure_step rel_one_step)
+using InjRS by fastforce+
+
+lemma pure_exec_case_injl: "pure_exec True 1 (Case (InjLV v) e1 e2) (App e1 (Val v))"
+apply (auto simp: pure_head_step_def head_red_no_obs_def intro!: pure_head_step_pure_step rel_one_step)
+using CaseLS by fastforce+
+
+lemma pure_exec_case_injr: "pure_exec True 1 (Case (InjRV v) e1 e2) (App e2 (Val v))"
+apply (auto simp: pure_head_step_def head_red_no_obs_def intro!: pure_head_step_pure_step rel_one_step)
+using CaseLS by fastforce+
+
+lemma pure_exec_pair: "pure_exec True 1 (Pair (Val v1) (Val v2)) (PairV v1 v2)"
+apply (auto simp: pure_head_step_def head_red_no_obs_def intro!: pure_head_step_pure_step rel_one_step)
+using CaseLS by fastforce+
+
 text \<open>Atomicity proofs, but mostly axiomatized.\<close>
     
 lemma atomic_rec [atomic_rule,log_prog_rule]: "atomic a (Rec f x e)" 
@@ -301,4 +426,59 @@ lemma atomic_cmp_xchg [atomic_rule,log_prog_rule]: "atomic a (CmpXchg (Val v0) (
 lemma atomic_faa [atomic_rule,log_prog_rule]: "atomic a (FAA (Val v1) (Val v2))" sorry
 lemma atomic_new_proph [atomic_rule,log_prog_rule]: "atomic a NewProph" sorry
 lemma atomic_resolve [atomic_rule,log_prog_rule]: "atomic a e \<Longrightarrow> atomic a (Resolve e (Val v1) (Val v2))" sorry
+
+
+lemma fill_item_aux: "fill K e = e2 \<Longrightarrow> e2 = lang_ctxt (F K) e" by simp
+
+method subst_fill_expr for K :: "ectx_item list" and orig e :: expr =
+  match (K) in "[]" \<Rightarrow> succeed \<bar> _ \<Rightarrow> \<open>subst fill_item_aux[of K e orig], simp add: fill_def\<close>
+
+method go for K :: "ectx_item list" and orig e :: expr = match (e) in 
+  "App e1 (Val v)" for e1 and v \<Rightarrow> 
+  \<open>match (e1) in "Val _" \<Rightarrow> \<open>subst_fill_expr K orig e\<close> \<bar> _ \<Rightarrow> \<open>go "AppLCtx v # K" orig e1\<close>\<close>
+\<bar> "App e1 e2" for e1 e2 :: expr \<Rightarrow> \<open>go "AppRCtx e1 # K" orig e2\<close>
+\<bar> "UnOp op e1" for op and e1 \<Rightarrow> 
+  \<open>match (e1) in "Val _" \<Rightarrow> \<open>subst_fill_expr K orig e\<close> \<bar> _ \<Rightarrow> \<open>go "UnOpCtx op # K" orig e1\<close>\<close>
+\<bar> "BinOp op e1 (Val v)" for op e1 v \<Rightarrow>
+  \<open>match (e1) in "Val _" \<Rightarrow> \<open>subst_fill_expr K orig e\<close> \<bar> _ \<Rightarrow> \<open>go "BinOpLCtx op v # K" orig e1\<close>\<close>
+\<bar> "BinOp op e1 e2" for op e1 e2 \<Rightarrow> \<open>go "BinOpRCtx op e1 # K" orig e2\<close>
+\<bar> "If e0 e1 e2" for e0 e1 e2 \<Rightarrow> 
+  \<open>match (e0) in "Val _" \<Rightarrow> \<open>subst_fill_expr K orig e\<close> \<bar> _ \<Rightarrow> \<open>go "IfCtx e1 e2 # K" orig e0\<close>\<close>
+\<bar> "Pair e1 (Val v)" for e1 v \<Rightarrow> 
+  \<open>match (e1) in "Val _" \<Rightarrow> \<open>subst_fill_expr K orig e\<close> \<bar> _ \<Rightarrow> \<open>go "PairLCtx v # K" orig e1\<close>\<close>
+\<bar> "Pair e1 e2" for e1 e2 \<Rightarrow> \<open>go "PairRCtx e1 # K" orig e2\<close>
+\<bar> "Fst e1" for e1 \<Rightarrow> 
+  \<open>match (e1) in "Val _" \<Rightarrow> \<open>subst_fill_expr K orig e\<close> \<bar> _ \<Rightarrow> \<open>go "FstCtx # K" orig e1\<close>\<close>
+\<bar> "Snd e1" for e1 \<Rightarrow>
+  \<open>match (e1) in "Val _" \<Rightarrow> \<open>subst_fill_expr K orig e\<close> \<bar> _ \<Rightarrow> \<open>go "SndCtx # K" orig e1\<close>\<close>
+\<bar> "InjL e1" for e1 \<Rightarrow> 
+  \<open>match (e1) in "Val _" \<Rightarrow> \<open>subst_fill_expr K orig e\<close> \<bar> _ \<Rightarrow> \<open>go "InjLCtx # K" orig e1\<close>\<close>
+\<bar> "InjR e1" for e1 \<Rightarrow> 
+  \<open>match (e1) in "Val _" \<Rightarrow> \<open>subst_fill_expr K orig e\<close> \<bar> _ \<Rightarrow> \<open>go "InjRCtx # K" orig e1\<close>\<close>
+\<bar> "Case e0 e1 e2" for e0 e1 e2 \<Rightarrow> 
+  \<open>match (e0) in "Val _" \<Rightarrow> \<open>subst_fill_expr K orig e\<close> \<bar> _ \<Rightarrow> \<open>go "CaseCtx e1 e2 # K" orig e0\<close>\<close>
+\<bar> "AllocN e1 (Val v)" for e1 v \<Rightarrow> 
+  \<open>match (e1) in "Val _" \<Rightarrow> \<open>subst_fill_expr K orig e\<close> \<bar> _ \<Rightarrow> \<open>go "AllocNLCtx v # K" orig e1\<close>\<close>
+\<bar> "AllocN e1 e2" for e1 e2 \<Rightarrow> \<open>go "AllocNRCtx e1 # K" orig e2\<close>
+\<bar> "Free e1" for e1 \<Rightarrow> 
+  \<open>match (e1) in "Val _" \<Rightarrow> \<open>subst_fill_expr K orig e\<close> \<bar> _ \<Rightarrow> \<open>go "FreeCtx # K" orig e1\<close>\<close>
+\<bar> "Load e1" for e1 \<Rightarrow> 
+  \<open>match (e1) in "Val _" \<Rightarrow> \<open>subst_fill_expr K orig e\<close> \<bar> _ \<Rightarrow> \<open>go "LoadCtx # K" orig e1\<close>\<close>
+\<bar> "Store e1 (Val v)" for e1 v \<Rightarrow> 
+  \<open>match (e1) in "Val _" \<Rightarrow> \<open>subst_fill_expr K orig e\<close> \<bar> _ \<Rightarrow> \<open>go "StoreLCtx v # K" orig e1\<close>\<close>
+\<bar> "Store e1 e2" for e1 e2 \<Rightarrow> \<open>go "StoreRCtx e1 # K" orig e2\<close>
+\<bar> "Xchg e1 (Val v)" for e1 v \<Rightarrow> 
+  \<open>match (e1) in "Val _" \<Rightarrow> \<open>subst_fill_expr K orig e\<close> \<bar> _ \<Rightarrow> \<open>go "XchgLCtx v # K" orig e1\<close>\<close>
+\<bar> "Xchg e1 e2" for e1 e2 \<Rightarrow> \<open>go "XchgRCtx e1 # K" orig e2\<close>
+\<bar> "CmpXchg e1 (Val v1) (Val v2)" for e1 v1 v2 \<Rightarrow> 
+  \<open>match (e1) in "Val _" \<Rightarrow> \<open>subst_fill_expr K orig e\<close> \<bar> _ \<Rightarrow> \<open>go "CmpXchgLCtx v1 v2 # K" orig e1\<close>\<close>
+\<bar> "CmpXchg e0 e1 (Val v)" for e0 e1 v \<Rightarrow> \<open>go "CmpXchgMCtx e0 v # K" orig e1\<close> 
+\<bar> "CmpXchg e0 e1 e2" for e0 e1 e2 \<Rightarrow> \<open>go "CmpXchgRCtx e0 e1 # K" orig e2\<close>
+\<bar> "FAA e1 (Val v)" for e1 v \<Rightarrow> \<open>match (e1) in "Val _" \<Rightarrow> \<open>subst_fill_expr K orig e\<close> 
+  \<bar> _ \<Rightarrow> \<open>go "FaaLCtx v # K" orig e1\<close>\<close>
+\<bar> "FAA e1 e2" for e1 e2 \<Rightarrow> \<open>go "FaaRCtx e1 # K" orig e1\<close>
+\<bar> "Resolve _ _ _" \<Rightarrow> fail
+\<bar> _ \<Rightarrow> \<open>subst_fill_expr K orig e\<close>
+
+method reshape_expr for e :: expr = (go "[]" e e)
 end

@@ -128,6 +128,9 @@ lift_definition rel_ag :: "('a \<Rightarrow> 'b \<Rightarrow> bool) \<Rightarrow
 
 lift_definition to_ag :: "'a \<Rightarrow> 'a ag" is "\<lambda>a::'a. {a}" by simp
 
+lemma map_to_ag [simp]:"map_ag f (to_ag h) = to_ag (f h)"
+  by transfer simp
+
 lemma image_ag: "image f (Rep_ag s) \<in> {a |a. finite a \<and> a \<noteq> {}}"
   apply (simp_all add: image_def)
   apply (rule conjI)
@@ -170,9 +173,9 @@ show "cinfinite (natLeq )"
   using cinfinite_csum natLeq_cinfinite by blast
 next
 fix s :: "'a ag"
-show "|Rep_ag s| \<le>o natLeq"
+show "|Rep_ag s| <o natLeq"
 by (metis (no_types, lifting) Rep_ag card_of_Well_order infinite_iff_natLeq_ordLeq mem_Collect_eq 
-  natLeq_Well_order not_ordLeq_iff_ordLess ordLess_imp_ordLeq)
+  natLeq_Well_order not_ordLeq_iff_ordLess)
 next
 fix R :: "'a\<Rightarrow>'b\<Rightarrow>bool" and S :: "'b\<Rightarrow>'c\<Rightarrow>bool"
 show "rel_ag R OO rel_ag S \<le> rel_ag (R OO S)"
@@ -211,7 +214,9 @@ next
   assume "\<exists>z. Rep_ag z \<subseteq> {(x, y). R x y} \<and> Abs_ag (fst ` Rep_ag z) = a \<and> Abs_ag (snd ` Rep_ag z) = b"
   then show "(\<forall>x\<in>Rep_ag a. \<exists>xa\<in>Rep_ag b. R x xa) \<and> (\<forall>y\<in>Rep_ag b. \<exists>x\<in>Rep_ag a. R x y)"
   by (smt (verit, best) Product_Type.Collect_case_prodD image_abs_ag(1) image_iff subset_eq)
-qed
+  qed
+next
+show "regularCard natLeq" by (rule regularCard_natLeq)
 qed
 end
 

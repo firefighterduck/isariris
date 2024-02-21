@@ -2,6 +2,7 @@ theory HeapLang
 imports 
   Main
   Locations
+  "HOL-Eisbach.Eisbach_Tools"
 begin
 
 section \<open> HeapLang Definition \<close>

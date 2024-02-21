@@ -94,7 +94,7 @@ proof -
   from infinite_names have "names N - fset E \<noteq> {}"
      using finite_fset infinite_super by fastforce    
   then obtain \<iota> where "\<iota> \<in> names N - fset E" unfolding dnames_def by (cases E) auto
-  then have "\<iota> |\<notin>| E \<and> \<iota> \<in> names N" by (auto simp add: dnames_def fmember.rep_eq)
+  then have "\<iota> |\<notin>| E \<and> \<iota> \<in> names N" by (auto simp add: dnames_def)
   then show ?thesis by blast
 qed
 
@@ -202,8 +202,18 @@ text \<open>
 \<close>
 
 lemma persistent_inv [pers_rule,log_prog_rule]: "persistent (inv N P)"
-  unfolding inv_def by pers_solver
+unfolding inv_def by pers_solver
 
+lemma inv_into_acc: "names N \<subseteq> \<E> \<Longrightarrow> into_acc (inv N P) upred_emp (fancy_upd' \<E> (\<E> - names N))
+  (fancy_upd' (\<E> - names N) \<E>) (\<lambda>_. \<triangleright>P) (\<lambda>_. \<triangleright>P) (\<lambda>_. None)"
+  unfolding into_acc_def accessor_def inv_def
+  apply iris_simp
+  apply (iApply rule: upred_persisE)
+  apply (iForallL \<E>)
+  apply (iApply rule: upred_entail_eqL[OF upred_emp_impl])
+  apply (rule fupd_frame_mono[OF inv_inG])
+  by iFrame_single+
+  
 lemma inv_alter: "inv N P -\<^emph> (\<triangleright>\<box>(P -\<^emph> (Q \<^emph> (Q-\<^emph>P)))) -\<^emph> inv N Q"
 apply (auto simp: inv_def intro!: upred_wand_holds2I upred_entails_trans[OF _ upred_entail_eqL[OF 
     pers_forall]] upred_forallI upred_entails_trans[OF _ upred_entail_eqR[OF upred_pers_impl_pure]]
@@ -307,7 +317,7 @@ apply (rule upred_entails_trans[OF upred_entails_eq[OF upred_sep_comm]])
 by (auto intro: upred_entails_trans[OF upred_wand_apply])
 done
 
-lemma inv_combine_dup_l: "(\<box>(P -\<^emph> (P\<^emph>P))) -\<^emph> inv N P -\<^emph> inv N Q -\<^emph> inv N (P \<^emph>Q)"
+lemma inv_combine_dup_l: "(\<box>(P -\<^emph> (P\<^emph>P))) -\<^emph> inv N P -\<^emph> inv N Q -\<^emph> inv N (P \<^emph> Q)"
 apply (auto simp: inv_def intro!: upred_wand_holds2I upred_wandI upred_persis_frame upred_forallI 
   upred_implI_pure, pers_solver)
 apply (rule upred_entails_trans[OF upred_sep_comm2R])
@@ -339,6 +349,45 @@ apply (rule upred_entails_trans[OF upred_sep_comm2R])
 apply (rule upred_entails_substE[OF upred_wand_apply, unfolded upred_sep_assoc_eq])
 by (rule upred_weakeningR)
 done
+
+lemma inv_split:
+assumes assm: "can_be_split R P Q"
+shows "inv N R \<turnstile> inv N Q \<^emph> inv N P"
+apply (iSplit "?x" "inv N Q")
+unfolding inv_def
+subgoal
+  apply (rule upred_persis_mono)
+  apply iIntros subgoal for E
+  apply (iForallL E)
+  apply (iApply rule: upred_entail_eqL[OF upred_emp_impl])
+  apply (rule fupd_mono[OF inv_inG])
+  apply (iApply_step2 "(\<triangleright>P)\<^emph>(\<triangleright>Q)" "\<triangleright>R")
+  apply (entails_substR rule: upred_entail_eqL[OF upred_later_sep])
+  apply (rule upred_later_mono)
+  apply (iApply rule: upred_entail_eqL[OF assm[unfolded can_be_split_def]])
+  apply (check_move_both "\<triangleright>P") apply iFrame_single
+  apply iIntro
+  apply (iApply_step2 "\<triangleright>R" "(\<triangleright>P)\<^emph>(\<triangleright>Q)")
+  apply (iApply rule: upred_entail_eqR[OF upred_later_sep])
+  apply (rule upred_later_mono)
+  apply (iApply rule: upred_entail_eqR[OF assm[unfolded can_be_split_def]])
+  by iApply_wand done
+  apply (rule upred_persis_mono)
+  apply iIntros subgoal for E
+  apply (iForallL E)
+  apply (iApply rule: upred_entail_eqL[OF upred_emp_impl])
+  apply (rule fupd_mono[OF inv_inG])
+  apply (iApply_step2 "(\<triangleright>P)\<^emph>(\<triangleright>Q)" "\<triangleright>R")
+  apply (entails_substR rule: upred_entail_eqL[OF upred_later_sep])
+  apply (rule upred_later_mono)
+  apply (iApply rule: upred_entail_eqL[OF assm[unfolded can_be_split_def]])
+  apply (check_move_both "\<triangleright>Q") apply iFrame_single
+  apply iIntro
+  apply (iApply_step2 "\<triangleright>R" "(\<triangleright>P)\<^emph>(\<triangleright>Q)")
+  apply (iApply rule: upred_entail_eqR[OF upred_later_sep])
+  apply (rule upred_later_mono)
+  apply (iApply rule: upred_entail_eqR[OF assm[unfolded can_be_split_def]])
+  by iApply_wand done
 end
 
 subsubsection \<open>Cancelable Invariants\<close>
@@ -369,9 +418,9 @@ lemma timeless_cinv_own: "timeless (cinv_own \<gamma> p)"
   unfolding cinv_own_def inG.own_def[OF cinv_inG]
   apply (rule own_timeless')
   unfolding dcamera_val_def discrete_val_def
-  apply (auto simp: inG.put_ne[OF cinv_inG] ofe_refl ofe_limit valid_def inG.put_n_valid[OF cinv_inG]
+  apply (auto simp: inG.put_ne[OF cinv_inG] ofe_refl ofe_limit valid_def inG.return_n_valid[OF cinv_inG]
     valid_raw_frac_def valid_raw_option_def)
-  by (metis (mono_tags, lifting) cinv_inG d_equiv inG.put_ne inG.put_ne2)+
+  by (metis cinv_inG d_equiv inG.return_ne inG.return_ne2)+
 
 lemma cinv_upred_own_valid: "cinv_own \<gamma> q1 -\<^emph> cinv_own \<gamma> q2 -\<^emph> \<upharpoonleft>(q1\<cdot>q2\<le>1)"
 unfolding cinv_own_def
@@ -387,6 +436,11 @@ proof (rule upred_wand_holds2I)
   with upred_wand_holds2E[OF cinv_upred_own_valid, of \<gamma> 1 q] show "cinv_own \<gamma> 1 \<^emph> cinv_own \<gamma> q \<turnstile> \<upharpoonleft>False" 
     by simp
 qed
+
+lemma cinv_own_op: "cinv_own \<gamma> (p+q) \<stileturn>\<turnstile> cinv_own \<gamma> p \<^emph> cinv_own \<gamma> q"
+unfolding cinv_own_def 
+apply (rule upred_entail_eq_trans[OF _ inG.own_op[OF cinv_inG]])
+by (simp add: op_option_def frac_op_plus)
 
 lemma cinv_acc_strong: "names N \<subseteq> E \<Longrightarrow>
   (cinv N \<gamma> P) -\<^emph> (cinv_own \<gamma> p ={E,E-names N}=\<^emph>
@@ -446,5 +500,63 @@ lemma cinv_acc: "names N \<subseteq> E \<Longrightarrow>
   apply (rule upred_entails_trans[OF upred_sep_comm2R]) 
   apply (auto simp: Un_absorb1 intro!: upred_entails_substE[OF upred_wand_apply', unfolded upred_sep_assoc_eq] upred_disjIL) 
   by (rule upred_weakeningR)
+
+lemma cinv_alloc_strong: "pred_infinite I \<Longrightarrow>
+  \<Turnstile>{E}=> (\<exists>\<^sub>u \<gamma>. (\<upharpoonleft>(I \<gamma>)) \<^emph> cinv_own \<gamma> 1 \<^emph> (\<forall>\<^sub>u P. ((\<triangleright>P) ={E}=\<^emph> cinv N \<gamma> P)))"
+  apply iIntro
+  apply (iApply rule: inG.own_alloc_strong[OF cinv_inG, where ?a = "Some 1"]) subgoal 
+    by (auto simp: valid_def valid_raw_option_def valid_one_frac[unfolded valid_def])
+  apply (rule elim_modal_entails)
+  apply (rule elim_modal_upd[OF inv_inG])
+  apply iIntros subgoal for \<gamma>
+  apply (entails_substR rule: fupd_exists_lift[OF inv_inG], iExistsR \<gamma>)
+  unfolding cinv_own_def cinv_def
+  apply (rule framing_emp, frame_solver, rule inv_inG, frame_solver, iris_simp)
+  apply (entails_substR rule: fupd_intro[OF inv_inG])
+  apply iIntros subgoal for P
+  apply (entails_substR rule: inv_alloc[OF inv_inG, where ?N = N])
+  apply (rule upred_later_mono)
+  by (rule upred_disjIL, simp) done done
+
+lemma nat_list_not_infinite: "\<exists>x::nat. x \<notin> set xs"
+proof -
+define m where m:"m \<equiv> Sup (set xs)"
+then have "Suc m > Sup (set xs)" by auto
+then have "Suc m \<notin> set xs"
+by (metis List.finite_set empty_iff finite_Sup_less_iff less_not_refl)
+then show ?thesis by blast
+qed
+
+lemma cinv_alloc: "(\<triangleright>P) ={E}=\<^emph> (\<exists>\<^sub>u \<gamma>. cinv N \<gamma> P \<^emph> cinv_own \<gamma> 1)"
+apply iIntro
+apply (entails_substL rule: add_holds[OF cinv_alloc_strong[of "\<lambda>_. True" E N]])
+subgoal by (auto simp: pred_infinite_def nat_list_not_infinite) 
+apply (rule elim_modal_entails', rule elim_modal_fupd[OF inv_inG])
+apply iIntros subgoal for \<gamma>
+apply (iForallL P) apply iApply_wand
+apply (entails_substR rule: fupd_exists_lift[OF inv_inG])
+apply (iExistsR \<gamma>)
+apply (entails_substR rule: fupd_frame_r[OF inv_inG])
+by iFrame_single done
+
+lemma cinv_cancel: "names N \<subseteq> E \<Longrightarrow> cinv N \<gamma> P -\<^emph> (cinv_own \<gamma> 1 ={E}=\<^emph> \<triangleright>P)"
+apply iIntros
+apply (iApply rule: cinv_acc_strong)
+apply (rule elim_modal_entails') apply (rule elim_modal_fupd[OF inv_inG])
+apply (iForallL "E -names N")
+apply (iApply_wand_as_rule "?p\<or>\<^sub>u?q" "cinv_own ?g 1",rule upred_disjIR, iFrame_single)
+apply (rule elim_modal_entails') apply (rule elim_modal_fupd[OF inv_inG], iris_simp)
+apply (simp add: Un_absorb1)
+apply (entails_substR rule: fupd_intro[OF inv_inG])
+by iFrame_single
+
+lemma cinv_into_acc: "names N \<subseteq> E \<Longrightarrow> 
+  into_acc (cinv N \<gamma> P) (cinv_own \<gamma> p) (fancy_upd put_inv E (E-names N)) (fancy_upd put_inv (E -names N) E)
+  (\<lambda>_. (\<triangleright>P) \<^emph> cinv_own \<gamma> p) (\<lambda>_. \<triangleright>P) (\<lambda>_. None)"
+  apply (auto simp: into_acc_def accessor_def)
+  apply (iApply rule: cinv_acc)
+  apply (rule elim_modal_entails') apply (rule elim_modal_fupd[OF inv_inG])
+  apply (entails_substR rule: fupd_intro[OF inv_inG])
+  by iFrame_single+
 end
 end

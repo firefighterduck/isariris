@@ -1,5 +1,5 @@
 theory OFEs
-imports BasicTypes "HOL-Library.Finite_Map"
+imports BasicTypes "HOL-Library.Finite_Map" "HOL-Library.Multiset"
 begin
 
 section \<open> Ordered family of equivalences \<close>
@@ -61,6 +61,15 @@ instance by standard auto
 end
 
 instance nat :: discrete by standard (auto)
+
+subsubsection \<open>int OFE\<close>
+instantiation int :: ofe begin
+  definition n_equiv_int :: "nat \<Rightarrow> int \<Rightarrow> int \<Rightarrow> bool" where [simp]: "n_equiv_int \<equiv> \<lambda>_. (=)"
+  definition ofe_eq_int :: "int \<Rightarrow> int \<Rightarrow> bool" where [simp]: "ofe_eq_int \<equiv> (=)"
+instance by standard auto
+end
+
+instance int :: discrete by standard (auto)
 
 subsubsection \<open>bool OFE\<close>
 instantiation bool :: ofe begin
@@ -305,6 +314,12 @@ instance ag :: (discrete) discrete apply standard
 lemma to_ag_n_equiv: "n_equiv n (to_ag a) (to_ag b) \<longleftrightarrow> n_equiv n a b"
   unfolding to_ag.rep_eq n_equiv_ag.rep_eq by simp
 
+lemma discrete_to_ag_ne: "n_equiv n y (to_ag (x::'a::discrete)) \<Longrightarrow> y=to_ag x"
+  by transfer (auto simp: d_equiv)
+
+lemma to_ag_eq [simp]: "to_ag x = to_ag y \<longleftrightarrow> x=y"
+  by transfer simp
+
 subsubsection \<open>Exclusive camera combinator OFE\<close>
 instantiation ex :: (ofe) ofe begin
 fun n_equiv_ex :: "nat \<Rightarrow> 'a::ofe ex \<Rightarrow> 'a ex \<Rightarrow> bool" where
@@ -366,4 +381,13 @@ next
 fix a b :: "'a auth"
 show "ofe_eq a b = (a = b)" by (cases a; cases b) (auto simp: d_eq)
 qed
+
+subsubsection \<open>Multiset\<close>
+instantiation multiset :: (type) ofe begin
+definition n_equiv_multiset :: "nat \<Rightarrow> 'a multiset \<Rightarrow> 'a multiset \<Rightarrow> bool"  where "n_equiv_multiset \<equiv> \<lambda>_. (=)"
+definition ofe_eq_multiset :: "'a multiset \<Rightarrow> 'a multiset \<Rightarrow> bool" where "ofe_eq_multiset \<equiv> (=)"
+instance by standard (auto simp: n_equiv_multiset_def ofe_eq_multiset_def)
+end
+
+instance multiset :: (type) discrete by standard (auto simp: n_equiv_multiset_def ofe_eq_multiset_def)
 end

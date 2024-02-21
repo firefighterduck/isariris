@@ -17,6 +17,13 @@ instance ..
 end
 lemmas [simp] = one_frac.rep_eq one_frac_def
 
+instantiation frac :: plus begin
+lift_definition plus_frac :: "frac \<Rightarrow> frac \<Rightarrow> frac" is "(+)" by (rule add_pos_pos)
+instance ..
+end
+
+instance frac :: ab_semigroup_add by (standard; transfer, auto)
+
 instantiation frac :: ofe begin
 definition n_equiv_frac :: "nat \<Rightarrow> frac \<Rightarrow> frac \<Rightarrow> bool" where "n_equiv_frac _ \<equiv> (=)"
 definition ofe_eq_frac :: "frac \<Rightarrow> frac \<Rightarrow> bool" where "ofe_eq_frac \<equiv> (=)"
@@ -83,6 +90,22 @@ proof (auto simp: incl_def op_frac_def less_frac.rep_eq; transfer; auto simp: Ab
   with rep assms(2) show "\<exists>c>0. q = Abs_frac (p + c)" by auto
 qed
 
+lift_definition half :: "frac \<Rightarrow> frac" is "\<lambda>p. p div 2" by (rule half_gt_zero)
+
+lemma half_frac_eq: "q = (half q + half q)"
+  by transfer simp
+
+lemma frac_sum_one_le: "p+q = (1::frac) \<Longrightarrow> p<1 \<and> q<1 \<and> p\<noteq>1 \<and> q \<noteq> 1"
+  by transfer simp
+
+lemma frac_sum_one_le2: "p+q < (1::frac) \<Longrightarrow> p<1 \<and> q<1 \<and> p\<noteq>1 \<and> q \<noteq> 1"
+  by transfer simp
+  
+lemma valid_one_frac: "valid (1::frac)" apply (auto simp: valid_def valid_raw_frac.rep_eq)
+  using one_frac.rep_eq by auto
+
+lemma frac_op_plus: "(p::frac)\<cdot>q = p+q" by transfer simp
+  
 text \<open> Discardable Fractions Camera \<close>
 text \<open> This models fractional ownership which can be given up on.  \<close>
 
@@ -197,23 +220,31 @@ lemma dfrac_not_valid_own: "\<not> valid (DfracOwn 1 \<cdot> dq)"
 apply (cases dq) apply (simp_all add: valid_def valid_raw_dfrac.rep_eq op_dfrac_def split: dfrac.splits)
 apply (metis frac_not_valid one_frac_def valid_frac)
 by (meson dual_order.asym frac_own_incl incl_def)
-  
-lemma dfrac_discard_update: "dq \<leadsto> {DfracDiscarded}"
+
+lemma dfrac_discard_update: "dq \<leadsto> DfracDiscarded"
 proof (auto simp: camera_upd_def)
 fix x n
-assume assm: "n_valid (dq \<cdot> x) n"
-show "n_valid (DfracDiscarded \<cdot> x) n"
+assume assm: "n_valid (dq \<cdot>? x) n"
+show "n_valid (DfracDiscarded \<cdot>? x) n"
 proof (cases x)
+case None
+then show ?thesis by (simp add: valid_raw_dfrac_def op_dfrac_def opM_def)
+next
+case (Some a)
+then show ?thesis proof (cases a)
   case (DfracOwn x1)
-  with assm have "x1<Abs_frac 1" using dfrac_valid_own_r by (metis one_frac_def valid_dfrac)
-  with DfracOwn show ?thesis by (auto simp: op_dfrac_def valid_def valid_raw_dfrac.rep_eq)
+  with Some assm have "x1<Abs_frac 1" using dfrac_valid_own_r apply (auto simp: opM_def) 
+    by (metis one_frac_def valid_dfrac)
+  with DfracOwn Some show ?thesis by (auto simp: op_dfrac_def opM_def valid_def valid_raw_dfrac.rep_eq)
 next
   case DfracDiscarded
-  then show ?thesis by (auto simp: op_dfrac_def valid_raw_dfrac.rep_eq valid_def)
+  with Some show ?thesis by (auto simp: opM_def op_dfrac_def valid_raw_dfrac.rep_eq valid_def)
 next
   case (DfracBoth x3)
-  from assm have "valid x" unfolding valid_def using camera_comm camera_valid_op by (metis assm dcamera_valid_iff)
-  with DfracBoth show ?thesis by (auto simp: valid_def op_dfrac_def valid_raw_dfrac.rep_eq)
+  from assm Some have "valid a" unfolding valid_def opM_def apply auto 
+    by (metis camera_comm camera_valid_op dcamera_valid_iff)
+  with Some DfracBoth show ?thesis by (auto simp: opM_def valid_def op_dfrac_def valid_raw_dfrac.rep_eq)
+qed
 qed
 qed
 

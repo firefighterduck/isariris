@@ -53,7 +53,7 @@ lemma split_frame: "\<lbrakk>can_be_split P P1 P2; can_be_split Q Q1 Q2; P1\<tur
 
 lemma can_be_split_disj [split_rule]: "\<lbrakk>can_be_split P P' Q; can_be_split R R' Q\<rbrakk> \<Longrightarrow> can_be_split (P\<or>\<^sub>uR) (P'\<or>\<^sub>uR') Q"
   unfolding can_be_split_def upred_entail_eq_def by transfer blast
-  
+
 lemma can_be_split_later [split_rule]: "can_be_split P Q R \<Longrightarrow> can_be_split (\<triangleright>P) (\<triangleright>Q) (\<triangleright>R)"
   unfolding can_be_split_def by (smt (verit, ccfv_threshold) upred_later_sep upred_later_mono 
   diff_le_self ne_sprop_weaken ofe_refl upred_entail_eq_simp upred_later.rep_eq valid_raw_non_expansive)
@@ -61,7 +61,7 @@ lemma can_be_split_later [split_rule]: "can_be_split P Q R \<Longrightarrow> can
 lemma can_be_split_except_zero [split_rule]: "can_be_split P Q R \<Longrightarrow> can_be_split (\<diamondop>P) (\<diamondop>Q) (\<diamondop>R)"
   unfolding can_be_split_def using except_zero_sep except_zero_mono
   by (smt (verit, ccfv_threshold) upred_entail_eq_def upred_entails_trans)
-
+  
 lemma framing': "\<lbrakk>can_be_split S T Q; T \<turnstile> P\<rbrakk> \<Longrightarrow> S\<turnstile>P\<^emph>Q"
   unfolding can_be_split_def upred_entail_eq_def
   using upred_entails_trans upred_frame by blast
@@ -185,7 +185,7 @@ lemma persistent_core_upred_own2 [pers_rule,log_prog_rule]: "pcore_id_pred (a::'
   using camera_core_mono_n by fastforce
 
 context fixes get_cmra :: "gname \<Rightarrow> 'a::ucamera \<Rightarrow> 'b::total_camera option"
-  and put_cmra :: "gname \<Rightarrow> 'b \<Rightarrow> 'a"
+  and put_cmra
   assumes inG: "inG get_cmra put_cmra"
 begin
 lemma persistent_core_own2 [pers_rule,log_prog_rule]: 
@@ -271,6 +271,18 @@ lemma upred_persis_frame: "\<lbrakk>persistent P; P\<^emph>Q\<turnstile>R\<rbrak
 lemma persistent_sep_conj: "\<lbrakk>persistent P; persistent Q\<rbrakk> \<Longrightarrow> P \<and>\<^sub>u Q \<turnstile> P \<^emph> Q"
   unfolding persistent_def by transfer (metis camera_core_id ofe_refl)
 
+lemma persis_conj_sepL: "persistent P \<Longrightarrow> P\<^emph>Q\<turnstile>R \<Longrightarrow> P\<and>\<^sub>uQ\<turnstile>R"
+by (metis persistent_keep upred_entails_substE upred_entails_trans upred_sep_comm upred_weakeningL' upred_weakeningR')
+
+lemma persistent_add: "\<lbrakk>persistent Q; P \<turnstile> Q; P \<^emph> Q \<turnstile> R\<rbrakk> \<Longrightarrow> P \<turnstile> R"
+  using persistent_keep upred_entails_trans by blast
+
+lemma persistent_goal_split: "\<lbrakk>P\<turnstile>Q; P\<turnstile>R; persistent Q; persistent R\<rbrakk> \<Longrightarrow> P\<turnstile>Q\<^emph>R"
+using persistent_add upred_frame by blast  
+
+lemma persistent_goal_dupl: "\<lbrakk>persistent Q; P\<turnstile>R\<^emph>Q\<rbrakk> \<Longrightarrow> P\<turnstile>R\<^emph>Q\<^emph>Q"
+  using persistent_keep upred_entails_trans upred_weakeningR by blast
+
 lemma persistent_loebI: "\<lbrakk>persistent P; P\<^emph>(\<box>\<triangleright>Q)\<turnstile>Q\<rbrakk> \<Longrightarrow> P\<turnstile>Q"
   apply (rule upred_entails_trans[OF _ loeb_persis])
   apply (rule upred_entails_trans[OF persistentI])
@@ -331,8 +343,8 @@ lemma timeless_sep [timeless_rule,log_prog_rule]: "\<lbrakk>timeless P; timeless
 
 lemma timeless_wand [timeless_rule,log_prog_rule]: "timeless Q \<Longrightarrow> timeless (P-\<^emph>Q)"
   unfolding timeless_def except_zero_def apply transfer
-  by (smt (verit, ccfv_threshold) Rep_sprop diff_diff_cancel diff_is_0_eq diff_right_commute 
-    mem_Collect_eq n_incl_refl nat_le_linear)
+  by (smt (verit, ccfv_threshold) One_nat_def Rep_sprop Suc_pred bot_nat_0.not_eq_extremum le_less 
+    less_Suc_eq mem_Collect_eq upred_defI upred_weaken_simple)
 
 lemma timeless_forall [timeless_rule,log_prog_rule]: "(\<And>x. timeless (P x)) \<Longrightarrow> timeless (\<forall>\<^sub>u x. P x)"
   unfolding timeless_def except_zero_def by transfer' blast
@@ -370,6 +382,8 @@ lemma elim_modal_entails': "\<lbrakk>elim_modal P P' Q Q'; R \<^emph> P' \<turns
 
 subsubsection \<open>Plain predicates\<close>
 definition plain :: "'a::ucamera upred_f \<Rightarrow> bool" where "plain P \<equiv> P\<turnstile>\<^item>P"
+
+lemma plainE: "plain P \<Longrightarrow> P \<turnstile> \<^item>P" by (simp add: plain_def)
 
 named_theorems plain_rule
 method plain_solver = (rule plain_rule)+
@@ -412,4 +426,51 @@ lemma persistent_impl: "\<lbrakk>plain P; persistent Q\<rbrakk> \<Longrightarrow
   unfolding plain_def persistent_def apply transfer
   by (metis (no_types, lifting) \<epsilon>_right_id camera_comm n_incl_op_extend ne_sprop_weaken ofe_eq_limit 
     order_eq_refl valid_raw_non_expansive)
+  
+definition accessor :: "('res::ucamera upred_f \<Rightarrow> 'res upred_f) \<Rightarrow> ('res upred_f \<Rightarrow> 'res upred_f)
+  \<Rightarrow> ('a \<Rightarrow> 'res upred_f) \<Rightarrow> ('a \<Rightarrow> 'res upred_f) \<Rightarrow> ('a \<Rightarrow> 'res upred_f option) \<Rightarrow> 'res upred_f"
+  where "accessor M1 M2 a b mc = M1 (\<exists>\<^sub>u x. a x \<^emph> (b x -\<^emph> M2 (case mc x of Some y \<Rightarrow> y | None \<Rightarrow> upred_emp)))"
+
+definition into_acc :: "'res::ucamera upred_f \<Rightarrow> 'res upred_f \<Rightarrow> ('res upred_f \<Rightarrow> 'res upred_f) \<Rightarrow>
+  ('res upred_f \<Rightarrow> 'res upred_f) \<Rightarrow> ('a \<Rightarrow> 'res upred_f) \<Rightarrow> ('a \<Rightarrow> 'res upred_f) \<Rightarrow> ('a \<Rightarrow> 'res upred_f option) \<Rightarrow>
+  bool" where
+  "into_acc Pacc Pin M1 M2 a b mc = (Pacc \<^emph> Pin \<turnstile> accessor M1 M2 a b mc)"
+  
+definition elim_acc :: "('res::ucamera upred_f \<Rightarrow> 'res upred_f) \<Rightarrow> ('res upred_f \<Rightarrow> 'res upred_f)
+  \<Rightarrow> ('a \<Rightarrow> 'res upred_f) \<Rightarrow> ('a \<Rightarrow> 'res upred_f) \<Rightarrow> ('a \<Rightarrow> 'res upred_f option) \<Rightarrow> 'res upred_f
+  \<Rightarrow> ('a \<Rightarrow> 'res upred_f) \<Rightarrow> bool"
+  where "elim_acc M1 M2 a b mc Q Q' = ((\<forall>\<^sub>u x. a x -\<^emph> Q' x) \<^emph> accessor M1 M2 a b mc \<turnstile> Q)"
+
+definition elim_inv :: "'res::ucamera upred_f \<Rightarrow> 'res upred_f \<Rightarrow> ('a \<Rightarrow> 'res upred_f) \<Rightarrow> 
+  ('a \<Rightarrow> 'res upred_f) option \<Rightarrow> 'res upred_f \<Rightarrow> ('a \<Rightarrow> 'res upred_f) \<Rightarrow> bool" where
+"elim_inv Pinv Pin Pout mPclose Q Q' = (Pinv \<^emph> Pin \<^emph> (\<forall>\<^sub>u x. (Pout x \<^emph> 
+  (case mPclose of Some y \<Rightarrow> y | None \<Rightarrow> \<lambda>_. upred_emp) x) -\<^emph> Q' x) \<turnstile> Q)"
+
+lemma elim_inv_elim_acc: "into_acc Pinv Pin M1 M2 a b mc \<Longrightarrow> elim_acc M1 M2 a b mc Q Q' \<Longrightarrow>
+  elim_inv Pinv Pin a None Q Q'"
+  unfolding into_acc_def elim_acc_def elim_inv_def
+  apply (auto simp: emp_rule)
+  by (metis (no_types, lifting) upred_entails_trans upred_frame upred_sep_comm)
+
+lemma elim_inv_applied: "\<lbrakk>elim_inv Pinv Pin Pout mPclose Q Q'; (\<And>x. Pout x \<^emph> 
+  (case mPclose of Some y \<Rightarrow> y | None \<Rightarrow> \<lambda>_. upred_emp) x \<turnstile> Q' x)\<rbrakk> \<Longrightarrow> Pin\<^emph>Pinv \<turnstile> Q"
+proof -
+assume assms: "elim_inv Pinv Pin Pout mPclose Q Q'" 
+  "\<And>x. Pout x \<^emph> (case mPclose of Some y \<Rightarrow> y | None \<Rightarrow> \<lambda>_. upred_emp) x \<turnstile> Q' x"
+show ?thesis 
+apply (rule upred_entails_trans[OF _ assms(1)[unfolded elim_inv_def]])
+apply (subst upred_sep_comm2L)
+apply (rule upred_entails_trans[OF _ upred_sep_comm2R])
+apply (rule upred_frame)
+apply (subst upred_sep_comm)
+apply (rule upred_emp_left)
+apply (rule upred_forallI)
+apply (rule upred_wandI)
+apply (simp add: emp_rule)
+by (rule assms(2))
+qed
+
+lemma elim_inv_applied': "\<lbrakk>elim_inv Pinv Pin Pout mPclose Q Q'; (\<And>x. R \<^emph> Pout x \<^emph> 
+  (case mPclose of Some y \<Rightarrow> y | None \<Rightarrow> \<lambda>_. upred_emp) x \<turnstile> Q' x)\<rbrakk> \<Longrightarrow> R \<^emph> Pin\<^emph>Pinv \<turnstile> Q"
+using elim_inv_applied by (smt (z3) elim_inv_def upred_entails_substE upred_forallI upred_sep_assoc_eq upred_sep_comm upred_wandI)
 end

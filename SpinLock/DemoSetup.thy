@@ -101,6 +101,6 @@ lemmas store_hint = biabd_hint_apply'[OF wp_store_hint]
 declare upred_entails_trans[OF store_hint[where ?G = upred_emp, unfolded emp_rule to_val_simp] fupd_wp, wp_symbolic_execution_steps]
 end
 declare upred_later_exists[iris_simp]
-declare frame_baseL[frame_rule]
+declare frame_baseL[frame_rule,log_prog_rule]
 abbreviation "emp \<equiv> upred_emp"
 end

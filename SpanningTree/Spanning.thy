@@ -36,11 +36,11 @@ subsubsection \<open>Proofs\<close>
 context includes heap_syntax begin  
 lemma wp_try_mark:
 assumes "x\<in>fmdom' g"
-shows "(graph_ctxt \<kappa> g Mrk) \<^emph> (own_graphUR q fmempty) \<^emph> (cinv_own constr_cinv \<kappa> k) \<turnstile>
+shows "(graph_ctxt \<kappa> g Mrk) \<^emph> (own_graphUR q fmempty) \<^emph> (cinv_own upd_cinv \<kappa> k) \<turnstile>
   WP (App (of_val try_mark) (of_val #[x])) 
   {{ \<lambda>v.
-    ((\<upharpoonleft>(v=#[True])) \<^emph> (\<exists>\<^sub>u u. (((\<upharpoonleft>(fmlookup g x = Some u)) \<^emph> own_graphUR q (x [\<mapsto>\<^sub>g] u)))) \<^emph> is_marked x \<^emph> cinv_own constr_cinv \<kappa> k)
-    \<or>\<^sub>u ((\<upharpoonleft>(v=#[False])) \<^emph> own_graphUR q fmempty \<^emph> is_marked x \<^emph> cinv_own constr_cinv \<kappa> k) 
+    ((\<upharpoonleft>(v=#[True])) \<^emph> (\<exists>\<^sub>u u. (((\<upharpoonleft>(fmlookup g x = Some u)) \<^emph> own_graphUR q (x [\<mapsto>\<^sub>g] u)))) \<^emph> is_marked x \<^emph> cinv_own upd_cinv \<kappa> k)
+    \<or>\<^sub>u ((\<upharpoonleft>(v=#[False])) \<^emph> own_graphUR q fmempty \<^emph> is_marked x \<^emph> cinv_own upd_cinv \<kappa> k) 
   }}"
   \<comment> \<open>Unfold the definition of \<^const>\<open>try_mark\<close> and start evaluating the load from the let.\<close>
   apply (auto simp: try_mark_def graph_ctxt_def subst'_def 
@@ -79,7 +79,7 @@ shows "(graph_ctxt \<kappa> g Mrk) \<^emph> (own_graphUR q fmempty) \<^emph> (ci
     apply (iApply_step "heap_owns ?g ?m \<^emph> (m' \<mapsto>\<^sub>u TrueV) \<^emph> (x \<mapsto>\<^sub>u ?v)" rule: graph_close[of x])
     apply (iFrame2 "heap_owns ?g ?m", iExistsR2, iFrame_single+)
     \<comment> \<open>Obtain information about the markedness of the location x.\<close>
-    apply (iMod rule: already_marked[of x]) using in_dom_of_graph apply (metis fmdom'_alt_def notin_fset)
+    apply (iMod rule: already_marked[of x]) using in_dom_of_graph apply (metis fmdom'_alt_def)
     apply (iFrame2 "is_marked x")
     \<comment> \<open>Actually close the graph invariant now.\<close>
     apply (iMod_wand "\<triangleright>?P" "heap_owns ?g ?m \<^emph> Own\<^sub>g ?g2 \<^emph> Own\<^sub>m ?m2")
@@ -114,20 +114,20 @@ shows "(graph_ctxt \<kappa> g Mrk) \<^emph> (own_graphUR q fmempty) \<^emph> (ci
 
 lemma wp_try_mark_isar:
 assumes "x\<in>fmdom' g"
-shows "(graph_ctxt \<kappa> g Mrk) \<^emph> (own_graphUR q fmempty) \<^emph> (cinv_own constr_cinv \<kappa> k) \<turnstile>
+shows "(graph_ctxt \<kappa> g Mrk) \<^emph> (own_graphUR q fmempty) \<^emph> (cinv_own upd_cinv \<kappa> k) \<turnstile>
   WP (App (of_val try_mark) (of_val #[x])) 
   {{ \<lambda>v.
-    ((\<upharpoonleft>(v=#[True])) \<^emph> (\<exists>\<^sub>u u. (((\<upharpoonleft>(fmlookup g x = Some u)) \<^emph> own_graphUR q (x [\<mapsto>\<^sub>g] u)))) \<^emph> is_marked x \<^emph> cinv_own constr_cinv \<kappa> k)
-    \<or>\<^sub>u ((\<upharpoonleft>(v=#[False])) \<^emph> own_graphUR q fmempty \<^emph> is_marked x \<^emph> cinv_own constr_cinv \<kappa> k) 
+    ((\<upharpoonleft>(v=#[True])) \<^emph> (\<exists>\<^sub>u u. (((\<upharpoonleft>(fmlookup g x = Some u)) \<^emph> own_graphUR q (x [\<mapsto>\<^sub>g] u)))) \<^emph> is_marked x \<^emph> cinv_own upd_cinv \<kappa> k)
+    \<or>\<^sub>u ((\<upharpoonleft>(v=#[False])) \<^emph> own_graphUR q fmempty \<^emph> is_marked x \<^emph> cinv_own upd_cinv \<kappa> k) 
   }}"
 proof -
 have later_graph_inv: "\<lbrakk>strict_subgraph' g (gmon_graph G); fmlookup (of_graph g G) x = Some u; Mrk x = Some m\<rbrakk> 
   \<Longrightarrow> heap_owns (of_graph g G) Mrk \<^emph> Own\<^sub>m full (fmdom G) \<^emph> Own\<^sub>g full (Some (G, 1)) \<turnstile> \<triangleright>graph_inv g Mrk"
   for G m u by (unfold graph_inv_def, entails_substR rule: upred_laterI, iExistsR G, iFrame_single+)
 have try_mark_to_CAS:
-  "Q \<^emph> graph_ctxt \<kappa> g Mrk \<^emph> cinv_own constr_cinv \<kappa> k \<turnstile> WP (App (of_val try_mark) (of_val #[x])) {{ P }}"
+  "Q \<^emph> graph_ctxt \<kappa> g Mrk \<^emph> cinv_own upd_cinv \<kappa> k \<turnstile> WP (App (of_val try_mark) (of_val #[x])) {{ P }}"
   if cas: "(\<And>m G u. \<lbrakk>strict_subgraph' g (gmon_graph G); fmlookup (of_graph g G) x = Some u; Mrk x = Some m\<rbrakk> \<Longrightarrow>
-  Q \<^emph> cinv constr_cinv constr_inv graphN \<kappa> (graph_inv g Mrk) \<^emph> cinv_own constr_cinv \<kappa> k \<turnstile> WP CAS (of_val (LitV (LitLoc m))) FalseE TrueE {{ P }})"
+  Q \<^emph> cinv upd_cinv upd_inv graphN \<kappa> (graph_inv g Mrk) \<^emph> cinv_own upd_cinv \<kappa> k \<turnstile> WP CAS (of_val (LitV (LitLoc m))) FalseE TrueE {{ P }})"
   for P Q
   apply (auto simp: try_mark_def subst'_def intro!: wp_pure[OF wp_inG pure_exec_beta] wp_let_bind'[OF wp_inG, where C=Fst])
   apply (unfold graph_ctxt_def, iMod rule: cinv_acc[OF cinvInG.inG_axioms invInG.inG_axioms subset_UNIV], subst (3) graph_inv_def)
@@ -139,15 +139,15 @@ have try_mark_to_CAS:
   apply (entails_substR rule: fupd_frame_mono[OF invInG.inG_axioms], remove_emp)
   apply (rule wp_pure_let[OF wp_inG pure_exec_fst, simplified], simp add: subst'_def) by (rule cas, auto) done
 have split_cas: "\<lbrakk>fmlookup (of_graph g G) x = Some u; Mrk x = Some m\<rbrakk> \<Longrightarrow>
-  P \<^emph> cinv constr_cinv constr_inv graphN \<kappa> (graph_inv g Mrk) \<^emph> cinv_own constr_cinv \<kappa> k 
+  P \<^emph> cinv upd_cinv upd_inv graphN \<kappa> (graph_inv g Mrk) \<^emph> cinv_own upd_cinv \<kappa> k 
   \<turnstile> WP CAS (of_val (LitV (LitLoc m))) FalseE TrueE {{ Q }}"
   if cmpxchgs: 
     "\<And>G' y z  E1 E2. \<lbrakk>strict_subgraph' g (gmon_graph G'); fmlookup (of_graph g G') x = Some (True, y, z); valid G'\<rbrakk> \<Longrightarrow>
-    P \<^emph> cinv_own constr_cinv \<kappa> k \<^emph> ((\<triangleright>graph_inv g Mrk)={E1,E2}=\<^emph>upred_emp) \<^emph> heap_owns (fmdrop x (of_graph g G')) Mrk \<^emph> 
+    P \<^emph> cinv_own upd_cinv \<kappa> k \<^emph> ((\<triangleright>graph_inv g Mrk)={E1,E2}=\<^emph>upred_emp) \<^emph> heap_owns (fmdrop x (of_graph g G')) Mrk \<^emph> 
     (Own\<^sub>m full (fmdom G')) \<^emph> (Own\<^sub>g full (Some (G', 1))) \<^emph> (x \<mapsto>\<^sub>u #[(m,children_to_val (y,z))]) \<^emph> (m\<mapsto>\<^sub>uTrueV) 
     \<turnstile> wp NotStuck E1 (of_val (PairV TrueV FalseV)) (\<lambda>v. \<Turnstile>{E1,E2}=> WP (Snd (of_val v)) {{ Q }})"
     "\<And>G' y z L E1 E2. \<lbrakk>strict_subgraph' g (gmon_graph G'); fmlookup (of_graph g G') x = Some (False, y, z); valid G'\<rbrakk> \<Longrightarrow>
-    P \<^emph> cinv_own constr_cinv \<kappa> k \<^emph> ((\<triangleright>graph_inv g Mrk)={E1,E2}=\<^emph>upred_emp) \<^emph> heap_owns (fmdrop x (of_graph g G')) Mrk \<^emph> 
+    P \<^emph> cinv_own upd_cinv \<kappa> k \<^emph> ((\<triangleright>graph_inv g Mrk)={E1,E2}=\<^emph>upred_emp) \<^emph> heap_owns (fmdrop x (of_graph g G')) Mrk \<^emph> 
     (Own\<^sub>m full (fmdom G')) \<^emph> (Own\<^sub>g full (Some (G', 1))) \<^emph> (x \<mapsto>\<^sub>u #[(m,children_to_val (y,z))]) \<^emph> (m\<mapsto>\<^sub>uTrueV)
     \<turnstile> wp NotStuck E1 (of_val (PairV FalseV TrueV)) (\<lambda>v. \<Turnstile>{E1,E2}=> WP (Snd (of_val v)) {{ Q }})"
   for P Q m G u
@@ -175,12 +175,12 @@ for P Q y z G
   apply iPureR using of_graph_unmarked by simp
 have cmpxchg_suc: "\<lbrakk>strict_subgraph' g (gmon_graph G'); fmlookup (of_graph g G') x = Some (False, y, z);
   Mrk x = Some m;valid G'\<rbrakk> \<Longrightarrow>
-  own_graphUR q fmempty \<^emph> cinv_own constr_cinv \<kappa> k \<^emph> ((\<triangleright>graph_inv g Mrk)={E1,E2}=\<^emph>upred_emp) \<^emph> heap_owns (fmdrop x (of_graph g G')) Mrk \<^emph> 
+  own_graphUR q fmempty \<^emph> cinv_own upd_cinv \<kappa> k \<^emph> ((\<triangleright>graph_inv g Mrk)={E1,E2}=\<^emph>upred_emp) \<^emph> heap_owns (fmdrop x (of_graph g G')) Mrk \<^emph> 
   (Own\<^sub>m (full (fmdom G'))) \<^emph> (Own\<^sub>g (full (Some (G', 1)))) \<^emph> 
   (x \<mapsto>\<^sub>u PairV (LitV (LitLoc m)) (children_to_val (y, z))) \<^emph> (m \<mapsto>\<^sub>u TrueV)
   \<turnstile> wp NotStuck E1 (of_val (PairV FalseV TrueV)) (\<lambda>v. \<Turnstile>{E1,E2}=>WP Snd (of_val v) {{ \<lambda>v.
-    ((\<upharpoonleft>(v=TrueV)) \<^emph> (\<exists>\<^sub>u u. (((\<upharpoonleft>(fmlookup g x = Some u)) \<^emph> own_graphUR q (x [\<mapsto>\<^sub>g] u)))) \<^emph> is_marked x \<^emph> cinv_own constr_cinv \<kappa> k)
-    \<or>\<^sub>u ((\<upharpoonleft>(v=FalseV)) \<^emph> own_graphUR q fmempty \<^emph> is_marked x \<^emph> cinv_own constr_cinv \<kappa> k) 
+    ((\<upharpoonleft>(v=TrueV)) \<^emph> (\<exists>\<^sub>u u. (((\<upharpoonleft>(fmlookup g x = Some u)) \<^emph> own_graphUR q (x [\<mapsto>\<^sub>g] u)))) \<^emph> is_marked x \<^emph> cinv_own upd_cinv \<kappa> k)
+    \<or>\<^sub>u ((\<upharpoonleft>(v=FalseV)) \<^emph> own_graphUR q fmempty \<^emph> is_marked x \<^emph> cinv_own upd_cinv \<kappa> k) 
   }})" 
   for m y z G' E1 E2
   apply (entails_substR rule: wp_value[OF wp_inG], iMod rule: mark_graph[of _ x _ _ "(y,z)"])
@@ -195,18 +195,18 @@ have cmpxchg_suc: "\<lbrakk>strict_subgraph' g (gmon_graph G'); fmlookup (of_gra
   using last[where P1 = "\<lambda>u. own_graphUR q (x [\<mapsto>\<^sub>g] u)"] by (simp add: upred_sep_comm)
 have cmpxchg_fail: "\<lbrakk>strict_subgraph' g (gmon_graph G'); fmlookup (of_graph g G') x = Some (True, y, z);
   Mrk x = Some m;valid G'\<rbrakk> \<Longrightarrow>
-  own_graphUR q fmempty \<^emph> cinv_own constr_cinv \<kappa> k \<^emph> ((\<triangleright>graph_inv g Mrk)={E1,E2}=\<^emph>upred_emp) \<^emph> heap_owns (fmdrop x (of_graph g G')) Mrk \<^emph> 
+  own_graphUR q fmempty \<^emph> cinv_own upd_cinv \<kappa> k \<^emph> ((\<triangleright>graph_inv g Mrk)={E1,E2}=\<^emph>upred_emp) \<^emph> heap_owns (fmdrop x (of_graph g G')) Mrk \<^emph> 
   (Own\<^sub>m (full (fmdom G'))) \<^emph> (Own\<^sub>g (full (Some (G', 1)))) \<^emph> 
   (x \<mapsto>\<^sub>u PairV (LitV (LitLoc m)) (children_to_val (y, z))) \<^emph> (m \<mapsto>\<^sub>u TrueV)
   \<turnstile> wp NotStuck E1 (of_val (PairV TrueV FalseV)) (\<lambda>v. \<Turnstile>{E1,E2}=>WP Snd (of_val v) {{ \<lambda>v.
-    ((\<upharpoonleft>(v=TrueV)) \<^emph> (\<exists>\<^sub>u u. (((\<upharpoonleft>(fmlookup g x = Some u)) \<^emph> own_graphUR q (x [\<mapsto>\<^sub>g] u)))) \<^emph> is_marked x \<^emph> cinv_own constr_cinv \<kappa> k)
-    \<or>\<^sub>u ((\<upharpoonleft>(v=FalseV)) \<^emph> own_graphUR q fmempty \<^emph> is_marked x \<^emph> cinv_own constr_cinv \<kappa> k) 
+    ((\<upharpoonleft>(v=TrueV)) \<^emph> (\<exists>\<^sub>u u. (((\<upharpoonleft>(fmlookup g x = Some u)) \<^emph> own_graphUR q (x [\<mapsto>\<^sub>g] u)))) \<^emph> is_marked x \<^emph> cinv_own upd_cinv \<kappa> k)
+    \<or>\<^sub>u ((\<upharpoonleft>(v=FalseV)) \<^emph> own_graphUR q fmempty \<^emph> is_marked x \<^emph> cinv_own upd_cinv \<kappa> k) 
   }})" 
   for m y z G' E1 E2
   apply (entails_substR rule: wp_value[OF wp_inG])
   apply (iApply_step "heap_owns ?g ?m \<^emph> (m \<mapsto>\<^sub>u TrueV) \<^emph> (x \<mapsto>\<^sub>u ?v)" rule: graph_close[of x])
   apply (iFrame2 "heap_owns ?g ?m", iExistsR "(True,y,z)",iExistsR2, iFrame_single+)
-  apply (iMod rule: already_marked[of x]) using in_dom_of_graph apply (metis fmdom'_alt_def notin_fset)
+  apply (iMod rule: already_marked[of x]) using in_dom_of_graph apply (metis fmdom'_alt_def)
   apply (iFrame2 "is_marked x",iApply rule: later_graph_inv, iApply_wand)
   apply (entails_substR rule: fupd_frame_mono[OF invInG.inG_axioms], rule wp_pure[OF wp_inG pure_exec_snd, simplified])
   by (entails_substR rule: wp_value[OF wp_inG], iris_simp)

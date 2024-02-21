@@ -89,7 +89,7 @@ method open_inv=
 
 method last_resort = 
   (allocate
-  | (step intro: last_resort_drop_goal_modality wp_symbolic_execution_steps;
+  | (reshape_wp?, step intro: last_resort_drop_goal_modality wp_symbolic_execution_steps;
       ((rule inv_inG_axiom heap_inG_axiom proph_inG_axiom)+)?)
   | (rule framing_emp, fast intro!: log_prog_rule, is_entailment))
   
@@ -118,4 +118,94 @@ method iterate_hyps = iris_simp;
   | get_concl "BruteForceAutomation.iterate_hyps_safe")
 
 method brute_force_solver = repeat_new \<open>iterate_hyps\<close>
+
+
+lemma lambda_to_ectxt: "f$x$y = lang_ctxt (FI (AppLCtx y)) (f$x)"
+  by auto
+
+lemma lambda_to_ectxt': "f$x = lang_ctxt (FI (AppLCtx x)) (f)"
+  by auto  
+
+lemma lambda_to_ectxt_arg: "f$x = lang_ctxt (FI (AppRCtx f)) x"
+  by auto
+
+lemma BetaS'[intro]: "e' = subst' x v2  e1 \<Longrightarrow> ((Val(RecV None x e1))$(Val v2)) \<sigma> [] \<Rightarrow>\<^sub>h e' \<sigma> []"
+  by (rule BetaS) (auto simp: subst'_def)
+
+lemma pure_exec_lambda_beta: "pure_exec True 1 ((Val (V\<lambda> x: b))$(Val y)) (subst' x y b)"
+  apply (auto simp: pure_head_step_def head_red_no_obs_def intro!: pure_head_step_pure_step rel_one_step)
+  using BetaS' apply auto by (smt (verit, best) expr.inject(1) headE(5) val.inject(2))
+
+lemma pure_exec_rec: "pure_exec True 1 ((E\<lambda> x: b)) (V\<lambda> x : b)"
+  apply (auto simp: pure_head_step_def head_red_no_obs_def intro!: pure_head_step_pure_step rel_one_step)
+  using RecS by blast+
+
+lemma pure_exec_val: "pure_exec True 0 (Val v) (Val v)"
+  by (auto simp: zero_steps)
+
+lemma pure_exec_unop_neg: "pure_exec True 1 (UnOp NegOp TrueE) (FalseE)"
+  apply (auto simp: pure_head_step_def head_red_no_obs_def intro!: pure_head_step_pure_step rel_one_step)
+  using UnOpS un_op_eval.simps(1) by fastforce+
+  
+method cleanup_texan_apply =
+  match conclusion in "_ \<turnstile> ((\<triangleright>(\<forall>\<^sub>u v. _ v)) :: 'res::ucamera upred_f)" \<Rightarrow> \<open>iNext, iIntros\<close>
+  
+method iwp uses rule = reshape_wp_cleanup?, match rule[uncurry] in 
+  "_ \<Longrightarrow> upred_holds (WeakestPrecondition.texan2 _ _ _ _ _ _ _ _ :: 'res::ucamera upred_f)" \<Rightarrow>
+    \<open>(entails_substR rule: texan_apply[OF inv_inG_axiom heap_inG_axiom proph_inG_axiom 
+      rule[OF inv_inG_axiom heap_inG_axiom proph_inG_axiom], simplified iris_simp, simplified] 
+    | entails_substR rule: texan2_apply[OF inv_inG_axiom heap_inG_axiom proph_inG_axiom 
+      rule[OF inv_inG_axiom heap_inG_axiom proph_inG_axiom], simplified iris_simp, simplified]),
+    iris_simp, cleanup_texan_apply?\<close>
+  \<bar> "upred_holds (WeakestPrecondition.texan2 _ _ _ _ _ _ _ _ :: 'res::ucamera upred_f)" \<Rightarrow>
+    \<open>(entails_substR rule: texan_apply[OF inv_inG_axiom heap_inG_axiom proph_inG_axiom rule, simplified iris_simp, simplified]
+    | entails_substR rule: texan2_apply[OF inv_inG_axiom heap_inG_axiom proph_inG_axiom rule, simplified iris_simp, simplified]),
+    iris_simp, cleanup_texan_apply?\<close>
+  \<bar> _ \<Rightarrow> \<open>entails_substR rule: rule[OF inv_inG_axiom heap_inG_axiom proph_inG_axiom, simplified]\<close>
+  \<bar> _ \<Rightarrow> \<open>entails_substR rule: rule[OF inv_inG_axiom heap_inG_axiom proph_inG_axiom, simplified]\<close>,
+  reshape_wp_cleanup?
+
+method iwp_val = iwp rule: wp_value
+
+method iwp_pure uses rule = iwp rule: wp_pure[OF _ _ _ rule, simplified]
+  
+method iwp_pure_later uses rule = iwp rule: wp_pure_step_later[OF _ _ _ rule, simplified]
+
+method iwp_beta = reshape_wp_cleanup?, match conclusion in 
+  "_ \<turnstile> (wp _ _ _ _ _ ((LamE _ _ ) $ _) _ :: 'res::ucamera upred_f)" \<Rightarrow> 
+    \<open>
+    subst (1) lambda_to_ectxt', entails_substR rule: wp_bind[OF inv_inG_axiom heap_inG_axiom proph_inG_axiom]
+      ,iwp_pure rule: pure_exec_rec,
+    iwp_val, subst lang_ctxt.simps, unfold fill_item.simps, 
+    iwp_pure rule: pure_exec_lambda_beta, simp add: subst'_def del: lang_ctxt.simps
+    \<close>
+  \<bar> "_ \<turnstile> (wp _ _ _ _ _ (Val (LamV _ _ ) $ _) _ :: 'res::ucamera upred_f)" \<Rightarrow> 
+    \<open>iwp_pure rule: pure_exec_lambda_beta, simp add: subst'_def del: lang_ctxt.simps\<close>
+  \<bar> _ \<Rightarrow> fail
+
+method iwp_beta_later = reshape_wp?, match conclusion in 
+  "_ \<turnstile> (wp _ _ _ _ _ ((LamE _ _ ) $ _) _ :: 'res::ucamera upred_f)" \<Rightarrow> 
+    \<open>
+    subst (1) lambda_to_ectxt', entails_substR rule: wp_bind[OF inv_inG_axiom heap_inG_axiom proph_inG_axiom]
+      ,iwp_pure rule: pure_exec_rec,
+    iwp_val, subst lang_ctxt.simps, unfold fill_item.simps, 
+    iwp_pure_later rule: pure_exec_lambda_beta, auto simp: subst'_def simp del: lang_ctxt.simps
+    \<close>
+  \<bar> "_ \<turnstile> (wp _ _ _ _ _ (Val (LamV _ _ ) $ _) _ :: 'res::ucamera upred_f)" \<Rightarrow> 
+    \<open>iwp_pure_later rule: pure_exec_lambda_beta, auto simp: subst'_def simp del: lang_ctxt.simps\<close>
+  \<bar> _ \<Rightarrow> fail
+
+method fold_app = match conclusion in 
+  "_ \<turnstile> wp _ _ _ _ _ (Val _) 
+  (\<lambda>v. wp _ _ _ _ _ (lang_ctxt (FI (AppRCtx _)) (Val v)) _  :: 'res::ucamera upred_f)" \<Rightarrow>
+    \<open>iwp_val, (subst lang_ctxt.simps, unfold fill_item.simps)+\<close>
+\<bar> "_ \<turnstile> wp _ _ _ _ _ (Val _) 
+  (\<lambda>v. wp _ _ _ _ _ (fill [AppRCtx _] (Val v)) _  :: 'res::ucamera upred_f)" \<Rightarrow>
+    \<open>iwp_val, (subst lang_ctxt.simps, unfold fill_item.simps)+\<close>
+  
+method iwp_seq = unfold lambda_to_ectxt_arg, (entails_substR rule: wp_bind[OF inv_inG_axiom heap_inG_axiom proph_inG_axiom])+, fold_app?  
+
+method iwp_bind = reshape_wp,
+  entails_substR rule: wp_bind[OF inv_inG_axiom heap_inG_axiom proph_inG_axiom],
+  iris_simp
 end

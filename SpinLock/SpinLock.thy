@@ -18,12 +18,12 @@ definition lockN :: namespace where "lockN \<equiv> add_name nroot (string_to_na
 
 context includes heap_syntax begin
 definition lock_inv :: "gname \<Rightarrow> loc \<Rightarrow> iprop \<Rightarrow> iprop" where
-  "lock_inv \<gamma> l R \<equiv> \<exists>\<^sub>u b. l\<mapsto>\<^sub>u#[b] \<^emph> (\<upharpoonleft>b \<or>\<^sub>u (\<upharpoonleft>(\<not>b) \<^emph> (own constr_lock \<gamma> (Ex ())) \<^emph> R))"
+  "lock_inv \<gamma> l R \<equiv> \<exists>\<^sub>u b. l\<mapsto>\<^sub>u#[b] \<^emph> (\<upharpoonleft>b \<or>\<^sub>u (\<upharpoonleft>(\<not>b) \<^emph> (own upd_lock \<gamma> (Ex ())) \<^emph> R))"
 
 definition is_lock :: "gname \<Rightarrow> val \<Rightarrow> iprop \<Rightarrow> iprop" where
-  "is_lock \<gamma> lk R \<equiv> \<exists>\<^sub>u l. \<upharpoonleft>(lk=#[l]) \<and>\<^sub>u inv constr_inv lockN (lock_inv \<gamma> l R)"
+  "is_lock \<gamma> lk R \<equiv> \<exists>\<^sub>u l. \<upharpoonleft>(lk=#[l]) \<and>\<^sub>u inv upd_inv lockN (lock_inv \<gamma> l R)"
 
-definition "locked \<gamma> \<equiv> own constr_lock \<gamma> (Ex ())"
+definition "locked \<gamma> \<equiv> own upd_lock \<gamma> (Ex ())"
 
 context 
 fixes get_lock :: "gname \<Rightarrow> 'a::ucamera \<Rightarrow> lockG option"
@@ -34,7 +34,7 @@ definition locked' :: "gname \<Rightarrow> 'a upred_f" where
   "locked' \<gamma> = own put_lock \<gamma> (Ex ())"
 end
 
-lemma "locked' constr_lock = locked"
+lemma "locked' upd_lock = locked"
 unfolding locked_def locked'_def[OF iPropShallow.lockInG.inG_axioms] by simp
 
 lemma is_lock_pers: "persistent (is_lock \<gamma> lk R)" 
@@ -42,7 +42,8 @@ lemma is_lock_pers: "persistent (is_lock \<gamma> lk R)"
 declare is_lock_pers[unfolded is_lock_def, pers_rule, log_prog_rule]
   
 lemma locked_timeless: "timeless (locked \<gamma>)"
-  by (auto simp: lockInG.own_def constr_lock_def locked_def intro!: own_timeless' log_prog_rule)
+  by (auto simp: lockInG.own_def lockInG.return_cmra_def lockInG.put_cmra_def
+    upd_lock_def locked_def intro!: own_timeless' log_prog_rule)
 declare locked_timeless[unfolded locked_def, timeless_rule, log_prog_rule]
   
 lemma lock_alloc: "\<exists>\<^sub>u \<gamma>.\<Rrightarrow>\<^sub>b (locked \<gamma>)"
@@ -50,7 +51,7 @@ lemma lock_alloc: "\<exists>\<^sub>u \<gamma>.\<Rrightarrow>\<^sub>b (locked \<g
   apply (iExistsR "0::nat")
   unfolding locked_def
   apply (entails_substR rule:  lockInG.own_alloc)
-  by (auto simp: valid_def constr_lock_def prod_n_valid_def \<epsilon>_n_valid valid_raw_ex_def)
+  by (auto simp: valid_def upd_lock_def prod_n_valid_def \<epsilon>_n_valid valid_raw_ex_def)
 
 lemmas [iris_simp] = lock_inv_def locked_def is_lock_def newlock_def acquire_def release_def
   
@@ -114,7 +115,7 @@ lemma release_spec:
   apply (iApply_wand_as_rule "\<exists>\<^sub>u (x::bool). ?P x" "(?l\<mapsto>\<^sub>u?v)\<^emph>(lockInG.own ?n ?x)\<^emph>R")
   apply (iExistsR False)
   apply (entails_substR rule: upred_laterI)
-  by frame_single+
+  apply frame_single apply iFrame_single+
   oops 
 
 context begin 
@@ -193,7 +194,7 @@ lemma hintE: "diaframe_hint H L M A U \<Longrightarrow> (\<And>y::'b. (H \<^emph
   unfolding diaframe_hint_def by simp
   
 lemma inv_hint: "diaframe_hint upred_emp (\<lambda>x::'a. \<triangleright>(L x)) (linear_fupd E) 
-  (\<lambda>x::'a. inv constr_inv N (L x)) (\<lambda>_ x::'a. inv constr_inv N (L x))"
+  (\<lambda>x::'a. inv upd_inv N (L x)) (\<lambda>_ x::'a. inv upd_inv N (L x))"
   apply (auto simp: diaframe_hint_def)
   apply (iMod rule: inv_alloc[OF invInG.inG_axioms, to_entailment])
   apply iExistsR2
@@ -239,7 +240,7 @@ qed
 lemma wp_store_hint:"diaframe_hint upred_emp (\<lambda>_. \<Turnstile>{UNIV,E}=>(\<exists>\<^sub>u v'. (\<triangleright>(l\<mapsto>\<^sub>uv')) \<^emph> (\<triangleright>(((l\<mapsto>\<^sub>uv) ={E,UNIV}=\<^emph> \<Phi> #[()])))))
   (linear_fupd UNIV) (\<lambda>_. WP (Store #[l] (Val v)) {{ \<Phi> }}) (\<lambda>_ _. upred_emp)"
   unfolding diaframe_hint_def
-  apply (simp add: drop_exists)
+  apply (simp)
   apply(entails_substR rule: fupd_intro[OF invInG.inG_axioms])
   apply (rule elim_modal_entails[OF elim_modal_fupd_wp_atomic[OF wp_inG atomic_store]])
   apply iExistsL
@@ -284,11 +285,11 @@ ML \<open>
   val f = Term.could_beta_contract x
 \<close>
 
-lemma move_invR: "inv constr_inv N Q \<^emph> P = P \<^emph> inv constr_inv N Q" 
-  "P \<^emph> inv constr_inv N R \<^emph> Q = P \<^emph> Q \<^emph> inv constr_inv N R"
+lemma move_invR: "inv upd_inv N Q \<^emph> P = P \<^emph> inv upd_inv N Q" 
+  "P \<^emph> inv upd_inv N R \<^emph> Q = P \<^emph> Q \<^emph> inv upd_inv N R"
   apply (rule upred_sep_comm) by (rule upred_sep_comm2_eq)
 
-lemma move_invL: "P \<^emph> inv constr_inv N Q = inv constr_inv N Q \<^emph> P" by (rule upred_sep_comm)
+lemma move_invL: "P \<^emph> inv upd_inv N Q = inv upd_inv N Q \<^emph> P" by (rule upred_sep_comm)
 
 lemma move_closerL: "P \<^emph> (Q={UNIV - names N,UNIV}=\<^emph>upred_emp) = (Q={UNIV - names N,UNIV}=\<^emph>upred_emp) \<^emph> P"
   by (rule upred_sep_comm)
@@ -332,7 +333,7 @@ declare new_lock_simps[simp del]
 declare frame_rule_apply[OF upred_entails_trans[OF upred_entails_trans[OF lock_alloc[to_entailment] upred_exist_mono[OF upd_fupd[to_entailment]], unfolded locked_def] fupd_exists_lift[OF invInG.inG_axioms]], alloc_rule]
 declare upred_later_exists[iris_simp]
 declare upred_entails_trans[OF store_hint[where ?G = upred_emp, unfolded emp_rule to_val_simp] fupd_wp, wp_symbolic_execution_steps]
-declare frame_baseL[frame_rule]
+declare frame_baseL[frame_rule,log_prog_rule]
 
 lemma newlock_spec:
   "{{{ upred_emp }}} App newlock #[()] {{{ \<lambda>lk. \<forall>\<^sub>u R. (R ={UNIV}=\<^emph> (\<exists>\<^sub>u \<gamma>. is_lock \<gamma> lk R)) }}}"

@@ -58,13 +58,15 @@ proof (induction vs arbitrary: l k)
     by (smt (verit) loc.sel local.Cons)
 qed (simp)
 
+term fset
+
 lemma heap_array_cons_shift: "(fmlookup (heap_array l vs) k = Some w) \<Longrightarrow> 
   (fmlookup (heap_array l (v#vs)) (k+\<^sub>\<iota>1) = Some w)"
 proof -
   assume assm: "fmlookup (heap_array l vs) k = Some w"
   hence "k |\<in>| fmdom (heap_array l vs)" by (rule fmdomI)
   then have "k \<in> {l ..< (l +\<^sub>\<iota> int (length vs))}" unfolding heap_array_dom
-    by (simp add: eq_onp_same_args fmember.abs_eq)
+    using Abs_fset_inverse by blast
   then have "l\<noteq>k+\<^sub>\<iota>1"  using less_eq_loc_def loc_add_def by force
   with assm show "fmlookup (heap_array l (v#vs)) (k+\<^sub>\<iota>1) = Some w" unfolding loc_add_def apply simp 
   using heap_array_shift loc_add_def by fastforce
@@ -125,7 +127,7 @@ proof
   hence "\<forall>l' \<in> {(l +\<^sub>\<iota> i) | i. i \<in> {0..<(int (length vs))} }. l' |\<notin>| fmdom h" by blast
   hence "\<forall>l' \<in> {l..<(l +\<^sub>\<iota> int (length vs))}. l' |\<notin>| fmdom h" using loc_ranges by blast
   hence "Abs_fset {l..<(l +\<^sub>\<iota> int (length vs))} |\<inter>| fmdom h = {||}"
-    by (metis all_not_fin_conv eq_onp_same_args finite_atLeastLessThan_loc finter_iff fmember.abs_eq)
+    using Abs_fset_inverse by blast
   with heap_array_dom show "fmdom (heap_array l vs) |\<inter>| fmdom h |\<subseteq>| {||}" by auto
 qed (simp)
 
@@ -189,7 +191,7 @@ inductive_cases headE[elim]: "(Rec f x e) \<sigma> \<kappa> \<Rightarrow>\<^sub>
   "(If b e1 e2) \<sigma> \<kappa> \<Rightarrow>\<^sub>h e' \<sigma>2 \<kappa>2"
   "(Fst v) \<sigma> \<kappa> \<Rightarrow>\<^sub>h e2 \<sigma>2 \<kappa>2"
   "(Snd v) \<sigma> \<kappa> \<Rightarrow>\<^sub>h e2 \<sigma>2 \<kappa>2"
-  "(Case v e1 e2) \<sigma> \<kappa> \<Rightarrow>\<^sub>h e2 \<sigma>2 \<kappa>2"
+  "(Case v e1 e2) \<sigma> \<kappa> \<Rightarrow>\<^sub>h e2' \<sigma>2 \<kappa>2"
   "(Fork e) \<sigma> \<kappa> \<Rightarrow>\<^sub>h e2 \<sigma>2 efs"
   "(AllocN e v) \<sigma> \<kappa> \<Rightarrow>\<^sub>h e2 \<sigma>2 \<kappa>2"
   "(Free l) \<sigma> \<kappa> \<Rightarrow>\<^sub>h e2 \<sigma>2 \<kappa>2"

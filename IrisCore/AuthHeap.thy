@@ -45,9 +45,9 @@ begin
 text \<open>Unique name for singleton heap camera\<close>
 definition "heap_name :: gname \<equiv> 0"
 
-lemma heap_frag_valid: "\<V>(put_heap \<gamma> (\<circle>V [k\<mapsto>(dq,to_ag v)])) \<turnstile> \<upharpoonleft>(valid dq)"
-  by (auto simp: upred_valid.rep_eq upred_entails.rep_eq upred_pure.rep_eq inG.put_n_valid[OF heap_inG] 
-    valid_def view_frag_def valid_raw_map_view.rep_eq map_view_rel_def)
+lemma heap_frag_valid: "\<V>(inG.return_cmra put_heap \<gamma> (\<circle>V [k\<mapsto>(dq,to_ag v)])) \<turnstile> \<upharpoonleft>(valid dq)"
+  by (auto simp: upred_valid.rep_eq upred_entails.rep_eq upred_pure.rep_eq inG.return_n_valid[OF heap_inG] 
+    valid_def mview_frag_def valid_raw_map_view.rep_eq map_view_rel_def)
 
 lemma heap_op: "[l\<mapsto>(dq1, to_ag v1)]\<cdot>[l\<mapsto>(dq2, to_ag v2)] = [l\<mapsto>(dq1, to_ag v1)\<cdot>(dq2, to_ag v2)]"
   by (auto simp: op_fun_def op_option_def)
@@ -55,8 +55,8 @@ lemma heap_op: "[l\<mapsto>(dq1, to_ag v1)]\<cdot>[l\<mapsto>(dq2, to_ag v2)] = 
 lemma heap_op_val_eq: "[l\<mapsto>(dq1, to_ag v)]\<cdot>[l\<mapsto>(dq2, to_ag v)] = [l\<mapsto>(dq1\<cdot>dq2, to_ag v)]" 
   unfolding heap_op by (auto simp: op_prod_def op_ag_def to_ag_def Rep_ag_inverse)
 
-lemma heap_valid: "\<V>(put_heap \<gamma> h) \<turnstile> \<V>(h::('l,'v option) heap)"
-  by (simp add: upred_valid_def upred_entails.rep_eq Abs_upred_f_inverse inG.put_n_valid[OF heap_inG])
+lemma heap_valid: "\<V>(inG.return_cmra put_heap \<gamma> h) \<turnstile> \<V>(h::('l,'v option) heap)"
+  by (simp add: upred_valid_def upred_entails.rep_eq Abs_upred_f_inverse inG.return_n_valid[OF heap_inG])
 
 text \<open>Heap camera operations\<close>
 abbreviation own_heap :: "('l,'v option) heap \<Rightarrow> 'a upred_f" ("Own\<^sub>h _") where
@@ -81,9 +81,9 @@ abbreviation points_to_full :: "'l \<Rightarrow> 'v \<Rightarrow> 'a upred_f" wh
 lemma points_to_valid: 
   "(points_to l dq v) -\<^emph> \<upharpoonleft>(valid dq)"
 proof -
-  have "(points_to l dq v) \<turnstile> \<V>(put_heap heap_name (\<circle>V [l\<mapsto>(dq,to_ag (Some v))]))" 
+  have "(points_to l dq v) \<turnstile> \<V>(inG.return_cmra put_heap heap_name (\<circle>V [l\<mapsto>(dq,to_ag (Some v))]))" 
     by (auto simp: points_to_def inG.own_valid'[OF heap_inG] map_view_frag_def)
-  moreover have "\<V>(put_heap heap_name (\<circle>V [l\<mapsto>(dq,to_ag (Some v))])) \<turnstile> 
+  moreover have "\<V>(inG.return_cmra put_heap heap_name (\<circle>V [l\<mapsto>(dq,to_ag (Some v))])) \<turnstile> 
     \<V>((\<circle>V [l\<mapsto>(dq,to_ag (Some v))])::('l,'v option) heap)"
     using heap_valid by blast
   ultimately have "(points_to l dq v) \<turnstile> \<upharpoonleft>(valid dq)"
@@ -111,19 +111,19 @@ notation points_to_full' (infix "\<mapsto>\<^sub>u" 60)
 lemma points_to_agree: "upred_holds ((((l::'l) \<mapsto>{dq1} (v1::'v))::'a upred_f) -\<^emph> ((l \<mapsto>{dq2} v2) -\<^emph> \<upharpoonleft>(v1 = v2)))"
 proof -
   have "upred_holds ((l \<mapsto>{dq1} v1) -\<^emph> ((l \<mapsto>{dq2} v2)) -\<^emph> 
-    \<V>(put_heap heap_name (\<circle>V [l\<mapsto>(dq1, to_ag (Some v1))]) \<cdot> 
-    put_heap heap_name (\<circle>V [l\<mapsto>(dq2, to_ag (Some v2))])))"
+    \<V>(inG.return_cmra put_heap heap_name (\<circle>V [l\<mapsto>(dq1, to_ag (Some v1))]) \<cdot> 
+    inG.return_cmra put_heap heap_name (\<circle>V [l\<mapsto>(dq2, to_ag (Some v2))])))"
     apply (simp add: points_to_def[OF heap_inG]) by (metis heap_inG inG.own_def map_view_frag_def upred_own_valid2)
   then have "upred_holds ((l \<mapsto>{dq1} v1) -\<^emph> ((l \<mapsto>{dq2} v2)) -\<^emph> 
-    \<V>(put_heap heap_name (\<circle>V ([l\<mapsto>(dq1, to_ag (Some v1))\<cdot>(dq2, to_ag (Some v2))]))))"
-    by (auto simp: inG.put_op[OF heap_inG, symmetric] view_frag_def op_map_view_def
+    \<V>(inG.return_cmra put_heap heap_name (\<circle>V ([l\<mapsto>(dq1, to_ag (Some v1))\<cdot>(dq2, to_ag (Some v2))]))))"
+    by (auto simp: inG.return_op[OF heap_inG, symmetric] mview_frag_def op_map_view_def
       op_option_def)
   then have v:"upred_holds ((l \<mapsto>{dq1} v1) -\<^emph> ((l \<mapsto>{dq2} v2)) -\<^emph> 
     \<V>(\<circle>V ([l\<mapsto>(dq1, to_ag (Some v1))\<cdot>(dq2, to_ag (Some v2))])))"
     using upred_entails_wand_holdsR2[OF heap_valid, OF heap_inG] by blast
   have "valid (\<circle>V [l \<mapsto> (dq1, to_ag (Some v1)) \<cdot> (dq2, to_ag (Some v2))]) \<Longrightarrow> 
     valid (to_ag (Some v1) \<cdot> to_ag (Some v2))"
-    apply (auto simp: valid_def view_frag_def valid_raw_map_view.rep_eq map_view_rel_def op_prod_def
+    apply (auto simp: valid_def mview_frag_def valid_raw_map_view.rep_eq map_view_rel_def op_prod_def
       split: option.splits)
     by (metis n_valid_ne ofe_sym to_ag_n_valid)
   from d_ag_agree[OF this] have "valid (\<circle>V [l \<mapsto> (dq1, to_ag (Some v1)) \<cdot> (dq2, to_ag (Some v2))]) \<Longrightarrow> v1=v2"
@@ -135,11 +135,17 @@ proof -
 qed
 
 lemma points_to_combine_same:"((l \<mapsto>{dq1} v)) \<^emph> (l \<mapsto>{dq2} v) \<turnstile> (l \<mapsto>{dq1 \<cdot> dq2} v)"
-  apply (unfold points_to_def[OF heap_inG] map_view_frag_def view_frag_def)
+  apply (unfold points_to_def[OF heap_inG] map_view_frag_def mview_frag_def)
   apply (unfold heap_op_val_eq[OF heap_inG,symmetric])
   apply (rule upred_entails_trans[OF upred_entail_eqR[OF inG.own_op[OF heap_inG]]])
   by (auto simp: op_map_view_def op_option_def)
 
+lemma points_to_split: "(l \<mapsto>{dq1 \<cdot> dq2} v) \<turnstile> ((l \<mapsto>{dq1} v)) \<^emph> (l \<mapsto>{dq2} v)"
+apply (unfold points_to_def[OF heap_inG] map_view_frag_def mview_frag_def)
+apply (unfold heap_op_val_eq[OF heap_inG,symmetric])
+apply (rule upred_entails_trans[OF _ upred_entail_eqL[OF inG.own_op[OF heap_inG]]])
+by (auto simp: op_map_view_def op_option_def)
+  
 lemma points_to_combine: "upred_holds ((l\<mapsto>{dq1} v1) -\<^emph> ((l \<mapsto>{dq2} v2) -\<^emph> ((l\<mapsto>{dq1\<cdot>dq2} v1) \<^emph> \<upharpoonleft>(v1=v2))))"
   apply (rule upred_wand_holds2I)
   apply (rule upred_sep_pure)
@@ -152,34 +158,34 @@ lemma points_to_frac_ne:
   shows "upred_holds ((l1 \<mapsto>{dq1} v1) -\<^emph> ((l2 \<mapsto>{dq2} v2) -\<^emph> \<upharpoonleft>(l1\<noteq>l2)))"
 proof -
   have valid_drop : 
-    "valid (put_heap heap_name (\<circle>V [l1\<mapsto>(dq1,to_ag (Some v1))]) \<cdot> 
-    put_heap heap_name (\<circle>V [l2\<mapsto>(dq2,to_ag (Some v2))])) =
+    "valid (inG.return_cmra put_heap heap_name (\<circle>V [l1\<mapsto>(dq1,to_ag (Some v1))]) \<cdot> 
+    inG.return_cmra put_heap heap_name (\<circle>V [l2\<mapsto>(dq2,to_ag (Some v2))])) =
       valid ((\<circle>V [l1\<mapsto>(dq1,to_ag (Some v1))]) \<cdot> (\<circle>V [l2\<mapsto>(dq2,to_ag (Some v2))]))"
-    by (simp add: valid_def inG.put_n_valid[OF heap_inG] inG.put_op[OF heap_inG, symmetric])
-  have "\<V>((put_heap heap_name (\<circle>V [l1\<mapsto>(dq1,to_ag (Some v1))]) \<cdot> 
-      put_heap heap_name (\<circle>V [l2\<mapsto>(dq2,to_ag (Some v2))]))) 
-    \<turnstile> \<upharpoonleft>(valid (put_heap heap_name (\<circle>V [l1\<mapsto>(dq1,to_ag (Some v1))]) \<cdot> 
-      put_heap heap_name (\<circle>V [l2\<mapsto>(dq2,to_ag (Some v2))])))"
+    by (simp add: valid_def inG.return_n_valid[OF heap_inG] inG.return_op[OF heap_inG, symmetric])
+  have "\<V>((inG.return_cmra put_heap heap_name (\<circle>V [l1\<mapsto>(dq1,to_ag (Some v1))]) \<cdot> 
+      inG.return_cmra put_heap heap_name (\<circle>V [l2\<mapsto>(dq2,to_ag (Some v2))]))) 
+    \<turnstile> \<upharpoonleft>(valid (inG.return_cmra put_heap heap_name (\<circle>V [l1\<mapsto>(dq1,to_ag (Some v1))]) \<cdot> 
+      inG.return_cmra put_heap heap_name (\<circle>V [l2\<mapsto>(dq2,to_ag (Some v2))])))"
     apply (simp add: upred_pure.rep_eq upred_entails.rep_eq upred_valid.rep_eq
-      valid_def inG.put_n_valid[OF heap_inG] inG.put_op[OF heap_inG, symmetric])
+      valid_def inG.return_n_valid[OF heap_inG] inG.return_op[OF heap_inG, symmetric])
     using dcamera_valid_iff by auto
   then have base: "upred_holds ((l1 \<mapsto>{dq1} v1) -\<^emph> ((l2 \<mapsto>{dq2} v2)) -\<^emph> 
-    \<upharpoonleft>(valid (put_heap heap_name (\<circle>V [l1\<mapsto>(dq1,to_ag (Some v1))]) \<cdot> 
-    put_heap heap_name (\<circle>V [l2\<mapsto>(dq2,to_ag (Some v2))]))))"
+    \<upharpoonleft>(valid (inG.return_cmra put_heap heap_name (\<circle>V [l1\<mapsto>(dq1,to_ag (Some v1))]) \<cdot> 
+    inG.return_cmra put_heap heap_name (\<circle>V [l2\<mapsto>(dq2,to_ag (Some v2))]))))"
     using upred_wand_holds2I[OF upred_entails_trans[OF upred_wand_holds2E[OF upred_own_valid2]]] 
       points_to_def[OF heap_inG] by (metis heap_inG inG.own_def map_view_frag_def)
   from assms have "valid ((\<circle>V [l1\<mapsto>(dq1,to_ag (Some v1))]) \<cdot> (\<circle>V [l2\<mapsto>(dq2,to_ag (Some v2))])) 
     \<Longrightarrow> l1\<noteq>l2"
     apply (simp add: valid_def)
     apply (rule notI)
-    apply (simp add: view_frag_def op_map_view_def heap_op op_prod_def op_option_def)
+    apply (simp add: mview_frag_def op_map_view_def heap_op op_prod_def op_option_def)
     apply (auto simp: valid_raw_map_view.rep_eq map_view_rel_def split: option.splits)
     by (metis assms)
   then have "\<upharpoonleft>(valid ((\<circle>V [l1\<mapsto>(dq1,to_ag (Some v1))]) \<cdot> (\<circle>V [l2\<mapsto>(dq2,to_ag (Some v2))]))) \<turnstile>
     \<upharpoonleft>(l1\<noteq>l2)" using pure_entailsI by blast
   with valid_drop have 
-    "\<upharpoonleft>(valid (put_heap heap_name (\<circle>V [l1\<mapsto>(dq1,to_ag (Some v1))]) \<cdot> 
-    put_heap heap_name (\<circle>V [l2\<mapsto>(dq2,to_ag (Some v2))]))) 
+    "\<upharpoonleft>(valid (inG.return_cmra put_heap heap_name (\<circle>V [l1\<mapsto>(dq1,to_ag (Some v1))]) \<cdot> 
+    inG.return_cmra put_heap heap_name (\<circle>V [l2\<mapsto>(dq2,to_ag (Some v2))]))) 
     \<turnstile> \<upharpoonleft>(l1\<noteq>l2)" by simp
     from upred_entails_wand_holdsR2[OF this base] show ?thesis .
 qed
@@ -190,11 +196,11 @@ by (rule points_to_frac_ne[OF dfrac_not_valid_own])
 lemma timeless_points_to [timeless_rule, log_prog_rule]: "timeless (l\<mapsto>{p}v)"
   unfolding points_to_def[OF heap_inG] 
   apply (auto simp: inG.own_def[OF heap_inG] upred_own.rep_eq dcamera_val_def discrete_val_def 
-    inG.put_ne[OF heap_inG] ofe_refl valid_def inG.put_n_valid[OF heap_inG] ofe_limit
+    inG.return_ne[OF heap_inG] ofe_refl valid_def inG.return_n_valid[OF heap_inG] ofe_limit
     intro!: own_timeless')
-  apply (smt (verit, best) d_equiv heap_inG inG.put_ne inG.put_ne2)
-  apply (smt (verit, best) d_equiv heap_inG inG.put_ne inG.put_ne2)
-  using dcamera_valid_iff by blast
+  apply prefer_last
+  using dcamera_valid_iff apply blast
+  by (metis (full_types) d_equiv heap_inG inG.return_ne inG.return_ne2)+
   
 lemma points_to_lookup: "heap_interp put_heap h \<^emph> (l\<mapsto>\<^sub>uv) \<turnstile> \<upharpoonleft>(fmlookup h l = Some (Some v))"
 proof -
@@ -213,6 +219,24 @@ proof -
     by fastforce
   with 1 show ?thesis by (rule upred_entails_trans)
 qed
+
+lemma points_to_lookup2: "heap_interp put_heap h \<^emph> (l\<mapsto>{dq}v) \<turnstile> \<upharpoonleft>(fmlookup h l = Some (Some v))"
+proof -
+  have "heap_interp put_heap h \<^emph> (l\<mapsto>{dq}v) \<turnstile> own_heap put_heap (map_view_auth (DfracOwn 1) h \<cdot> map_view_frag l dq (Some v))"
+    unfolding heap_interp_def[OF heap_inG] points_to_def[OF heap_inG] own_heap_auth_def[OF heap_inG]
+    apply (rule upred_entails_trans[OF upred_entail_eqR[OF inG.own_op[OF heap_inG]]])
+    by (auto simp: op_prod_def \<epsilon>_left_id)
+  then have "heap_interp put_heap h \<^emph> (l\<mapsto>{dq}v) \<turnstile> \<V> (map_view_auth (DfracOwn 1) h \<cdot> map_view_frag l dq (Some v))"
+    using inG.own_valid[OF heap_inG] heap_valid[OF heap_inG] upred_entails_trans by blast
+  then have 1: "heap_interp put_heap h \<^emph> (l\<mapsto>{dq}v) \<turnstile> \<upharpoonleft>(valid (map_view_auth (DfracOwn 1) h \<cdot> map_view_frag l dq (Some v)))"
+    using discrete_valid upred_entail_eqL upred_entails_trans by blast
+  have "valid (map_view_auth (DfracOwn 1) h \<cdot> map_view_frag l dq (Some v)) \<Longrightarrow> fmlookup h l = Some (Some v)"
+    unfolding valid_def view_both_valid map_view_auth_def map_view_frag_def map_view_rel_def 
+    apply auto by (metis d_equiv to_ag_n_equiv)
+  then have "\<upharpoonleft>(valid (map_view_auth (DfracOwn 1) h \<cdot> map_view_frag l dq (Some v))) \<turnstile> \<upharpoonleft>(fmlookup h l = Some (Some v))"
+    by fastforce
+  with 1 show ?thesis by (rule upred_entails_trans)
+qed  
 end
 
 subsubsection \<open>Prophecy map camera\<close>

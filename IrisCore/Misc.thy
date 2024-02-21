@@ -151,7 +151,11 @@ lemma sep_map_fset_insert: "fmlookup m i = None \<Longrightarrow>
 proof -
   assume assm: "fmlookup m i = None"
   then have fset_upd: "fset_of_fmap (fmupd i x m) = {|(i,x)|} |\<union>| fset_of_fmap m"
-    apply (auto simp: fset_of_fmap.rep_eq) apply argo by (metis option.inject)
+    apply (auto simp: fset_of_fmap.rep_eq)
+    apply (metis fmupd_lookup fset_of_fmap.rep_eq fset_of_fmap_iff)
+    apply (metis fmupd_lookup fset_of_fmap.rep_eq fset_of_fmap_iff option.inject)
+    using fset_of_fmap.rep_eq apply fastforce
+    by (metis fmupd_lookup fset_of_fmap.rep_eq fset_of_fmap_iff option.simps(3))
   from assm have "(i,x) |\<notin>| fset_of_fmap m" by simp
   show ?thesis 
   by (auto simp: sep_fold_fset_def fset_upd comp_fun_commute.ffold_finsert[OF 

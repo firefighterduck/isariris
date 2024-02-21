@@ -15,37 +15,52 @@ definition "marking_name :: gname \<equiv> 6"
 
 lemmas wp_inG = invInG.inG_axioms heapInG.inG_axioms prophInG.inG_axioms
 
-abbreviation fancy_upd ("\<Turnstile>{_,_}=>_") where "fancy_upd \<equiv> ViewShift.fancy_upd constr_inv"
-abbreviation wand_fupd ("_={_,_}=\<^emph>_") where "wand_fupd \<equiv> ViewShift.wand_fupd constr_inv"
-abbreviation linear_fupd ("\<Turnstile>{_}=>_") where "linear_fupd \<equiv> ViewShift.linear_fupd constr_inv"
-abbreviation wand_linear_fupd ("_={_}=\<^emph>_") where "wand_linear_fupd \<equiv> ViewShift.wand_linear_fupd constr_inv"
-abbreviation fancy_step ("\<Turnstile>{_}[_]\<triangleright>=>_") where "fancy_step \<equiv> ViewShift.fancy_step constr_inv"  
-abbreviation fancy_wand_step ("_={_}[_]\<triangleright>=\<^emph>_") where "fancy_wand_step \<equiv> ViewShift.fancy_wand_step constr_inv"  
+abbreviation fancy_upd ("\<Turnstile>{_,_}=>_") where "fancy_upd \<equiv> ViewShift.fancy_upd upd_inv"
+abbreviation wand_fupd ("_={_,_}=\<^emph>_") where "wand_fupd \<equiv> ViewShift.wand_fupd upd_inv"
+abbreviation linear_fupd ("\<Turnstile>{_}=>_") where "linear_fupd \<equiv> ViewShift.linear_fupd upd_inv"
+abbreviation wand_linear_fupd ("_={_}=\<^emph>_") where "wand_linear_fupd \<equiv> ViewShift.wand_linear_fupd upd_inv"
+abbreviation fancy_step ("\<Turnstile>{_}[_]\<triangleright>=>_") where "fancy_step \<equiv> ViewShift.fancy_step upd_inv"  
+abbreviation fancy_wand_step ("_={_}[_]\<triangleright>=\<^emph>_") where "fancy_wand_step \<equiv> ViewShift.fancy_wand_step upd_inv"  
 abbreviation fancy_linear_wand_step ("_={_}\<triangleright>=\<^emph>_") where
-  "fancy_linear_wand_step \<equiv> ViewShift.fancy_linear_wand_step constr_inv"
-abbreviation wp where "wp \<equiv> WeakestPrecondition.wp constr_inv constr_heap constr_proph"
-abbreviation WP ("WP _ {{ _ }}") where "WP e {{ Q }} \<equiv> WeakestPrecondition.WP constr_inv constr_heap constr_proph e Q"
-abbreviation hoare ("{{ _ }} _ {{ _ }}") where "hoare \<equiv> WeakestPrecondition.hoare constr_inv constr_heap constr_proph"
-abbreviation texan ("{{{ _ }}} _ {{{ _ }}}") where "texan \<equiv> WeakestPrecondition.texan constr_inv constr_heap constr_proph"
-abbreviation texan2 ("{{{ _ }}} _ @ _ ; _ {{{ _ }}}") where "texan2 \<equiv> WeakestPrecondition.texan2 constr_inv constr_heap constr_proph"
+  "fancy_linear_wand_step \<equiv> ViewShift.fancy_linear_wand_step upd_inv"
+abbreviation wp where "wp \<equiv> WeakestPrecondition.wp upd_inv upd_heap upd_proph"
+abbreviation WP ("WP _ {{ _ }}") where "WP e {{ Q }} \<equiv> WeakestPrecondition.WP upd_inv upd_heap upd_proph e Q"
+abbreviation hoare ("{{ _ }} _ {{ _ }}") where "hoare \<equiv> WeakestPrecondition.hoare upd_inv upd_heap upd_proph"
+abbreviation texan ("{{{ _ }}} _ {{{ _ }}}") where "texan \<equiv> WeakestPrecondition.texan upd_inv upd_heap upd_proph"
+abbreviation texan2 ("{{{ _ }}} _ @ _ ; _ {{{ _ }}}") where "texan2 \<equiv> WeakestPrecondition.texan2 upd_inv upd_heap upd_proph"
 
-interpretation graphInG: inG get_graph constr_graph
-apply (auto simp: get_graph_def constr_graph_def d_equiv inG_def prod_n_valid_def \<epsilon>_n_valid op_prod_def
-  \<epsilon>_left_id intro: map_upd_eqD1)
-by (auto simp: pcore_prod_def pcore_fun_def \<epsilon>_fun_def \<epsilon>_option_def pcore_option_def comp_def 
-  constr_graph_def split: option.splits)
+interpretation graphInG: inG get_graph upd_graph
+apply (auto simp: inG_def get_graph_def upd_graph_def prod_n_valid_def \<epsilon>_n_valid op_prod_def \<epsilon>_left_id)
+apply (prefer_last,metis surj_pair single_map_ne d_equiv)
+apply (auto simp: pcore_prod_def pcore_fun_def \<epsilon>_fun_def \<epsilon>_option_def pcore_option_def comp_def 
+  split: option.splits)
+apply (auto simp: op_fun_def op_option_def)
+apply (auto simp: valid_raw_fun.rep_eq valid_raw_option_def incl_def n_equiv_fun_def 
+  n_equiv_option_def split: option.splits if_splits)
+apply (auto simp: upd_graph_def get_graph_def pcore_option_def)
+done
 
-interpretation markingInG: inG get_markings constr_markings
-apply (auto simp: get_markings_def constr_markings_def d_equiv inG_def prod_n_valid_def \<epsilon>_n_valid op_prod_def
-  \<epsilon>_left_id intro: map_upd_eqD1)
-by (auto simp: pcore_prod_def pcore_fun_def \<epsilon>_fun_def \<epsilon>_option_def pcore_option_def comp_def 
-  constr_markings_def split: option.splits)
+interpretation markingInG: inG get_markings upd_markings
+apply (auto simp: inG_def get_markings_def upd_markings_def prod_n_valid_def \<epsilon>_n_valid op_prod_def \<epsilon>_left_id)
+apply (prefer_last,metis surj_pair single_map_ne d_equiv)
+apply (auto simp: pcore_prod_def pcore_fun_def \<epsilon>_fun_def \<epsilon>_option_def pcore_option_def comp_def 
+  split: option.splits)
+apply (auto simp: op_fun_def op_option_def)
+apply (auto simp: valid_raw_fun.rep_eq valid_raw_option_def incl_def n_equiv_fun_def 
+  n_equiv_option_def split: option.splits if_splits)
+apply (auto simp: upd_markings_def get_markings_def pcore_option_def)
+done
 
-interpretation cinvInG: inG get_cinv constr_cinv
-apply (auto simp: get_cinv_def constr_cinv_def d_equiv inG_def prod_n_valid_def \<epsilon>_n_valid op_prod_def
-  \<epsilon>_left_id intro: map_upd_eqD1)
-by (auto simp: pcore_prod_def pcore_fun_def \<epsilon>_fun_def \<epsilon>_option_def pcore_option_def comp_def 
-  constr_cinv_def split: option.splits)
+interpretation cinvInG: inG get_cinv upd_cinv
+apply (auto simp: inG_def get_cinv_def upd_cinv_def prod_n_valid_def \<epsilon>_n_valid op_prod_def \<epsilon>_left_id)
+apply (prefer_last,metis surj_pair single_map_ne d_equiv)
+apply (auto simp: pcore_prod_def pcore_fun_def \<epsilon>_fun_def \<epsilon>_option_def pcore_option_def comp_def 
+  split: option.splits)
+apply (auto simp: op_fun_def op_option_def)
+apply (auto simp: valid_raw_fun.rep_eq valid_raw_option_def incl_def n_equiv_fun_def 
+  n_equiv_option_def split: option.splits if_splits)
+apply (auto simp: upd_cinv_def get_cinv_def pcore_option_def)
+done
 
 lemmas [inG_axioms] = graphInG.inG_axioms markingInG.inG_axioms cinvInG.inG_axioms
 declare invInG.inG_axioms[inv_inG_axiom,inG_axioms]
@@ -65,8 +80,8 @@ text \<open> Marking Definitions \<close>
 definition is_marked ::"loc \<Rightarrow> iprop" where "is_marked l = Own\<^sub>m(fragm {|l|})"
 
 lemma is_marked_split: "Own\<^sub>m(fragm {|l|}) = Own\<^sub>m(fragm {|l|} \<cdot> fragm {|l|})"
-  by (auto simp: auth_frag_op[symmetric] op_fset_def)
-
+  by (auto simp: DerivedConstructions.auth_frag_op[symmetric] op_fset_def)
+  
 lemma dup_marked: "is_marked l \<stileturn>\<turnstile> is_marked l \<^emph> is_marked l"
 proof -
 from markingInG.own_op have "markingInG.own marking_name (fragm {|l|} \<cdot> fragm {|l|}) 
@@ -144,11 +159,12 @@ definition graph_inv :: "loc graph \<Rightarrow> (loc\<rightharpoonup>loc) \<Rig
     \<^emph> (\<upharpoonleft>(strict_subgraph' g (gmon_graph G))))"
 
 lemma own_graph_timeless [timeless_rule,log_prog_rule]:"timeless (Own\<^sub>g g)"
-  unfolding constr_graph_def graphInG.own_def
+  unfolding graphInG.own_def graphInG.return_cmra_def graphInG.put_cmra_def upd_graph_def
   by (auto intro: own_timeless')
 
 lemma own_markings_timeless [timeless_rule,log_prog_rule]:"timeless (Own\<^sub>m m)"
-  unfolding timeless_def except_zero_def constr_markings_def markingInG.own_def
+  unfolding timeless_def except_zero_def markingInG.return_cmra_def markingInG.put_cmra_def 
+    upd_markings_def markingInG.own_def
   apply transfer 
   apply (auto simp: singleton_map_n_incl d_equiv)
   by (simp add: d_equiv n_incl_def)
@@ -159,7 +175,7 @@ lemma graph_inv_timeless [timeless_rule,log_prog_rule]: "timeless (graph_inv g m
   apply auto by timeless_solver
 
 definition graph_ctxt :: "gname \<Rightarrow> loc graph \<Rightarrow> (loc\<rightharpoonup>loc) \<Rightarrow> iprop" where 
-  "graph_ctxt \<kappa> g Mrk \<equiv> cinv constr_cinv constr_inv graphN \<kappa> (graph_inv g Mrk)"
+  "graph_ctxt \<kappa> g Mrk \<equiv> cinv upd_cinv upd_inv graphN \<kappa> (graph_inv g Mrk)"
 
 lemma graph_ctxt_persistent [pers_rule,log_prog_rule]: "persistent (graph_ctxt \<kappa> g Mrk)"
   unfolding graph_ctxt_def by (rule cinv_persistent[OF cinvInG.inG_axioms invInG.inG_axioms])
@@ -220,10 +236,10 @@ qed
 end
 
 lemma auth_own_graph_valid: "Own\<^sub>g (full (Some (G,q))) \<turnstile> \<V> G"
-apply (auto simp: constr_graph_def graphInG.own_def)
+apply (auto simp: upd_graph_def graphInG.return_cmra_def graphInG.put_cmra_def graphInG.own_def)
 apply (entails_substL rule: upred_own_valid)
 apply transfer'
-by (auto simp: \<epsilon>_n_valid prod_n_valid_def valid_raw_option_def)
+by (auto simp: \<epsilon>_n_valid prod_n_valid_def valid_raw_option_def valid_raw_fun.rep_eq)
 
 lemma new_marked: "(Own\<^sub>m (full m)) ={E}=\<^emph> (Own\<^sub>m (full (m\<cdot>{|l|})) \<^emph> is_marked l)"
 apply iIntro

@@ -10,6 +10,6 @@ type_synonym chl = "loc option\<times>loc option"
 (* The graph camera, a unital camera. *)
 type_synonym graphUR = "(((loc,(chl ex))fmap)\<times>frac) option"
 
-(* A camera for duplicatable markings *)
+(* A camera for duplicable markings *)
 type_synonym markingUR = "loc fset"
 end

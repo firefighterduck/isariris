@@ -266,13 +266,13 @@ lift_definition upred_plain :: "'a upred_f \<Rightarrow> 'a upred_f" ("\<^item>_
   by (metis \<epsilon>_left_id ofe_eq_limit n_incl_def)
 
 lift_definition upred_later :: "'a upred_f \<Rightarrow> 'a upred_f" ("\<triangleright>_" 100) is "\<lambda>P (a::'a) n. n=0 \<or> P a (n-1)" 
-  by (smt (verit, ccfv_SIG) n_incl_def diff_0_eq_0 diff_diff_cancel diff_is_0_eq diff_right_commute diff_self_eq_0 ofe_mono)
+  by (meson bot_nat_0.extremum_uniqueI camera_n_incl_le diff_le_mono diff_le_self)
 
 lift_definition upred_bupd :: "'a upred_f \<Rightarrow> 'a upred_f" ("\<Rrightarrow>\<^sub>b_") is
   "\<lambda>P (a::'a) n. \<forall>m b. (m\<le>n \<and> n_valid (a \<cdot> b) m) \<longrightarrow> (\<exists>c. n_valid (c \<cdot> b) m \<and> P c m)"
   by (meson dual_order.trans n_incl_def n_valid_incl_subst)
   
-lift_definition upred_entails :: "'a upred_f \<Rightarrow> 'a upred_f \<Rightarrow> bool" (infix "\<turnstile>" 50) is
+lift_definition upred_entails :: "'a upred_f \<Rightarrow> 'a upred_f \<Rightarrow> bool" (infix "/\<turnstile>/" 50) is
   "\<lambda>P Q. \<forall>(a::'a) n. n_valid a n \<longrightarrow> P a n \<longrightarrow> Q a n" .
 
 definition upred_entail_eq :: "'a upred_f \<Rightarrow> 'a upred_f \<Rightarrow> bool" (infix "\<stileturn>\<turnstile>" 40) where
@@ -291,8 +291,8 @@ declare [[coercion upred_holds, coercion_enabled = true]]
 subsubsection \<open>Upred \<^const>\<open>n_equiv\<close> rules\<close>
 named_theorems upred_ne_rule
 lemma upred_pure_ne [upred_ne_rule]: "(x\<longleftrightarrow>y) \<Longrightarrow> n_equiv n (\<upharpoonleft>x) (\<upharpoonleft>y)" by transfer simp
-lemma upred_eq_ne [upred_ne_rule]: "\<lbrakk>n_equiv n x a; n_equiv n y b\<rbrakk> \<Longrightarrow> n_equiv n (x=\<^sub>ua) (y=\<^sub>ub)"
-  by transfer (auto intro: ofe_mono)
+lemma upred_eq_ne [upred_ne_rule]: "\<lbrakk>n_equiv n x y; n_equiv n a b\<rbrakk> \<Longrightarrow> n_equiv n (x=\<^sub>ua) (y=\<^sub>ub)"
+  apply transfer apply (auto intro: ofe_mono) by (metis ofe_mono ofe_sym ofe_trans_eqR)+
 lemma upred_conj_ne [upred_ne_rule]: "\<lbrakk>n_equiv n P Q; n_equiv n R S\<rbrakk> \<Longrightarrow> n_equiv n (P\<and>\<^sub>uR) (Q\<and>\<^sub>uS)"
   by transfer simp  
 lemma upred_disj_ne [upred_ne_rule]: "\<lbrakk>n_equiv n P Q; n_equiv n R S\<rbrakk> \<Longrightarrow> n_equiv n (P\<or>\<^sub>uR) (Q\<or>\<^sub>uS)"
@@ -315,11 +315,12 @@ lemma upred_persis_ne [upred_ne_rule]: "n_equiv n P Q \<Longrightarrow> n_equiv 
   by transfer (metis camera_core_n_valid)  
 lemma upred_plain_ne [upred_ne_rule]: "n_equiv n P Q \<Longrightarrow> n_equiv n (\<^item>P) (\<^item>Q)"  
   apply transfer using \<epsilon>_n_valid by blast
-lemma upred_later_ne: "n_equiv n P Q \<Longrightarrow> n_equiv n (\<triangleright>P) (\<triangleright>Q)"
+lemma upred_later_ne [upred_ne_rule]: "n_equiv n P Q \<Longrightarrow> n_equiv n (\<triangleright>P) (\<triangleright>Q)"
   apply transfer by (meson diff_le_self dual_order.trans ne_sprop_weaken ofe_eq_limit valid_raw_non_expansive)
 lemma upred_later_contr: "contractive upred_later"
   unfolding contractive_def apply transfer
   by (smt (verit, best) One_nat_def Rep_sprop Suc_pred bot_nat_0.not_eq_extremum diff_le_mono diff_le_self less_Suc_eq_le mem_Collect_eq nle_le)
 lemma upred_bupd_ne [upred_ne_rule]: "n_equiv n P Q \<Longrightarrow> n_equiv n (\<Rrightarrow>\<^sub>bP) (\<Rrightarrow>\<^sub>bQ)"
   by transfer (meson camera_valid_op order_trans)
+
 end

@@ -187,143 +187,28 @@ fix a :: "('a,'b) sum_ext"
 show "pcore a = Some a" by (cases a) (auto simp: pcore_sum_ext_def pcore_id)
 qed
 
-lemma sum_update_l: "a\<leadsto>B \<Longrightarrow> (Inl a) \<leadsto> {Inl b |b. b\<in>B}"
-by (auto simp: camera_upd_def op_sum_ext_def valid_def valid_raw_sum_ext_def split: sum_ext.splits)
-  blast
+lemma sum_update_l: "a\<leadsto>b \<Longrightarrow> (Inl a) \<leadsto> Inl b"
+by (auto simp: camera_upd_def op_sum_ext_def valid_def valid_raw_sum_ext_def opM_def
+  split: sum_ext.splits option.splits)
 
-lemma sum_update_r: "a\<leadsto>B \<Longrightarrow> (Inr a) \<leadsto> {Inr b |b. b\<in>B}"
-by (auto simp: camera_upd_def op_sum_ext_def valid_def valid_raw_sum_ext_def split: sum_ext.splits)
+lemma sum_update_r: "a\<leadsto>b \<Longrightarrow> (Inr a) \<leadsto> Inr b"
+by (auto simp: camera_upd_def op_sum_ext_def valid_def valid_raw_sum_ext_def opM_def
+  split: sum_ext.splits option.splits)
 
-lemma sum_swap_l: "\<lbrakk>\<forall>c n. \<not> n_valid (op a c) n; valid b\<rbrakk> \<Longrightarrow> (Inl a) \<leadsto> {Inr b}"
-by (auto simp: valid_def camera_upd_def valid_raw_sum_ext_def op_sum_ext_def split: sum_ext.splits)
+lemma sum_swap_l: "\<lbrakk>\<forall>c n. \<not> n_valid (op a c) n; valid b\<rbrakk> \<Longrightarrow> (Inl a) \<leadsto> Inr b"
+by (auto simp: camera_upd_def op_sum_ext_def valid_def valid_raw_sum_ext_def opM_def
+  split: sum_ext.splits option.splits) 
 
-lemma sum_swap_r: "\<lbrakk>\<forall>c n. \<not> Rep_sprop (valid_raw (op a c)) n; valid b\<rbrakk> \<Longrightarrow> (Inr a) \<leadsto> {Inl b}"
-by (auto simp: valid_def camera_upd_def valid_raw_sum_ext_def op_sum_ext_def split: sum_ext.splits)
-
-subsubsection \<open> Option type \<close>
-fun option_op :: "('a::camera) option \<Rightarrow> 'a option \<Rightarrow> 'a option" where
-  "option_op (Some a) (Some b) = Some (op a b)"
-| "option_op (Some a) (None) = Some a"
-| "option_op (None) (Some a) = Some a"  
-| "option_op None None = None"
-
-lemma option_opE: "option_op x y = None \<Longrightarrow> x=None \<and> y=None"
-  by (induction x y rule: option_op.induct) auto
-
-lemma option_op_none_unit [simp]: "option_op None x = x" "option_op x None = x"
-  apply (cases x) apply auto apply (cases x) by auto
-
-lemmas op_ex2 = option.exhaust[case_product option.exhaust]
-lemmas op_ex3 = option.exhaust[case_product op_ex2]
-lemmas op_ex4 = op_ex3[case_product option.exhaust]
-
-lemma option_op_ne: "non_expansive2 option_op"
-proof (rule non_expansive2I)
-fix x y a b :: "'a option"
-fix n
-show "n_equiv n x y \<Longrightarrow> n_equiv n a b \<Longrightarrow> n_equiv n (option_op x a) (option_op y b)"
-  by (cases x y a b rule: op_ex4) (auto simp: n_equiv_option_def split: option.splits)
-qed
-
-instantiation option :: (camera) camera begin
-  definition valid_raw_option :: "'a option \<Rightarrow> sprop" where
-    "valid_raw_option x = (case x of Some a \<Rightarrow> valid_raw a | None \<Rightarrow> sTrue)"
-  definition pcore_option :: "'a option \<Rightarrow> 'a option option" where
-    "pcore_option x = (case x of Some a \<Rightarrow> Some (pcore a) | None \<Rightarrow> Some None)"
-  definition "op_option \<equiv> option_op"
-instance proof
-show "non_expansive (valid_raw::'a option \<Rightarrow> sprop)" by (rule non_expansiveI) 
-  (auto simp: valid_raw_option_def ofe_refl n_equiv_option_def valid_raw_ne split: option.splits)
-next
-show "non_expansive (pcore::'a option \<Rightarrow> 'a option option)" 
-  by (rule non_expansiveI;auto simp: pcore_option_def ofe_refl pcore_ne n_equiv_option_def split: option.split)
-  (meson n_equiv_option_def pcore_ne)+
-next
-show "non_expansive2 (op::'a option \<Rightarrow> 'a option \<Rightarrow> 'a option)"
-  by (simp add: op_option_def option_op_ne)
-next
-fix a b c :: "'a option"
-show "a \<cdot> b \<cdot> c = a \<cdot> (b \<cdot> c)" by (cases a; cases b; cases c) (auto simp: op_option_def camera_assoc)
-next
-fix a b :: "'a option"
-show "a \<cdot> b = b \<cdot> a" by (cases a; cases b) (auto simp: op_option_def camera_comm)
-next
-fix a a' :: "'a option"
-show "pcore a = Some a' \<Longrightarrow> a' \<cdot> a = a"
-  by (cases a; cases a') (auto simp: op_option_def pcore_option_def camera_pcore_id)
-next
-fix a a' :: "'a option"
-show "pcore a = Some a' \<Longrightarrow> pcore a' = pcore a"
-  by (cases a; cases a') (auto simp: pcore_option_def camera_pcore_idem)
-next
-fix a a' b :: "'a option"
-show "pcore a = Some a' \<Longrightarrow> \<exists>c. b = a \<cdot> c \<Longrightarrow> \<exists>b'. pcore b = Some b' \<and> (\<exists>c. b' = a' \<cdot> c)"
-  apply (cases a; cases a'; cases b)
-  apply (simp_all add: pcore_option_def op_option_def del: option_op_none_unit)
-  apply (metis option.exhaust option_op.simps(3) option_op.simps(4))
-  apply (metis option_op.simps(4))
-  apply (metis option.exhaust option_op.simps(3) option_op.simps(4))
-  apply (metis option.distinct(1) option_op.elims)
-  by (metis camera_pcore_mono not_Some_eq option.inject option_op.simps(1) option_op.simps(2))
-next
-fix a b :: "'a option"
-fix n
-show "Rep_sprop (valid_raw (a \<cdot> b)) n \<Longrightarrow> Rep_sprop (valid_raw a) n"
-  by (cases a; cases b) (auto simp: valid_raw_option_def op_option_def camera_valid_op)
-next
-fix a b c :: "'a option"
-fix n
-show "Rep_sprop (valid_raw a) n \<Longrightarrow> n_equiv n a (b \<cdot> c) \<Longrightarrow> 
-  \<exists>c1 c2. a = c1 \<cdot> c2 \<and> n_equiv n c1 b \<and> n_equiv n c2 c"
-  apply (cases a b c rule: op_ex3; auto simp: valid_raw_option_def op_option_def n_equiv_option_def)
-  using camera_extend by force+
-qed
-end
-
-lemma option_n_equiv_Some_op: "n_equiv n z (Some x \<cdot> y) \<Longrightarrow> \<exists>z'. z = Some z'"
-  apply (cases y)
-  by (auto simp: n_equiv_option_def op_option_def)
-
-lemma option_n_incl: "n_incl n o1 o2 \<longleftrightarrow> 
-  (o1 = None \<or> (\<exists>x y. o1 = Some x \<and> o2 = Some y \<and> (n_equiv n x y \<or> n_incl n x y)))"
-  apply (cases o1; cases o2)
-  apply (simp_all add: n_incl_def n_equiv_option_def op_option_def)
-  apply (meson ofe_eq_limit option_op.simps(3))
-  using option_op.elims apply blast 
-  apply (rule iffI)
-  apply (metis (no_types, lifting) ofe_sym option.discI option.sel option_op.elims)
-  using ofe_sym option_op.simps(1) option_op.simps(2) by blast
-
-lemma unital_option_n_incl: "n_incl n (Some (x::'a::ucamera)) (Some y) \<longleftrightarrow> n_incl n x y"
-proof
-  assume "n_incl n (Some x) (Some y)"
-  then obtain z where z: "n_equiv n (Some y) (Some x \<cdot> z)" by (auto simp: n_incl_def)
-  then have "z=Some c \<Longrightarrow> n_equiv n y (x \<cdot> c)" for c by (auto simp: n_equiv_option_def op_option_def)
-  moreover from z have "z=None \<Longrightarrow> n_equiv n y (x\<cdot>\<epsilon>)" by (auto simp: n_equiv_option_def op_option_def \<epsilon>_right_id)
-  ultimately show "n_incl n x y" unfolding n_incl_def using z apply (cases z) by auto
-next
-  assume "n_incl n x y"
-  then obtain z where "n_equiv n y (x\<cdot>z)" by (auto simp: n_incl_def)
-  then have "n_equiv n (Some y) (Some x \<cdot> Some z)" by (auto simp: n_equiv_option_def op_option_def)
-  then show "n_incl n (Some x) (Some y)" by (auto simp: n_incl_def)
-qed
-  
-instance option :: (dcamera) dcamera
-  apply (standard; auto simp: valid_raw_option_def valid_def split: option.splits)
-  using d_valid[simplified valid_def] by blast
-
-instance option :: (core_id) core_id 
-  by standard(auto simp: pcore_option_def  pcore_id split: option.splits)
-
-instantiation option :: (camera) ucamera begin
-definition "\<epsilon>_option \<equiv> None"
-instance 
-  by (standard; auto simp: valid_def valid_raw_option_def op_option_def pcore_option_def \<epsilon>_option_def)
-end
-
-instance option :: (dcamera) ducamera ..
+lemma sum_swap_r: "\<lbrakk>\<forall>c n. \<not> n_valid (op a c) n; valid b\<rbrakk> \<Longrightarrow> (Inr a) \<leadsto> Inl b"
+by (auto simp: camera_upd_def op_sum_ext_def valid_def valid_raw_sum_ext_def opM_def
+  split: sum_ext.splits option.splits)
 
 subsubsection \<open> Agreement camera combinator\<close>
+lemma map_ag_ne: "non_expansive f \<Longrightarrow> non_expansive (map_ag f)"
+apply (auto simp: non_expansive_def map_ag_def n_equiv_ag.rep_eq)
+apply (metis imageE image_abs_ag(1) rev_image_eqI)
+by (metis imageE image_abs_ag(1) rev_image_eqI)
+
 instantiation ag :: (ofe) camera begin
 lift_definition valid_raw_ag :: "'a ag \<Rightarrow> sprop" is
   "\<lambda>a n. \<exists>b. a={b} \<or> (\<forall>x y. (x\<in>a\<and>y\<in>a) \<longrightarrow> n_equiv n x y)" by (metis ofe_mono)
@@ -383,6 +268,10 @@ instance ag :: (discrete) dcamera
   
 instance ag :: (ofe) core_id by standard (auto simp: pcore_ag_def)
 
+lemma map_ag_op: "n_equiv n (map_ag f (x \<cdot> y)) (map_ag f x \<cdot> map_ag f y)"
+  by (auto simp: map_ag.rep_eq op_ag.rep_eq n_equiv_ag.rep_eq)
+    (meson Un_iff ofe_refl rev_image_eqI)+
+
 lemma to_ag_valid: "valid (to_ag a)"
   by (auto simp: to_ag.rep_eq valid_def valid_raw_ag.rep_eq)
 lemma to_ag_n_valid: "n_valid (to_ag a) n" using to_ag_valid valid_def by auto
@@ -394,6 +283,8 @@ proof -
   then have "Rep_ag b = {a}" "Rep_ag c = {a}" using Rep_ag by fast+
   then show "(b=to_ag a) \<and> (c=to_ag a)" by (metis Rep_ag_inverse to_ag.abs_eq)
 qed
+
+lemma to_ag_op_refl: "(to_ag a) \<cdot> (to_ag a) = to_ag a" by transfer simp
 
 lemma ag_idem: "((a::'a::ofe ag) \<cdot> a) = a"
   by (simp add: Rep_ag_inverse op_ag_def)
@@ -454,6 +345,9 @@ next
 show "non_expansive2 (op::'a ex \<Rightarrow> 'a ex \<Rightarrow> 'a ex)" by (rule non_expansive2I) simp
 qed (auto simp: valid_raw_ex_def pcore_ex_def split: ex.splits)
 end
+
+lemma ex_inv_invalid [simp]: "\<not> (valid ex.Inv)"
+  by (auto simp: valid_def valid_raw_ex_def)
 
 instance ex :: (discrete) dcamera by (standard; auto simp: valid_raw_ex_def valid_def split: ex.splits)
 
@@ -645,37 +539,56 @@ next
   then show "\<exists>ca. n_equiv n (Auth (b, c)) (fragm a \<cdot> ca)" by blast
 qed
 
-definition lup :: "('a::ucamera)\<times>'a \<Rightarrow> 'a\<times>'a \<Rightarrow> bool" (infix "\<leadsto>\<^sub>L" 60) where
-  "lup \<equiv> \<lambda>(a,f) (a',f'). \<forall>n c. (n_valid a n \<and> n_equiv n a (f \<cdot> c)) \<longrightarrow> (n_valid a' n \<and> n_equiv n a' (f' \<cdot> c))"
+lemma auth_update_alloc: "(a,f)\<leadsto>\<^sub>L(a',f') \<Longrightarrow> (comb a f) \<leadsto> comb a' f'"
+apply (auto simp: lup_def camera_upd_def valid_def op_auth_def op_prod_def opM_def 
+  split: auth.splits option.splits)
+using n_incl_def apply blast
+using n_incl_def apply blast
+apply (metis op_option_def option.simps(3) option_opE)
+apply (metis op_option_def option.simps(3) option_opE)
+apply (auto simp: op_option_def n_incl_def)
+proof -
+fix n aa b c ca
+assume assms: "\<forall>n c. n_valid a n \<and> n_equiv n a (f \<cdot> c) \<longrightarrow> n_valid a' n \<and> n_equiv n a' (f' \<cdot> c)"
+  "option_op (Some (ex.Ex a)) aa = Some (ex.Ex c)" "n_valid c n" 
+  "\<forall>c. (\<exists>ca. n_equiv n c (f' \<cdot> b \<cdot> ca)) \<longrightarrow> option_op (Some (ex.Ex a')) aa = Some (ex.Ex c) \<longrightarrow>
+    \<not> n_valid c n" "n_equiv n c (f \<cdot> b \<cdot> ca)"
+from this(2) have 1:"c=a \<and> aa=None" by (cases aa) auto
+with assms(1,3,5) have 2:"n_valid a' n \<and> n_equiv n a' (f' \<cdot> b \<cdot> ca)" by (auto simp: camera_assoc)
+moreover from 1 have "option_op (Some (ex.Ex a')) aa = Some (ex.Ex a')" by simp
+ultimately have "\<not> n_valid a' n" using assms(4) by simp
+with 2 have False by simp
+then show "option_op (Some (ex.Ex a')) aa = None" by simp
+next
+fix n aa b c ca
+assume assms: "\<forall>n c. n_valid a n \<and> n_equiv n a (f \<cdot> c) \<longrightarrow> n_valid a' n \<and> n_equiv n a' (f' \<cdot> c)"
+  "option_op (Some (ex.Ex a)) aa = Some (ex.Ex c)" "n_valid c n" 
+  "\<forall>c. (\<exists>ca. n_equiv n c (f' \<cdot> b \<cdot> ca)) \<longrightarrow> option_op (Some (ex.Ex a')) aa = Some (ex.Ex c) \<longrightarrow>
+    \<not> n_valid c n" "n_equiv n c (f \<cdot> b \<cdot> ca)"
+from this(2) have 1:"c=a \<and> aa=None" by (cases aa) auto
+with assms(1,3,5) have 2:"n_valid a' n \<and> n_equiv n a' (f' \<cdot> b \<cdot> ca)" by (auto simp: camera_assoc)
+moreover from 1 have "option_op (Some (ex.Ex a')) aa = Some (ex.Ex a')" by simp
+ultimately have "\<not> n_valid a' n" using assms(4) by simp
+with 2 have False by simp
+then show "n_valid (f' \<cdot> b) n " by simp
+qed
 
-(* Axiomatized for now. *)
-lemma auth_update_alloc: "(a,f)\<leadsto>\<^sub>L(a',f') \<Longrightarrow> (comb a f) \<leadsto> {comb a' f'}"
-apply (auto simp: lup_def camera_upd_def valid_def op_auth_def op_prod_def split: auth.splits)
-apply (metis n_incl_op_extend option.distinct(1) option_n_incl)
-apply (metis op_option_def option.distinct(1) option_op.elims)
-sorry
-
-subsubsection \<open> Map functors, based on a simple wrapper type \<close>
+subsubsection \<open> Function camera \<close>
 
 text \<open>
   As maps are only functions to options and thus can't directly be declared as class instances, 
   we need a bit of class magic. Based on ideas from the AFP entry Separation Logic Algebra.
 \<close>
-class opt = ucamera + fixes none assumes none_\<epsilon>: "\<epsilon> = none"
-instantiation option :: (camera) opt begin definition [simp]: "none \<equiv> None" instance 
-  by standard (auto simp: ofe_eq_option_def \<epsilon>_option_def)
-end
-
-lemma pcore_op_opt[simp]: "(case pcore x of None \<Rightarrow> none | Some a \<Rightarrow> a) \<cdot> (x::'b::opt) = x"
+lemma pcore_op_opt[simp]: "(case pcore x of None \<Rightarrow> \<epsilon> | Some a \<Rightarrow> a) \<cdot> (x::'b::ucamera) = x"
   apply (cases "pcore x")
   apply (simp_all add: camera_pcore_id)
-  using \<epsilon>_left_id none_\<epsilon> by metis
+  using \<epsilon>_left_id by metis
  
-instantiation "fun" :: (type, opt) camera begin
+instantiation "fun" :: (type, ucamera) camera begin
 lift_definition valid_raw_fun :: "('a\<Rightarrow>'b) \<Rightarrow> sprop" is
   "\<lambda>m n. \<forall>i. n_valid (m i) n" by simp
 definition pcore_fun :: "('a\<Rightarrow>'b) \<Rightarrow> ('a\<Rightarrow>'b) option" where
-  "pcore_fun m = Some ((\<lambda>b. case pcore b of Some a \<Rightarrow> a | None \<Rightarrow> none) \<circ> m)"
+  "pcore_fun m = Some ((\<lambda>b. case pcore b of Some a \<Rightarrow> a | None \<Rightarrow> \<epsilon>) \<circ> m)"
 definition op_fun :: "('a\<Rightarrow>'b) \<Rightarrow> ('a\<Rightarrow>'b) \<Rightarrow> ('a\<Rightarrow>'b)" where
   "op_fun m1 m2 = (\<lambda>i. (m1 i) \<cdot> (m2 i))"
 instance proof
@@ -700,24 +613,24 @@ fix a b :: "'a\<Rightarrow>'b"
 show "a \<cdot> b = b \<cdot> a" by (auto simp: op_fun_def camera_comm)
 next
 fix a a' :: "'a\<Rightarrow>'b"
-show "pcore a = Some a' \<Longrightarrow> a' \<cdot> a = a" by (auto simp: pcore_fun_def op_fun_def)
+show "pcore a = Some a' \<Longrightarrow> a' \<cdot> a = a" by (auto simp: op_fun_def pcore_fun_def)
 next
 fix a a' :: "'a\<Rightarrow>'b"
 show "pcore a = Some a' \<Longrightarrow> pcore a' = pcore a" by (auto simp: pcore_fun_def)
-  (smt (z3) \<epsilon>_pcore camera_pcore_idem comp_apply comp_assoc fun.map_cong0 none_\<epsilon> option.case_eq_if option.collapse option.simps(5))
+  (smt (z3) \<epsilon>_pcore camera_pcore_idem comp_apply comp_assoc fun.map_cong0 option.case_eq_if option.collapse option.simps(5))
 next
 fix a a' b :: "'a\<Rightarrow>'b"
 assume assms: "\<exists>c. b = a \<cdot> c"
 then obtain c where c: "b = a \<cdot> c" by blast
 then have "\<forall>i. b i = a i \<cdot> c i" by (auto simp: op_fun_def)
-then have i: "\<forall>i. \<exists>j. (case pcore (a i \<cdot> c i) of None \<Rightarrow> none | Some a \<Rightarrow> a) = (case pcore (a i) of None \<Rightarrow> none | Some a \<Rightarrow> a) \<cdot> j"
+then have i: "\<forall>i. \<exists>j. (case pcore (a i \<cdot> c i) of None \<Rightarrow> \<epsilon> | Some a \<Rightarrow> a) = (case pcore (a i) of None \<Rightarrow> \<epsilon> | Some a \<Rightarrow> a) \<cdot> j"
   by (metis option.simps(5) camera_pcore_mono total_pcore)
-define cs where cs: "cs \<equiv> {(i,j) | i j. (case pcore (a i \<cdot> c i) of None \<Rightarrow> none | Some a \<Rightarrow> a) = (case pcore (a i) of None \<Rightarrow> none | Some a \<Rightarrow> a) \<cdot> j}"
+define cs where cs: "cs \<equiv> {(i,j) | i j. (case pcore (a i \<cdot> c i) of None \<Rightarrow> \<epsilon> | Some a \<Rightarrow> a) = (case pcore (a i) of None \<Rightarrow> \<epsilon> | Some a \<Rightarrow> a) \<cdot> j}"
 with i have "\<forall>i. \<exists>j. (i,j) \<in> cs" by simp
 then obtain cf where "\<forall>i. (i, cf i) \<in> cs" by metis
-with i cs have "\<forall>i. (case pcore (a i \<cdot> c i) of None \<Rightarrow> none | Some a \<Rightarrow> a) = (case pcore (a i) of None \<Rightarrow> none | Some a \<Rightarrow> a) \<cdot> cf i"
+with i cs have "\<forall>i. (case pcore (a i \<cdot> c i) of None \<Rightarrow> \<epsilon> | Some a \<Rightarrow> a) = (case pcore (a i) of None \<Rightarrow> \<epsilon> | Some a \<Rightarrow> a) \<cdot> cf i"
   by simp
-then have "(\<lambda>b. case pcore b of None \<Rightarrow> none | Some a \<Rightarrow> a) \<circ> (\<lambda>i. a i \<cdot> c i) = (\<lambda>i. (case pcore (a i) of None \<Rightarrow> none | Some a \<Rightarrow> a) \<cdot> cf i)"
+then have "(\<lambda>b. case pcore b of None \<Rightarrow> \<epsilon> | Some a \<Rightarrow> a) \<circ> (\<lambda>i. a i \<cdot> c i) = (\<lambda>i. (case pcore (a i) of None \<Rightarrow> \<epsilon> | Some a \<Rightarrow> a) \<cdot> cf i)"
   by auto  
 then show "pcore a = Some a' \<Longrightarrow> \<exists>b'. pcore b = Some b' \<and> (\<exists>c. b' = a' \<cdot> c)"
   by (auto simp: pcore_fun_def op_fun_def c)
@@ -789,11 +702,14 @@ qed
 lemma pcore_fun_alt: "pcore (f::'a\<rightharpoonup>'b::camera) = Some (\<lambda>i. Option.bind (f i) pcore)"
 proof -
 have "pcore f = Some (\<lambda>i. case pcore (f i) of Some a \<Rightarrow> a | None \<Rightarrow> None)"
-  by (auto simp: pcore_fun_def comp_def) (metis \<epsilon>_option_def none_\<epsilon>)
+  by (auto simp: pcore_fun_def comp_def) (metis \<epsilon>_option_def)
 moreover have "(case pcore (f x) of Some a \<Rightarrow> a | None \<Rightarrow> None) = Option.bind (f x) pcore" for x
   by (cases "f x") (auto simp: pcore_option_def)
 ultimately show ?thesis by simp
 qed
+
+lemma op_singleton_upd: "g k = None \<Longrightarrow> [k\<mapsto>x] \<cdot> g = g(k\<mapsto>x)"
+  by (auto simp: op_fun_def op_option_def)
 
 definition merge :: "('a\<Rightarrow>'a\<Rightarrow>'a) \<Rightarrow> ('b\<rightharpoonup>'a) \<Rightarrow> ('b\<rightharpoonup>'a) \<Rightarrow> ('b\<rightharpoonup>'a)" where
   "merge f m1 m2 = (\<lambda>i. (case m1 i of Some x1 \<Rightarrow> (case m2 i of Some x2 \<Rightarrow> Some (f x1 x2) 
@@ -811,19 +727,13 @@ lemma merge_ne: "non_expansive2 f \<Longrightarrow> non_expansive2 (merge f)"
   apply (metis option.distinct(1))+
   by (metis option.discI option.inject)+
 
-class d_opt = opt + dcamera
-instance option :: (dcamera) d_opt ..
-
-instance "fun" :: (type,d_opt) dcamera 
+instance "fun" :: (type,ducamera) dcamera 
   apply (standard; auto simp: valid_raw_fun.rep_eq valid_def)
   using d_valid[simplified valid_def] by blast
-  
-class opt_core_id = opt + core_id
-instance option :: (core_id) opt_core_id ..
 
-instance "fun" :: (type,opt_core_id) core_id by standard (auto simp: pcore_fun_def pcore_id)
+instance "fun" :: (type,core_id_ucamera) core_id by standard (auto simp: pcore_fun_def pcore_id)
 
-instantiation "fun" :: (type, opt) ucamera begin
+instantiation "fun" :: (type, ucamera) ucamera begin
 definition \<epsilon>_fun :: "'a\<Rightarrow>'b" where  "\<epsilon>_fun \<equiv> (\<lambda>_. \<epsilon>)"
 instance apply (standard)
 apply (simp_all add: valid_def valid_raw_fun_def Abs_sprop_inverse valid_raw_option_def)
@@ -853,7 +763,7 @@ proof -
   then show ?thesis unfolding pcore_id_pred_def pcore_fun_def comp_def by simp
 qed
   
-instance "fun" :: (type,d_opt) ducamera ..
+instance "fun" :: (type,ducamera) ducamera ..
 
 lemma fun_n_incl:
   "n_incl n (f::'a\<Rightarrow>'b::{camera} option) g \<Longrightarrow> dom f \<subseteq> dom g \<and> (\<forall>k. n_incl n (f k) (g k))"
@@ -1016,6 +926,9 @@ end
 
 instance dfset :: (type) ducamera ..
 subsubsection \<open> Finite map camera \<close>
+lemma fmupd_ne: "non_expansive (fmupd l v)"
+by (rule non_expansiveI) (auto simp: n_equiv_fmap_def n_equiv_fun_def ofe_refl)
+
 context includes fmap.lifting begin
 lift_definition fmpcore :: "('a,'b::camera) fmap \<Rightarrow> ('a,'b) fmap option" is
   "\<lambda>m. Some (\<lambda>i. Option.bind (m i) pcore)"
@@ -1084,14 +997,14 @@ show "pcore a = Some a' \<Longrightarrow> pcore a' = pcore a"
 next
 fix a a' b :: "('a,'b) fmap"
 assume assms: "pcore a = Some a'" "\<exists>c. b = a \<cdot> c"
-let ?b' = "Abs_fmap (\<lambda>x. case pcore (fmlookup b x) of None \<Rightarrow> none | Some x' \<Rightarrow> x')"
+let ?b' = "Abs_fmap (\<lambda>x. case pcore (fmlookup b x) of None \<Rightarrow> \<epsilon> | Some x' \<Rightarrow> x')"
 have b': "pcore b = Some ?b'" by (auto simp: pcore_fmap_def pcore_fun_def comp_def)
 have fmlookup_op: "fmlookup (x\<cdot>y) i = fmlookup x i \<cdot> fmlookup y i" for x y i
   by (auto simp: op_fmap.rep_eq merge_op op_fun_def)
-have "dom (\<lambda>x. case case fmlookup m x of None \<Rightarrow> Some None | Some a \<Rightarrow> Some (pcore a) of None \<Rightarrow> none | Some a \<Rightarrow> a)
+have "dom (\<lambda>x. case case fmlookup m x of None \<Rightarrow> Some None | Some a \<Rightarrow> Some (pcore a) of None \<Rightarrow> \<epsilon> | Some a \<Rightarrow> a)
   \<subseteq> fmdom' m" for m :: "('a,'b) fmap"
   by (auto simp: fmdom'I split: option.splits) 
-then have fin: "(\<lambda>x. case case fmlookup m x of None \<Rightarrow> Some None | Some a \<Rightarrow> Some (pcore a) of None \<Rightarrow> none | Some a \<Rightarrow> a)
+then have fin: "(\<lambda>x. case case fmlookup m x of None \<Rightarrow> Some None | Some a \<Rightarrow> Some (pcore a) of None \<Rightarrow> \<epsilon> | Some a \<Rightarrow> a)
   \<in> {m. finite (dom m)}" for m :: "('a,'b) fmap"
   by (metis finite_fmdom' mem_Collect_eq rev_finite_subset)
 have lookup_pcore: "pcore m = Some m' \<Longrightarrow> Some (fmlookup m' i) = pcore (fmlookup m i)" for m m' i
@@ -1231,4 +1144,137 @@ by (auto simp: \<epsilon>_fmap_def valid_def valid_raw_fmap_def op_fmap_def pcor
 end
 
 instance fmap :: (type, dcamera) ducamera ..
+
+subsubsection \<open>Bool camera\<close>
+instantiation bool :: camera begin
+  lift_definition valid_raw_bool :: "bool \<Rightarrow> sprop" is "\<lambda>_ _. True" .
+  definition pcore_bool :: "bool \<Rightarrow> bool option" where "pcore_bool b \<equiv> Some b"
+  definition op_bool :: "bool \<Rightarrow> bool \<Rightarrow> bool" where "op_bool \<equiv> HOL.disj"
+instance proof (standard)
+show "non_expansive (valid_raw::bool \<Rightarrow> sprop)"
+  by (rule non_expansiveI) (auto simp: valid_raw_bool_def n_equiv_sprop_def)
+next
+show "non_expansive (pcore::bool \<Rightarrow> bool option)"
+  by (rule non_expansiveI) (auto simp: pcore_bool_def n_equiv_option_def)
+next
+show "non_expansive2 (op::bool\<Rightarrow>bool\<Rightarrow>bool)" by (rule non_expansive2I) (auto)
+next
+fix a b c :: bool
+show "a \<cdot> b \<cdot> c = a \<cdot> (b \<cdot> c)" by (auto simp: op_bool_def)
+next
+fix a b :: bool
+show "a \<cdot> b = b \<cdot> a" by (auto simp: op_bool_def)
+next
+fix a a' :: bool
+show "pcore a = Some a' \<Longrightarrow> a' \<cdot> a = a" by (auto simp: op_bool_def pcore_bool_def)
+next
+fix a a' :: bool
+show "pcore a = Some a' \<Longrightarrow> pcore a' = pcore a" by (auto simp: pcore_bool_def)
+next
+fix a a' b :: bool
+show "pcore a = Some a' \<Longrightarrow> \<exists>c. b = a \<cdot> c \<Longrightarrow> \<exists>b'. pcore b = Some b' \<and> (\<exists>c. b' = a' \<cdot> c)"
+  by (auto simp: op_bool_def pcore_bool_def)
+next
+fix a b :: bool and n
+show "Rep_sprop (valid_raw (a \<cdot> b)) n \<Longrightarrow> Rep_sprop (valid_raw a) n"
+  by (auto simp: valid_raw_bool_def op_bool_def)
+next
+fix a b1 b2 :: bool and n
+show "Rep_sprop (valid_raw a) n \<Longrightarrow> n_equiv n a (b1 \<cdot> b2) \<Longrightarrow> \<exists>c1 c2. a = c1 \<cdot> c2 \<and> 
+  n_equiv n c1 b1 \<and> n_equiv n c2 b2"
+  by (auto simp: valid_raw_bool_def)
+qed
+end
+
+lemma bool_upd_neg: "P \<longleftrightarrow> \<not>Q \<Longrightarrow> P \<leadsto>Q"
+  by (auto simp: camera_upd_def op_bool_def valid_raw_bool_def)
+
+instance bool :: dcamera by (standard) (auto simp: valid_def valid_raw_bool_def)
+
+instantiation bool :: ucamera begin
+definition "\<epsilon>_bool \<equiv> False"
+instance by standard (auto simp: \<epsilon>_bool_def valid_def valid_raw_bool_def op_bool_def pcore_bool_def)
+end
+
+instance bool :: ducamera ..
+
+instance bool :: core_id by standard (auto simp: pcore_bool_def)
+
+subsubsection \<open>Int camera\<close>
+instantiation int :: camera begin
+  definition valid_raw_int :: "int \<Rightarrow> sprop" where "valid_raw_int i = sTrue"
+  definition pcore_int :: "int \<Rightarrow> int option" where "pcore_int _ \<equiv> Some 0"
+  definition op_int :: "int \<Rightarrow> int \<Rightarrow> int" where "op_int \<equiv> (+)"
+instance by standard 
+  (auto simp: valid_raw_int_def pcore_int_def op_int_def n_equiv_sprop_def n_equiv_option_def 
+    intro!: non_expansiveI non_expansive2I)
+end
+
+lemma int_op_plus: "(p::int) \<cdot> q = p + q" by (simp add: op_int_def)
+
+instance int :: dcamera by (standard) (auto simp: valid_def valid_raw_int_def)
+
+instantiation int :: ucamera begin
+definition "\<epsilon>_int \<equiv> 0::int"
+instance by standard (auto simp: \<epsilon>_int_def valid_def valid_raw_int_def op_int_def pcore_int_def)
+end
+
+instance int :: ducamera ..
+
+subsubsection \<open>Multiset camera\<close>
+instantiation multiset :: (type) camera begin
+definition valid_raw_multiset :: "'a multiset \<Rightarrow> sprop" where "valid_raw_multiset \<equiv> \<lambda>_. sTrue"
+definition pcore_multiset :: "'a multiset \<Rightarrow> 'a multiset option" where "pcore_multiset \<equiv> \<lambda>_. Some {#}"
+definition op_multiset :: "'a multiset \<Rightarrow> 'a multiset \<Rightarrow> 'a multiset" where "op_multiset x y = x + y"
+instance proof
+show "non_expansive (valid_raw::'a multiset \<Rightarrow> sprop)"
+  by (rule non_expansiveI) (auto simp: valid_raw_multiset_def n_equiv_sprop_def)
+next
+show "non_expansive (pcore::'a multiset \<Rightarrow> 'a multiset option)"
+  by (rule non_expansiveI) (auto simp: pcore_multiset_def n_equiv_option_def d_equiv)
+next
+show "non_expansive2 (op::'a multiset\<Rightarrow>'a multiset\<Rightarrow>'a multiset)" 
+  by (rule non_expansive2I) (auto simp: d_equiv)
+next
+fix a b c :: "'a multiset"
+show "a \<cdot> b \<cdot> c = a \<cdot> (b \<cdot> c)" by (auto simp: op_multiset_def)
+next
+fix a b :: "'a multiset"
+show "a \<cdot> b = b \<cdot> a" by (auto simp: op_multiset_def)
+next
+fix a a' :: "'a multiset"
+show "pcore a = Some a' \<Longrightarrow> a' \<cdot> a = a" by (auto simp: op_multiset_def pcore_multiset_def)
+next
+fix a a' :: "'a multiset"
+show "pcore a = Some a' \<Longrightarrow> pcore a' = pcore a" by (auto simp: pcore_multiset_def)
+next
+fix a a' b :: "'a multiset"
+show "pcore a = Some a' \<Longrightarrow> \<exists>c. b = a \<cdot> c \<Longrightarrow> \<exists>b'. pcore b = Some b' \<and> (\<exists>c. b' = a' \<cdot> c)"
+  by (auto simp: op_multiset_def pcore_multiset_def)
+next
+fix a b :: "'a multiset" and n
+show "Rep_sprop (valid_raw (a \<cdot> b)) n \<Longrightarrow> Rep_sprop (valid_raw a) n"
+  by (auto simp: valid_raw_multiset_def)
+next
+fix a b1 b2 :: "'a multiset" and n
+show "Rep_sprop (valid_raw a) n \<Longrightarrow> n_equiv n a (b1 \<cdot> b2) \<Longrightarrow> \<exists>c1 c2. a = c1 \<cdot> c2 \<and> 
+  n_equiv n c1 b1 \<and> n_equiv n c2 b2"
+  by (auto simp: valid_raw_multiset_def d_equiv)
+qed
+end
+
+instance multiset :: (type) dcamera by (standard) (auto simp: valid_def valid_raw_multiset_def)
+
+instantiation multiset :: (type) ucamera begin
+definition \<epsilon>_multiset :: "'a multiset" where "\<epsilon>_multiset = {#}"
+instance by standard (auto simp: \<epsilon>_multiset_def valid_def valid_raw_multiset_def op_multiset_def pcore_multiset_def)
+end
+
+instance multiset :: (type) ducamera ..
+
+lemma multiset_local_update_dealloc: "(x'::'a multiset) \<subseteq># y \<Longrightarrow> (x,y) \<leadsto>\<^sub>L (x-x',y-x')"
+  by (auto simp: lup_def valid_raw_multiset_def d_equiv op_multiset_def)
+
+lemma multiset_local_update_alloc: "(x,y::'a multiset) \<leadsto>\<^sub>L (x+x',y+x')"
+  by (auto simp: lup_def valid_raw_multiset_def d_equiv op_multiset_def)
 end

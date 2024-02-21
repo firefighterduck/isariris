@@ -207,6 +207,25 @@ proof -
   show ?thesis .
 qed
 
+lemma fupd_plainly_mask_emp: "(\<Turnstile>{E,{}}=> \<^item> P) \<turnstile> \<Turnstile>{E}=> P"
+unfolding fancy_upd_def
+apply iIntros
+apply (iAssert_pers "\<diamondop>\<^item>P")
+subgoal apply (check_moveL "?p-\<^emph>?q") apply iApply_wand
+apply (entails_substR rule: bupd_plain) prefer 2 apply plain_solver
+apply (rule upd_mono)
+apply (rule except_zero_mono)
+by iFrame_single
+apply (entails_substR rule: except_zero_bupd)
+apply (rule except_zero_mono_ext)
+apply (entails_substR rule: updI)
+apply (check_moveR "ownE E") apply iFrame_single
+apply (check_moveR wsat) apply iFrame_single
+apply (iApply rule: upred_plainE) by iFrame_single
+
+lemma fupd_mask_intro_discard: "E2 \<subseteq> E1 \<Longrightarrow> P \<turnstile> \<Turnstile>{E1,E2}=>P"
+by (meson add_holds fupd_frame_mono fupd_mask_subseteq upred_weakeningL)
+
 lemma fupd_frameR : "frame P Q R \<Longrightarrow> frame (\<Turnstile>{E1,E2}=>P) Q (\<Turnstile>{E1,E2}=>R)"
   unfolding frame_def by (rule fupd_frame_mono)
 
@@ -231,6 +250,26 @@ apply (rule upd_mono)
 apply (entails_substR rule: except_zeroI)
 by iFrame_single+
 
+lemma elim_modal_fupd: "elim_modal (\<Turnstile>{E1,E2}=>P) P (\<Turnstile>{E1,E3}=>Q) (\<Turnstile>{E2,E3}=>Q)"
+  unfolding elim_modal_def by (simp add: fupd_ext upred_wandE)
+
+lemma elim_modal_upd: "elim_modal (\<Rrightarrow>\<^sub>b P) P (\<Turnstile>{E1,E2}=>Q) (\<Turnstile>{E1,E2}=>Q)"
+  unfolding elim_modal_def using upd_fupd elim_modal_fupd[unfolded elim_modal_def]
+  using fupd_ext upred_entails_wand_holdsR upred_wand_holds2E by blast
+
+lemma fupd_plainly_mask: "(\<Turnstile>{E,E'}=> \<^item> P) \<turnstile> \<Turnstile>{E}=> P"
+apply (entails_substR rule: fupd_plainly_mask_emp)
+apply (rule elim_modal_entails) apply (rule elim_modal_fupd)
+by (entails_substR rule: fupd_mask_intro_discard[OF empty_subsetI])
+
+lemma fupd_plain_mask_emp: "plain P \<Longrightarrow> (\<Turnstile>{E,{}}=> P) \<turnstile> \<Turnstile>{E}=> P"
+apply (entails_substR rule: fupd_plainly_mask_emp)
+apply (rule fupd_mono) unfolding plain_def by assumption
+
+lemma fupd_plain_mask: "plain P \<Longrightarrow> (\<Turnstile>{E,E'}=> P) \<turnstile> \<Turnstile>{E}=> P"
+apply (entails_substR rule: fupd_plainly_mask)
+apply (rule fupd_mono) unfolding plain_def by assumption
+
 lemma fupd_trans_frame: "((Q ={E2,E3}=\<^emph> upred_emp) \<^emph> \<Turnstile>{E1,E2}=> (Q\<^emph>P)) ={E1,E3}=\<^emph> P"
 proof -
   have "\<Turnstile>{E1,E3}=>P \<turnstile> \<Turnstile>{E1,E3}=>P" by simp
@@ -251,12 +290,62 @@ qed
 lemma fupd_exists_lift: "(\<exists>\<^sub>u x. \<Turnstile>{E1,E2}=>(P x)) \<turnstile> \<Turnstile>{E1,E2}=>(\<exists>\<^sub>u x. P x)"
   by (meson fupd_mono upred_entails_refl upred_existsE_eq)
 
-lemma elim_modal_fupd: "elim_modal (\<Turnstile>{E1,E2}=>P) P (\<Turnstile>{E1,E3}=>Q) (\<Turnstile>{E2,E3}=>Q)"
-  unfolding elim_modal_def by (simp add: fupd_ext upred_wandE)
+lemma fupd_forall: "(\<Turnstile>{E1,E2}=> (\<forall>\<^sub>ux. P x)) \<turnstile> (\<forall>\<^sub>ux. (\<Turnstile>{E1,E2}=> P x))"
+by (simp add: fupd_mono upred_forallI upred_forall_inst)
 
-lemma elim_modal_upd: "elim_modal (\<Rrightarrow>\<^sub>b P) P (\<Turnstile>{E1,E2}=>Q) (\<Turnstile>{E1,E2}=>Q)"
-  unfolding elim_modal_def using upd_fupd elim_modal_fupd[unfolded elim_modal_def]
-  using fupd_ext upred_entails_wand_holdsR upred_wand_holds2E by blast
+lemma fupd_plainly_forall: "(\<forall>\<^sub>ux. (\<Turnstile>{E}=> \<^item> P x)) \<turnstile> (\<Turnstile>{E}=> (\<forall>\<^sub>ux. P x))"
+unfolding fancy_upd_def
+apply iIntros
+apply (iAssert_pers "\<diamondop> \<^item> (\<forall>\<^sub>ux. P x)")
+subgoal
+apply (entails_substR rule: except_zero_mono[OF upred_plain_forall'])
+apply (entails_substR rule: upred_ez_forall')
+apply iForallR subgoal for x apply (iForallL x)
+apply iApply_wand
+apply (entails_substR rule: bupd_plain) prefer 2 apply plain_solver
+apply (rule upd_mono)
+apply (rule except_zero_mono)
+by iFrame_single done
+apply (entails_substR rule: except_zero_bupd)
+apply (rule except_zero_mono_ext)
+apply (entails_substR rule: updI)
+apply (check_moveR "ownE E") apply iFrame_single
+apply (check_moveR wsat) apply iFrame_single
+apply iForallR subgoal for x
+apply (entails_substL rule: upred_plain_forall)
+apply (iForallL x) 
+apply (iApply rule: upred_plainE) by iFrame_single done
+
+lemma fupd_plain_forall2: "(\<And>x. plain (P x)) \<Longrightarrow> (\<forall>\<^sub>ux. (\<Turnstile>{E}=> P x)) \<turnstile> (\<Turnstile>{E}=> (\<forall>\<^sub>ux. P x))"
+apply (entails_substR rule: fupd_plainly_forall)
+apply iForallR subgoal for x apply (iForallL x)
+apply (rule fupd_mono) unfolding plain_def by assumption done
+
+lemma fupd_plain_forall: "\<lbrakk>\<And>x. plain (P x); E2\<subseteq>E1\<rbrakk> \<Longrightarrow>
+  (\<Turnstile>{E1,E2}=> (\<forall>\<^sub>ux. P x)) \<stileturn>\<turnstile> (\<forall>\<^sub>ux. (\<Turnstile>{E1,E2}=> P x))"
+apply (auto simp: upred_entail_eq_def)
+subgoal by (rule fupd_forall)
+  apply (rule upred_entails_trans[where ?Q ="\<forall>\<^sub>ux. \<Turnstile>{E1}=> P x"])
+subgoal apply (rule upred_forall_mono) by (rule fupd_plain_mask)
+  apply (iApply rule: fupd_plain_forall2)
+  apply (rule elim_modal_entails) apply (rule elim_modal_fupd)
+  apply (iApply rule: plainE, log_prog_solver) apply (iDrop "upred_forall ?p")+
+  apply (iApply rule: fupd_mask_intro_discard[of E2 E1]) apply (iDrop "\<^item> ?p")
+  apply (rule fupd_mono)
+  by (rule upred_plainE)
+
+lemma elim_acc_fupd: "elim_acc (fancy_upd E1 E2) (fancy_upd E2 E1) a b c (\<Turnstile>{E1,E}=>Q) (\<lambda>x. \<Turnstile>{E2}=> (b x \<^emph> 
+  (case c x of Some P \<Rightarrow> (P -\<^emph> (\<Turnstile>{E1,E}=>Q)) | None \<Rightarrow> \<Turnstile>{E1,E}=>Q)))"
+  apply (auto simp: elim_acc_def accessor_def)
+  apply (rule elim_modal_entails'[OF elim_modal_fupd])
+  apply iIntros subgoal for x
+  apply (iForallL x) 
+  apply iApply_wand
+  apply (rule elim_modal_entails'[OF elim_modal_fupd]) apply iris_simp
+  apply iApply_wand
+  apply (rule elim_modal_entails'[OF elim_modal_fupd])
+  apply (cases "c x") apply (auto simp: iris_simp)
+  by iApply_wand done
   
 abbreviation fancy_step :: "mask \<Rightarrow> mask \<Rightarrow> 'res upred_f \<Rightarrow> 'res upred_f" ("\<Turnstile>{_}[_]\<triangleright>=>_") where
   "fancy_step Eo Ei Q \<equiv> \<Turnstile>{Eo,Ei}=> \<triangleright> \<Turnstile>{Ei,Eo}=> Q"

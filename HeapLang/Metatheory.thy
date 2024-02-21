@@ -110,28 +110,34 @@ lemma bin_op_eval_closed: "\<lbrakk>is_closed_val v1; is_closed_val v2; bin_op_e
 definition map_forall :: "('a \<Rightarrow> 'b \<Rightarrow> bool) \<Rightarrow> ('a,'b) map \<Rightarrow> bool" where
   "map_forall P m = (\<forall>k v. (m k = Some v) \<longrightarrow> P k v)"  
 
+context includes fmap.lifting begin
+lift_definition fmap_forall  :: "('a \<Rightarrow> 'b \<Rightarrow> bool) \<Rightarrow> ('a,'b) fmap \<Rightarrow> bool" is
+  "\<lambda>P m. (\<forall>k v. (m k = Some v) \<longrightarrow> P k v)" .
+end
+
 definition option_map_or :: "('a \<Rightarrow> 'b) \<Rightarrow> 'b \<Rightarrow> 'a option \<Rightarrow> 'b" where
   "option_map_or f b a = (case a of Some a \<Rightarrow> f a | None \<Rightarrow> b)"
 
 lemma heap_closed_alloc: "\<lbrakk>0 < n; is_closed_val w; 
-  map_forall (\<lambda>_ v. option_map_or is_closed_val True v) (heap \<sigma>);
-  (\<forall> i::int. (0 \<le> i) \<longrightarrow> (i < n) \<longrightarrow> heap \<sigma> (l +\<^sub>\<iota> i) = None)\<rbrakk> \<Longrightarrow>
-  map_forall (\<lambda>_ v. option_map_or is_closed_val True v) (heap \<sigma> ++ heap_array l (replicate (nat n) w))"
-proof (auto simp: map_forall_def option_map_or_def loc_add_def split: option.splits)
-  have "(heap_array l (replicate (nat n) w) k = Some (Some v)) \<Longrightarrow> w=v" for k v
+  fmap_forall (\<lambda>_ v. option_map_or is_closed_val True v) (heap \<sigma>);
+  (\<forall> i::int. (0 \<le> i) \<longrightarrow> (i < n) \<longrightarrow>fmlookup (heap \<sigma>) (l +\<^sub>\<iota> i) = None)\<rbrakk> \<Longrightarrow>
+  fmap_forall (\<lambda>_ v. option_map_or is_closed_val True v) (heap \<sigma> ++\<^sub>f heap_array l (replicate (nat n) w))"
+proof (auto simp: fmap_forall.rep_eq option_map_or_def loc_add_def split: option.splits)
+  have "fmlookup (heap_array l (replicate (nat n) w)) k = Some (Some v) \<Longrightarrow> w=v" for k v
     using heap_array_lookup[of l "(replicate (nat n) w)" k v]
     by (metis heap_array_elements in_set_replicate)
   then show "\<And>k x2.
-    \<forall>k v. heap \<sigma> k = Some v \<longrightarrow> (\<forall>x2. v = Some x2 \<longrightarrow> is_closed_val x2) \<Longrightarrow>
-    \<forall>i\<ge>0. i < n \<longrightarrow> heap \<sigma> (Loc (loc_car l + i)) = None \<Longrightarrow> 0 < n \<Longrightarrow> is_closed_val w \<Longrightarrow> 
-      heap_array l (replicate (nat n) w) k = Some (Some x2) \<Longrightarrow> is_closed_val x2"
+    \<forall>k v. fmlookup (heap \<sigma>) k = Some v \<longrightarrow> (\<forall>x2. v = Some x2 \<longrightarrow> is_closed_val x2) \<Longrightarrow>
+    \<forall>i\<ge>0. i < n \<longrightarrow> fmlookup (heap \<sigma>) (Loc (loc_car l + i)) = None \<Longrightarrow> 0 < n \<Longrightarrow> is_closed_val w \<Longrightarrow> 
+    k |\<in>| fmdom (heap_array l (replicate (nat n) w)) \<Longrightarrow>
+      fmlookup (heap_array l (replicate (nat n) w)) k = Some (Some x2) \<Longrightarrow> is_closed_val x2"
     by blast
 qed
 
 lemma head_step_is_closed: "\<lbrakk> e1 \<sigma>1 obs \<Rightarrow>\<^sub>h e2 \<sigma>2 es; is_closed_expr {} e1; 
-  map_forall (\<lambda>_ v. option_map_or is_closed_val True v) (heap \<sigma>1)\<rbrakk> \<Longrightarrow>
+  fmap_forall (\<lambda>_ v. option_map_or is_closed_val True v) (heap \<sigma>1)\<rbrakk> \<Longrightarrow>
   is_closed_expr {} e2 \<and> list_all (is_closed_expr {}) es \<and>
-  map_forall (\<lambda>_ v. option_map_or is_closed_val True v) (heap \<sigma>2)"
+  fmap_forall (\<lambda>_ v. option_map_or is_closed_val True v) (heap \<sigma>2)"
 proof (induction rule: head_step.induct)
   case (BetaS e' x v2 f e1 \<sigma>)
   then show ?case using is_closed_subst' by force
@@ -150,7 +156,7 @@ next
 next
   case (NewProphS p \<sigma>)
   then show ?case by (simp add: state_upd_used_proph_id_def)
-qed (auto simp: option_map_or_def map_forall_def subst'_def state_upd_heap_def split: option.splits)
+qed (auto simp: option_map_or_def fmap_forall_def subst'_def state_upd_heap_def split: option.splits)
 
 definition binder_delete :: "binder_t \<Rightarrow> (string,'a) map \<Rightarrow> (string,'a) map" where
   "binder_delete b m = (case b of Some b \<Rightarrow> m(b:=None) | None \<Rightarrow> m)"

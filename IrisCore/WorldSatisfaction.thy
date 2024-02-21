@@ -1,6 +1,6 @@
 theory WorldSatisfaction
 imports Misc Namespace View
-begin
+begin           
 
 subsection \<open>Invariants\<close>
 
@@ -20,12 +20,12 @@ type_synonym inv = "(name, pre_iprop later) map_view \<times> name dset \<times>
 
 context 
 fixes get_inv :: "gname \<Rightarrow> 'res::ucamera \<Rightarrow> inv option"
-  and put_inv
-assumes inv_inG: "inG get_inv put_inv"
+  and upd_inv
+assumes inv_inG: "inG get_inv upd_inv"
 begin
 
 definition own_inv :: "gname \<Rightarrow> inv \<Rightarrow> 'res upred_f" ("Own\<^sub>i _ _") where
-  "own_inv \<gamma> i = own put_inv \<gamma> i"
+  "own_inv \<gamma> i = own upd_inv \<gamma> i"
 
 text \<open>Allocate new invariant map\<close>
 definition ownI :: "name \<Rightarrow> 'res upred_f \<Rightarrow> 'res upred_f" where
@@ -61,7 +61,7 @@ lemma own_inv_ne [upred_ne_rule]: "\<lbrakk>n_equiv n \<gamma>1 \<gamma>2; n_equ
 
 lemma ownI_ne [upred_ne_rule]: "\<lbrakk>n_equiv n n1 n2; n_equiv n P Q\<rbrakk> \<Longrightarrow> n_equiv n (ownI n1 P) (ownI n2 Q)"
 apply (auto simp: ownI_def ofe_refl n_equiv_map_view_def map_view_auth_proj_def map_view_frag_proj_def 
-  map_view_frag_def view_frag_def n_equiv_fun_def n_equiv_option_def n_equiv_ag.rep_eq to_ag.rep_eq 
+  map_view_frag_def mview_frag_def n_equiv_fun_def n_equiv_option_def n_equiv_ag.rep_eq to_ag.rep_eq 
   n_equiv_later_def intro!: upred_ne_rule split: map_view.splits)
   using non_expansiveE[OF ipropIso.to_ne] diff_le_self ofe_mono by blast
 
@@ -88,8 +88,8 @@ lemma persistent_inv_raw [pers_rule,log_prog_rule]: "persistent (inv_raw N P)"
   apply (rule persistent_pure)
   by (rule persistent_ownI)
 
-lemma put_inv_valid: "\<lbrakk>valid mv; valid e; valid d\<rbrakk> \<Longrightarrow> valid (put_inv \<gamma> (mv,e,d))"
-  by (auto simp: valid_def inG.put_n_valid[OF inv_inG] valid_raw_prod_def sprop_conj.rep_eq)
+lemma put_inv_valid: "\<lbrakk>valid mv; valid e; valid d\<rbrakk> \<Longrightarrow> valid (inG.return_cmra upd_inv \<gamma> (mv,e,d))"
+  by (auto simp: valid_def inG.return_n_valid[OF inv_inG] valid_raw_prod_def sprop_conj.rep_eq)
 
 lemma ownE_singleton_twice: "ownE {i} \<^emph> ownE {i} \<turnstile> \<upharpoonleft>False"
   unfolding ownE_def own_inv_def
@@ -101,7 +101,7 @@ lemma ownE_singleton_twice: "ownE {i} \<^emph> ownE {i} \<turnstile> \<upharpoon
   
 lemma ownD_singleton_twice: "ownD {|i|} \<^emph> ownD {|i|} \<turnstile> \<upharpoonleft>False"
   unfolding ownD_def own_inv_def inG.own_def[OF inv_inG]
-  apply (auto simp: op_prod_def \<epsilon>_left_id op_dfset_def inG.put_op[OF inv_inG, symmetric]
+  apply (auto simp: op_prod_def \<epsilon>_left_id op_dfset_def inG.return_op[OF inv_inG, symmetric]
     intro!: upred_entails_trans[OF upred_entail_eqR[OF upred_own_op]] upred_entails_trans[OF upred_own_valid])
   apply (rule upred_entails_trans[OF upred_entail_eqL[OF inG.valid_get[OF inv_inG]]])
   apply transfer
@@ -120,9 +120,29 @@ lemma ownE_op': "(\<upharpoonleft>(E1 \<inter> E2 = {})) \<and>\<^sub>u ownE (E1
   apply (subst upred_conj_comm)
   apply (auto intro!: upred_pure_impl' upred_entail_eqL[OF ownE_op])
   apply (auto simp: ownE_def own_inv_def op_prod_def \<epsilon>_left_id inG.own_def[OF inv_inG]
-    inG.put_op[OF inv_inG,symmetric] intro!: upred_entails_trans[OF upred_entail_eqR[OF upred_own_op]])
+    inG.return_op[OF inv_inG,symmetric] intro!: upred_entails_trans[OF upred_entail_eqR[OF upred_own_op]])
   apply (auto simp: upred_entails.rep_eq upred_own.rep_eq upred_pure.rep_eq upred_conj.rep_eq)
-  sorry
+  proof -
+  fix a n x
+  assume assms: "n_valid a n" "x \<in> E1" "x \<in> E2" "n_incl n (inG.return_cmra upd_inv enabled_name
+    (\<epsilon>, DSet E1 \<cdot> DSet E2, \<epsilon>)) a"
+  then have "n_valid (inG.return_cmra upd_inv enabled_name (\<epsilon>, DSet E1 \<cdot> DSet E2, \<epsilon>)) n"
+    using n_valid_ne camera_valid_op n_incl_def by blast
+  then have "n_valid (DSet E1 \<cdot> DSet E2) n"
+    by (auto simp: inG.return_n_valid[OF inv_inG] prod_n_valid_def)
+  with assms(2,3) show False apply (auto simp: valid_raw_dset_def op_dset_def)
+    by (smt (verit, best) Int_iff dset.simps(5) empty_iff sPure.rep_eq)
+  next
+  fix a n
+  assume assms: "n_valid a n" "n_incl n (inG.return_cmra upd_inv enabled_name (\<epsilon>, DSet E1 \<cdot> DSet E2, \<epsilon>)) a"
+  then have "n_valid (inG.return_cmra upd_inv enabled_name (\<epsilon>, DSet E1 \<cdot> DSet E2, \<epsilon>)) n"
+  using n_valid_ne camera_valid_op n_incl_def by blast
+  then have "n_valid (DSet E1 \<cdot> DSet E2) n"
+    by (auto simp: inG.return_n_valid[OF inv_inG] prod_n_valid_def)
+  then have "(DSet E1 \<cdot> DSet E2) = DSet (E1 \<union> E2)" apply (auto simp: op_dset_def valid_raw_dset_def)
+    by (smt (verit, best) Int_iff dset.simps(5) empty_iff sPure.rep_eq)
+  with assms(2) show "n_incl n (inG.return_cmra upd_inv enabled_name (\<epsilon>, DSet (E1 \<union> E2), \<epsilon>)) a" by simp
+qed
   
 lemma ownE_op_minus: "E1 \<subseteq> E2 \<Longrightarrow> ownE (E1 \<union> (E2-E1)) \<stileturn>\<turnstile> ownE E1 \<^emph> ownE (E2-E1)"
 proof -
@@ -132,9 +152,10 @@ proof -
 qed
   
 lemma auth_map_both_validI: 
-  "\<V>(put_inv \<gamma> (map_view_auth (DfracOwn 1) m,\<epsilon>,\<epsilon>) \<cdot> put_inv \<gamma> (map_view_frag k dq v,\<epsilon>,\<epsilon>)) \<turnstile>
+  "\<V>(inG.return_cmra upd_inv \<gamma> (map_view_auth (DfracOwn 1) m,\<epsilon>,\<epsilon>) 
+    \<cdot> inG.return_cmra upd_inv \<gamma> (map_view_frag k dq v,\<epsilon>,\<epsilon>)) \<turnstile>
     (fmlookup m k =\<^sub>u Some v) \<and>\<^sub>u \<upharpoonleft>(valid dq)"
-unfolding inG.put_op[OF inv_inG,symmetric]
+unfolding inG.return_op[OF inv_inG,symmetric]
 apply (rule upred_entails_trans[OF upred_entail_eqL[OF inG.valid_get[OF inv_inG]]])
 unfolding op_prod_def
 apply (simp add: \<epsilon>_left_id auth_comb_opL op_prod_def split: prod.splits)
@@ -287,7 +308,6 @@ apply (rule inG.add_own[OF inv_inG, where ?\<gamma> = "disabled_name" and ?a = "
   OF prod_validI[OF \<epsilon>_valid prod_validI[OF \<epsilon>_valid _]], unfolded \<epsilon>_dfset_def[symmetric], OF \<epsilon>_valid])
 apply (auto simp: wsat_def pull_exists_eq own_inv_def ownE_def ownD_def 
   intro!: upred_entails_trans[OF _ updI])
-apply (rule upred_existsI)
 apply (rule upred_existsI[of _ _ fmempty])
 apply (rule upred_entails_trans[OF upred_sep_comm2R])
 apply (auto intro!: upred_frame)
